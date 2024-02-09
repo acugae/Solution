@@ -1,4 +1,4 @@
-namespace Solution;
+﻿namespace Solution;
 
 /// <summary>
 /// Delegato generico, consente di referenziare metodi con parametri varibili non definiti.

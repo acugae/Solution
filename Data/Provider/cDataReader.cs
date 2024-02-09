@@ -374,10 +374,7 @@ public class cDataReader : System.Data.IDataReader
     /// <returns></returns>
     public DataSet ToDataSet(DataSet oDataSet, string MappingTableName)
     {
-        if (oDataSet == null)
-        {
-            oDataSet = new DataSet();
-        }
+        oDataSet ??= new DataSet();
         DataSet otmpDS = ToDataSet();
         DataTable oDT = new DataTable(MappingTableName);
         if (otmpDS.Tables.Count > 0)

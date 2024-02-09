@@ -23,7 +23,7 @@ public class cCacheValue<T>
         set;
     }
 
-    public Boolean IsUnitSize
+    public bool IsUnitSize
     {
         get;
         set;
@@ -41,29 +41,29 @@ public class cCacheValue<T>
         private set;
     }
 
-    public Boolean IsZipped
+    public bool IsZipped
     { get; set; }
 
-    public cCacheValue(T Value, int ExpirationThreshold, Boolean zip = false, bool isUnitSize = false)
+    public cCacheValue(T Value, int ExpirationThreshold, bool zip = false, bool isUnitSize = false)
     {
-        this.IsZipped = zip;
-        this.IsUnitSize = isUnitSize;
-        if (this.IsZipped)
+        IsZipped = zip;
+        IsUnitSize = isUnitSize;
+        if (IsZipped)
         {
-            this._value = default(T);
-            this.ZippedValue = SerializeAndCompress(Value);
-            this.Size = this.ZippedValue.Length; //GetSize(ZippedValue);
+            _value = default;
+            ZippedValue = SerializeAndCompress(Value);
+            Size = ZippedValue.Length; //GetSize(ZippedValue);
         }
         else
         {
-            this.ZippedValue = null;
-            this._value = Value;
-            this.Size = GetSize(_value);
+            ZippedValue = null;
+            _value = Value;
+            Size = GetSize(_value);
         }
         if (ExpirationThreshold != 0)
-            this.ExpirationTime = DateTime.Now.AddMinutes(ExpirationThreshold);
+            ExpirationTime = DateTime.Now.AddMinutes(ExpirationThreshold);
         else
-            this.ExpirationTime = DateTime.MaxValue;
+            ExpirationTime = DateTime.MaxValue;
     }
 
     private long GetSize(T Value)
@@ -138,14 +138,14 @@ public class cCacheKey
     public cCacheKey(string QueryString)
     {
         this.QueryString = GetHash(QueryString);
-        this.LastUsedTime = DateTime.Now;
+        LastUsedTime = DateTime.Now;
     }
 
     private static string GetHash(string inputString)
     {
         // step 1, calculate MD5 hash from input
-        MD5 md5 = System.Security.Cryptography.MD5.Create();
-        byte[] inputBytes = System.Text.Encoding.ASCII.GetBytes(inputString);
+        MD5 md5 = MD5.Create();
+        byte[] inputBytes = Encoding.ASCII.GetBytes(inputString);
         byte[] hash = md5.ComputeHash(inputBytes);
         string str = BitConverter.ToString(hash);
         return str;
@@ -162,7 +162,7 @@ public class cCacheKey
     }
     public bool Equals(cCacheKey obj)
     {
-        return this.QueryString.Equals(obj.QueryString);
+        return QueryString.Equals(obj.QueryString);
     }
 }
 
@@ -346,14 +346,14 @@ public class cCache<T> : Dictionary<cCacheKey, cCacheValue<T>>
     public cCache(long CacheSize, int TrashPeriod, bool IsZipped = false, bool IsUnitSize = false) : base()
     {
         cLogger.WriteLine("StartService:cCache: Creating new cache Object of maximum bytes=" + CacheSize, cLogger.TipoLog.Debug);
-        _lock = new Object();
+        _lock = new object();
         MaximumSize = CacheSize;
         CurrentSize = 0;
         Length = 0;
         IsUnit = IsUnitSize;
         IsZip = IsZipped;
-        TimerCallback tcb = this.DeleteExpired;
-        Object timerState = new Object();
+        TimerCallback tcb = DeleteExpired;
+        object timerState = new object();
         cLogger.WriteLine("Creating timer of " + TrashPeriod + " minutes for ThrashPeriod", cLogger.TipoLog.Debug);
         stateTimer = new Timer(tcb, timerState, TrashPeriod * 60 * 1000, TrashPeriod * 60 * 1000);
     }
@@ -373,7 +373,7 @@ public class cCache<T> : Dictionary<cCacheKey, cCacheValue<T>>
         cLogger.WriteLine("StartService:cCache: adding new value=" + Key.QueryString, cLogger.TipoLog.Debug);
         lock (_lock)
         {
-            if (this.ContainsKey(Key))
+            if (ContainsKey(Key))
             {
                 cLogger.WriteLine("StartService:cCache: key already present. Removing the oldest", cLogger.TipoLog.Debug);
                 Remove(Key);
@@ -406,10 +406,10 @@ public class cCache<T> : Dictionary<cCacheKey, cCacheValue<T>>
     public new bool Remove(cCacheKey Key)
     {
         cLogger.WriteLine("StartService:cCache: removing value=" + Key.QueryString, cLogger.TipoLog.Debug);
-        Boolean bRet = false;
+        bool bRet = false;
         lock (_lock)
         {
-            if (this.ContainsKey(Key))
+            if (ContainsKey(Key))
             {
                 bRet = true;
                 cCacheValue<T> Value = this[Key];
@@ -431,10 +431,10 @@ public class cCache<T> : Dictionary<cCacheKey, cCacheValue<T>>
     public T get(cCacheKey Key)
     {
         cLogger.WriteLine("StartService:cCache: getting value=" + Key.QueryString, cLogger.TipoLog.Debug);
-        T Value = default(T);
+        T Value = default;
         lock (_lock)
         {
-            if (this.ContainsKey(Key))
+            if (ContainsKey(Key))
             {
                 cLogger.WriteLine("StartService:cCache: value is present", cLogger.TipoLog.Debug);
                 cCacheValue<T> TmpValue = this[Key];
@@ -458,10 +458,10 @@ public class cCache<T> : Dictionary<cCacheKey, cCacheValue<T>>
         return Value;
     }
 
-    private Boolean Recycler(long Bytes)
+    private bool Recycler(long Bytes)
     {
         cLogger.WriteLine("StartService:cCache: Recycled invoked to get " + Bytes + " bytes", cLogger.TipoLog.Debug);
-        Boolean retValue = false;
+        bool retValue = false;
 
         lock (_lock)
         {
@@ -492,7 +492,7 @@ public class cCache<T> : Dictionary<cCacheKey, cCacheValue<T>>
         return retValue;
     }
 
-    public void DeleteExpired(Object stateInfo)
+    public void DeleteExpired(object stateInfo)
     {
         lock (_lock)
         {

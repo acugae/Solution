@@ -45,7 +45,7 @@ public class cService
                 cLogger.WriteLine("Il servizio è stato invocato con successo. Numero byte restituiti " + res.LongLength, cLogger.TipoLog.Debug);
             }
             //
-            _ResponseHeaders = web.ResponseHeaders;
+            //WebHeaderCollection _ResponseHeaders = web.ResponseHeaders;
             //
             DateTime after = DateTime.Now;
             double diffInSeconds = (after - before).TotalSeconds;
@@ -87,7 +87,7 @@ public class cService
             res = web.UploadData(sURL, sMethod, d);
         }
         //
-        _ResponseHeaders = web.ResponseHeaders;
+        //WebHeaderCollection _ResponseHeaders = web.ResponseHeaders;
         //
         return System.Text.Encoding.UTF8.GetString(res);
     }
@@ -193,8 +193,6 @@ public class cService
         }
         return oHeader;
     }
-
-    private WebHeaderCollection _ResponseHeaders;
 }
 public class ExtendedWebClient : WebClient
 {

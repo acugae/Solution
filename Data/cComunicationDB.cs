@@ -1261,8 +1261,7 @@ public class XMLDBRead : cXMLManager, IReader
     {
         string[] sNames = null;
         sNames = GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@alias='" + sTableName + "']/" + COLUMN + "[@name='" + strField + "']/@name");
-        if (sNames == null)
-            sNames = GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@name='" + sTableName + "' and (not(@alias) or @alias='')]/" + COLUMN + "[@name='" + strField + "']/@name");
+        sNames ??= GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@name='" + sTableName + "' and (not(@alias) or @alias='')]/" + COLUMN + "[@name='" + strField + "']/@name");
         if (sNames == null)
             return null;
         //
@@ -1286,8 +1285,7 @@ public class XMLDBRead : cXMLManager, IReader
         cGCollection<string, cDBField> oCC = new cGCollection<string, cDBField>();
         string[] sNames = null;
         sNames = GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@alias='" + strTable + "']/" + COLUMN + "/@name");
-        if (sNames == null)
-            sNames = GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@name='" + strTable + "' and (not(@alias) or @alias='')]/" + COLUMN + "/@name");
+        sNames ??= GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@name='" + strTable + "' and (not(@alias) or @alias='')]/" + COLUMN + "/@name");
         if (sNames == null)
             return null;
         for (int i = 0; i < sNames.Length; i++)
@@ -1314,8 +1312,7 @@ public class XMLDBRead : cXMLManager, IReader
         cGCollection<string, cDBField> oCC = new cGCollection<string, cDBField>();
         string[] sNames = null;
         sNames = GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@alias='" + strTable + "']/" + COLUMN + "[@primarykey='True']/@name");
-        if (sNames == null)
-            sNames = GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@name='" + strTable + "' and (not(@alias) or @alias='')]/" + COLUMN + "[@primarykey='True']/@name");
+        sNames ??= GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@name='" + strTable + "' and (not(@alias) or @alias='')]/" + COLUMN + "[@primarykey='True']/@name");
         if (sNames == null)
             return null;
         //
@@ -1374,8 +1371,7 @@ public class XMLDBRead : cXMLManager, IReader
     {
         string[] sNames = null;
         sNames = GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@alias='" + strTable + "']/" + COLUMN + "[@name='" + strField + "']/@type");
-        if (sNames == null)
-            sNames = GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@name='" + strTable + "' and (not(@alias) or @alias='')]/" + COLUMN + "[@name='" + strField + "']/@type");
+        sNames ??= GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@name='" + strTable + "' and (not(@alias) or @alias='')]/" + COLUMN + "[@name='" + strField + "']/@type");
         if (sNames == null)
             return null;
         return sNames[0];
@@ -1390,8 +1386,7 @@ public class XMLDBRead : cXMLManager, IReader
     {
         string[] sNames = null;
         sNames = GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@alias='" + strTable + "']/" + COLUMN + "[@name='" + strField + "']/@len");
-        if (sNames == null)
-            sNames = GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@name='" + strTable + "' and (not(@alias) or @alias='')]/" + COLUMN + "[@name='" + strField + "']/@len");
+        sNames ??= GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@name='" + strTable + "' and (not(@alias) or @alias='')]/" + COLUMN + "[@name='" + strField + "']/@len");
         if (sNames == null)
             return -1;
         return Convert.ToInt32(sNames[0]);
@@ -1406,8 +1401,7 @@ public class XMLDBRead : cXMLManager, IReader
     {
         string[] sNames = null;
         sNames = GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@alias='" + strTable + "']/" + COLUMN + "[@name='" + strField + "']/@isnull");
-        if (sNames == null)
-            sNames = GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@name='" + strTable + "' and (not(@alias) or @alias='')]/" + COLUMN + "[@name='" + strField + "']/@isnull");
+        sNames ??= GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@name='" + strTable + "' and (not(@alias) or @alias='')]/" + COLUMN + "[@name='" + strField + "']/@isnull");
         if (sNames == null)
             return false;
         return Convert.ToBoolean(sNames[0]);
@@ -1422,8 +1416,7 @@ public class XMLDBRead : cXMLManager, IReader
         cCollection oCC = new cCollection();
         string[] sValues = null;
         sValues = GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@alias='" + strTable + "']/" + COLUMN + "[@primarykey='True']/@name");
-        if (sValues == null)
-            sValues = GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@name='" + strTable + "' and (not(@alias) or @alias='')]/" + COLUMN + "[@primarykey='True']/@name");
+        sValues ??= GetX(FIRSTNODEXML + "/" + TABLES + "/" + TABLE + "[@name='" + strTable + "' and (not(@alias) or @alias='')]/" + COLUMN + "[@primarykey='True']/@name");
         if (sValues == null)
             return null;
         for (int i = 0; i < sValues.Length; i++)

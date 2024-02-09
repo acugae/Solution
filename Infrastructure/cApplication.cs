@@ -21,8 +21,7 @@ public static class cApplication
     {
         get
         {
-            if (_FunctionsAssemblyContext == null)
-                _FunctionsAssemblyContext = new(DB, cApplication.AssemblyPath);
+            _FunctionsAssemblyContext ??= new(DB, cApplication.AssemblyPath);
             return _FunctionsAssemblyContext;
         }
     }

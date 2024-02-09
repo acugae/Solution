@@ -1,7 +1,4 @@
-﻿using System.Threading.Tasks;
-
-namespace Solution;
-
+﻿namespace Solution;
 public static class HttpContextExtensions
 {
     public static async Task<string> GetBody(this HttpRequest oRequest)
@@ -54,7 +51,7 @@ public static class DataRowExtensions
 
     public static dynamic ToDynamic(this DataRow dr)
     {
-        return (dynamic)dr.ToKeyValue();
+        return dr.ToKeyValue();
     }
 
     public static T To<T>(this DataRow row) where T : new()

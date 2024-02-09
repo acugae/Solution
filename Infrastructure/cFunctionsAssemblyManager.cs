@@ -11,8 +11,7 @@ public class cFunctionsAssemblyManager
     }
     public Assembly LoadAssembly(string sAssemblyName)
     {
-        if(oAssemblies is null)
-            oAssemblies = new(AssemblyPath);
+        oAssemblies ??= new(AssemblyPath);
         return oAssemblies.LoadAssembly(sAssemblyName);
     }
     public void UnLoad()

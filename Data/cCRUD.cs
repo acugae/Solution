@@ -135,8 +135,7 @@ public class CRUDFind
     {
         get
         {
-            if (oPagination == null)
-                oPagination = new CRUDPagination();
+            oPagination ??= new CRUDPagination();
             return oPagination;
         }
         set { oPagination = value; }
@@ -146,8 +145,7 @@ public class CRUDFind
     {
         get
         {
-            if (oOrders == null)
-                oOrders = new CRUDOrders();
+            oOrders ??= new CRUDOrders();
             return oOrders;
         }
         set { oOrders = value; }
@@ -157,8 +155,7 @@ public class CRUDFind
     {
         get
         {
-            if (oFilters == null)
-                oFilters = new CRUDFilters();
+            oFilters ??= new CRUDFilters();
             return oFilters;
         }
         set { oFilters = value; }

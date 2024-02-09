@@ -45,5 +45,6 @@ global using System.Threading;
 global using System.Xml;
 global using System.Xml.Serialization;
 global using System.Xml.XPath;
+global using System.Security.Claims;
 //
 global using Solution.Infrastructure.Models;

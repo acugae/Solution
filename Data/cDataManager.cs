@@ -554,8 +554,7 @@ public class cDataManager : MarshalByRefObject
         {
             if (_oCns.Contains(sKeyConnection))
             {
-                if (dsSource == null)
-                    dsSource = new DataSet();
+                dsSource ??= new DataSet();
                 GetDA(sKeyConnection, strSQL).Fill(dsSource, MappingTableName);
                 return dsSource;
             }
@@ -575,8 +574,7 @@ public class cDataManager : MarshalByRefObject
     {
         lock (this)
         {
-            if (dsSource == null)
-                dsSource = new DataSet();
+            dsSource ??= new DataSet();
             GetDA(oConnection, strSQL).Fill(dsSource, MappingTableName);
 
             return dsSource;

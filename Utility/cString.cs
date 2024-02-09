@@ -79,7 +79,7 @@ public class cString
             {
                 oldString = _string.Substring(s, oldString.Length);
                 tmpstr = tmpstr.Replace(oldString, newString);
-                index += (s + oldString.Length);
+                index += s + oldString.Length;
                 if (index < _string.Length)
                 {
                     s = _string.ToLower().IndexOf(oldString.ToLower(), index);
@@ -106,13 +106,13 @@ public class cString
         int s = _string.ToLower().IndexOf(StringSearch.ToLower(), index);
         while (s >= 0)
         {
-            if ((s + StringSearch.Length) > _string.Length)
+            if (s + StringSearch.Length > _string.Length)
                 break;
             //
             string tmp = _string.Substring(s, StringSearch.Length);
-            tmpstr = tmpstr.Replace(tmp, (BeginTag + tmp + EndTag));
-            index += (s + StringSearch.Length);
-            if (index < (_string.Length - 1))
+            tmpstr = tmpstr.Replace(tmp, BeginTag + tmp + EndTag);
+            index += s + StringSearch.Length;
+            if (index < _string.Length - 1)
                 s = _string.ToLower().IndexOf(StringSearch.ToLower(), index);
             else
                 break;
@@ -128,7 +128,7 @@ public class cString
     /// <returns>La stringa modificata</returns>
     public string Replace(int startIndex, int endIndex, string newValue)
     {
-        string sTmpString = _string.Substring(startIndex, (endIndex - startIndex) + 1);
+        string sTmpString = _string.Substring(startIndex, endIndex - startIndex + 1);
         return _string.Replace(sTmpString, newValue);
     }
 
@@ -372,7 +372,7 @@ public class cString
     public void SerializeInt32(int iValue)
     {
         byte[] oBytes = BitConverter.GetBytes(iValue);
-        string sValue = System.Text.Encoding.Default.GetString(oBytes);
+        string sValue = Encoding.Default.GetString(oBytes);
         _string = sValue;
     }
     /// <summary>
@@ -391,18 +391,18 @@ public class cString
             {
                 if (_string.Length == 8)
                 {
-                    cString[] svProva = this.SubStrings("4&2&2");
+                    cString[] svProva = SubStrings("4&2&2");
                     DateTime oDateTime = new DateTime(Convert.ToInt32(svProva[0]), Convert.ToInt32(svProva[1]), Convert.ToInt32(svProva[2]));
                     return oDateTime;
                 }
                 else
                 {
-                    throw (new Exception());
+                    throw new Exception();
                 }
             }
             catch
             {
-                throw (new Exception());
+                throw new Exception();
             }
         }
     }
@@ -411,7 +411,7 @@ public class cString
     /// </summary>
     public int DeserializeInt32()
     {
-        byte[] oBytes = System.Text.Encoding.Default.GetBytes(_string);
+        byte[] oBytes = Encoding.Default.GetBytes(_string);
         int iValue = BitConverter.ToInt32(oBytes, 0);
         return iValue;
     }
@@ -424,7 +424,7 @@ public class cString
         foreach (char c in _string)
         {
             int tmp = c;
-            hex += String.Format("{0:x2}", (uint)System.Convert.ToUInt32(tmp.ToString()));
+            hex += string.Format("{0:x2}", Convert.ToUInt32(tmp.ToString()));
         }
         return hex;
     }
@@ -438,7 +438,7 @@ public class cString
         {
             raw[i] = Convert.ToByte(_string.Substring(i * 2, 2), 16);
         }
-        return System.Text.Encoding.Default.GetString(raw);
+        return Encoding.Default.GetString(raw);
     }
     /// <summary>
     /// Verifica se l'istanza contiene una stringa palindroma
@@ -459,7 +459,7 @@ public class cString
     /// </summary>
     public bool IsAlfabetic()
     {
-        if (!this.IsValidator(_string, vetChar))
+        if (!IsValidator(_string, vetChar))
             return false;
         return true;
     }
@@ -488,7 +488,7 @@ public class cString
                 int b = oDate.Year % 4;
                 int c = oDate.Year % 7;
                 int d = (m + 19 * a) % 30;
-                int e = ((2 * b) + (4 * c) + (6 * d) + n) % 7;
+                int e = (2 * b + 4 * c + 6 * d + n) % 7;
                 int giorno = 22 + d + e;
                 int mese = 3;
                 if (giorno > 31)
@@ -610,7 +610,7 @@ public class cString
     /// </summary>
     public bool IsNumeric()
     {
-        if (!this.IsValidator(_string, vetNumeric))
+        if (!IsValidator(_string, vetNumeric))
             return false;
         return true;
     }
@@ -619,10 +619,10 @@ public class cString
     /// </summary>
     public bool IsDouble()
     {
-        Double tmp;
+        double tmp;
         try
         {
-            tmp = Double.Parse(_string);
+            tmp = double.Parse(_string);
             return true;
         }
         catch
@@ -635,10 +635,10 @@ public class cString
     /// </summary>
     public bool IsInteger()
     {
-        Int32 tmp;
+        int tmp;
         try
         {
-            tmp = Int32.Parse(_string);
+            tmp = int.Parse(_string);
             return true;
         }
         catch
@@ -653,7 +653,7 @@ public class cString
     {
         if (_string.Trim().Length != 11)
             return false;
-        if (!this.IsValidator(_string.Substring(0, 11), vetNumeric))
+        if (!IsValidator(_string.Substring(0, 11), vetNumeric))
             return false;
         return true;
     }
@@ -665,19 +665,19 @@ public class cString
 
         if (_string.Trim().Length != 16)
             return false;
-        if (!this.IsValidator(_string.Substring(0, 6), vetChar))
+        if (!IsValidator(_string.Substring(0, 6), vetChar))
             return false;
-        if (!this.IsValidator(_string.Substring(6, 2), vetNumeric))
+        if (!IsValidator(_string.Substring(6, 2), vetNumeric))
             return false;
-        if (!this.IsValidator(_string.Substring(8, 1), vetChar))
+        if (!IsValidator(_string.Substring(8, 1), vetChar))
             return false;
-        if (!this.IsValidator(_string.Substring(9, 2), vetNumeric))
+        if (!IsValidator(_string.Substring(9, 2), vetNumeric))
             return false;
-        if (!this.IsValidator(_string.Substring(11, 1), vetChar))
+        if (!IsValidator(_string.Substring(11, 1), vetChar))
             return false;
-        if (!this.IsValidator(_string.Substring(12, 3), vetNumeric))
+        if (!IsValidator(_string.Substring(12, 3), vetNumeric))
             return false;
-        if (!this.IsValidator(_string.Substring(15, 1), vetChar))
+        if (!IsValidator(_string.Substring(15, 1), vetChar))
             return false;
         return true;
     }
@@ -762,7 +762,7 @@ public class cString
     /// </summary>
     private bool IsVocale()
     {
-        if (!this.IsValidator(_string, vetVocali))
+        if (!IsValidator(_string, vetVocali))
             return false;
         return true;
     }
@@ -780,7 +780,7 @@ public class cString
         pospunt = _string.IndexOf('.', posat);
         if (pospunt <= posat + 1)
             return false;
-        if ((_string.Trim().Length - 1 - pospunt) <= 1)
+        if (_string.Trim().Length - 1 - pospunt <= 1)
             return false;
         return true;
     }
@@ -825,7 +825,7 @@ public class cString
         }
         catch (Exception ex)
         {
-            throw (ex);
+            throw ex;
         }
     }
     /// <summary>
@@ -900,14 +900,14 @@ public class cString
         string[] vetDIECI = new string[] { "dieci", "undici", "dodici", "tredici", "quattordici", "quindici", "sedici", "diciasette", "diciotto", "diciannove" };
         string[] vetVENTI = new string[] { "venti", "trenta", "quaranta", "cinquanta", "sessanta", "settanta", "ottanta", "novanta" };
         string[] vetMILLE = new string[] { "mille", "duemila", "tremila", "quattromila", "cinquemila", "seimila", "settemila", "ottomila", "novemila" };
-        int intNumberValue = Int32.Parse(sNumberValue.Trim());
+        int intNumberValue = int.Parse(sNumberValue.Trim());
         string strNumberValue = intNumberValue.ToString();
         //
         if (strNumberValue.Length == 7)
             if (strNumberValue[0].ToString().Equals("1"))
                 return "unmilione" + SimpleValueToText(strNumberValue.Substring(1));
             else
-                return vetUNO[Int32.Parse(strNumberValue[0].ToString())] + "milioni" + SimpleValueToText(strNumberValue.Substring(1));
+                return vetUNO[int.Parse(strNumberValue[0].ToString())] + "milioni" + SimpleValueToText(strNumberValue.Substring(1));
         //
         if (strNumberValue.Length == 6)
             return SimpleValueToText(strNumberValue.Substring(0, 3)) + "mila" + SimpleValueToText(strNumberValue.Substring(3)).Replace("zero", "");
@@ -919,14 +919,14 @@ public class cString
             if (strNumberValue[0].ToString().Equals("1"))
                 return "mille" + SimpleValueToText(strNumberValue.Substring(1));
             else
-                return vetUNO[Int32.Parse(strNumberValue[0].ToString())] + "mila" + SimpleValueToText(strNumberValue.Substring(1));
+                return vetUNO[int.Parse(strNumberValue[0].ToString())] + "mila" + SimpleValueToText(strNumberValue.Substring(1));
         //
         if (strNumberValue.Length == 3)
         {
             if (strNumberValue[0].ToString().Equals("1"))
                 return "cento" + SimpleValueToText(strNumberValue.Substring(1));
             else
-                return vetUNO[Int32.Parse(strNumberValue[0].ToString())] + "cento" + SimpleValueToText(strNumberValue.Substring(1));
+                return vetUNO[int.Parse(strNumberValue[0].ToString())] + "cento" + SimpleValueToText(strNumberValue.Substring(1));
         }
         //
         if (strNumberValue.Length == 2)
@@ -934,7 +934,7 @@ public class cString
             if (intNumberValue < 20)
                 return vetDIECI[intNumberValue - 10];
             else
-                return MargeNumberText(vetVENTI[Int32.Parse(strNumberValue[0].ToString()) - 2], vetUNO[Int32.Parse(strNumberValue[1].ToString())]);
+                return MargeNumberText(vetVENTI[int.Parse(strNumberValue[0].ToString()) - 2], vetUNO[int.Parse(strNumberValue[1].ToString())]);
         }
         //
         if (strNumberValue.Length == 1)
@@ -958,7 +958,7 @@ public class cString
             if (iEBody != -1)
             {
                 index = iBBody;//iEBody + ((string)(sTagEnd)).Length;
-                return string.Concat(sString.Substring(0, iBBody), sString.Substring(iEBody + ((string)sTagEnd).Length));
+                return string.Concat(sString.Substring(0, iBBody), sString.Substring(iEBody + sTagEnd.Length));
             }
         }
         index = -1;
@@ -998,7 +998,7 @@ public class cString
         return vString.ToArray();
     }
 
-    
+
 
     private string GetIntoTag(string sString, string sTagBegin, string sTagEnd, ref int index)
     {

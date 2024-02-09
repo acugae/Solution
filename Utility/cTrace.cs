@@ -83,7 +83,7 @@ public class cTrace
     {
         if (bIsSuspend)
             return;
-        Trace.WriteLineIf(condition, (print(sMessage)));
+        Trace.WriteLineIf(condition, print(sMessage));
         Trace.Flush();
     }
     /// <summary>
