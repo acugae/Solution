@@ -1,4 +1,6 @@
-﻿namespace Solution;
+﻿using System.Dynamic;
+
+namespace Solution;
 public static class HttpContextExtensions
 {
     public static async Task<string> GetBody(this HttpRequest oRequest)
@@ -27,7 +29,7 @@ public static class DataTableExtensions
     {
         List<dynamic> oResult = new List<dynamic>();
         foreach (DataRow row in dt.Rows)
-            oResult.Add(row.ToKeyValue());
+            oResult.Add(row.ToDynamic());
         return oResult;
     }
     public static List<K> To<K>(this DataTable dt) where K : new()
@@ -48,12 +50,10 @@ public static class DataRowExtensions
             oResult[column.ColumnName] = dr[column];
         return oResult;
     }
-
     public static dynamic ToDynamic(this DataRow dr)
     {
-        return dr.ToKeyValue();
+        return dr.ToKeyValue().ToDynamic();
     }
-
     public static T To<T>(this DataRow row) where T : new()
     {
         T obj = new();
@@ -97,7 +97,20 @@ public static class DataRowExtensions
 
 }
 
-public static class RequestExtensions
+public static class DictionaryStringObjectExtensions
+{
+    public static dynamic ToDynamic(this Dictionary<string, object> dict)
+    {
+        var response = new ExpandoObject();
+        var eoColl = (ICollection<KeyValuePair<string, object>>)response;
+        foreach (var kvp in dict)
+        {
+            eoColl.Add(kvp);
+        }
+        return response;
+    }
+}
+    public static class RequestExtensions
 {
     public static async Task<string> ReadAsStringAsync(this Stream requestBody, bool leaveOpen = false)
     {
