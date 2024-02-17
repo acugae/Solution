@@ -15,6 +15,14 @@ public static class HttpContextExtensions
         }
     }
 }
+public static class ExpandoObjectMethods
+{
+    public static T FirstOrDefault<T>(this ExpandoObject oExpandoObject, string key)
+    {
+        object r = oExpandoObject.FirstOrDefault(x => x.Key == key).Value;
+        return (r is T) ? (T)r : default(T);
+    }
+}
 public static class DataTableExtensions
 {
     public static List<Dictionary<string, object>> ToKeyValue(this DataTable dt)
@@ -30,6 +38,13 @@ public static class DataTableExtensions
         List<dynamic> oResult = new List<dynamic>();
         foreach (DataRow row in dt.Rows)
             oResult.Add(row.ToDynamic());
+        return oResult;
+    }
+    public static List<ExpandoObject> ToExpando(this DataTable dt)
+    {
+        List<ExpandoObject> oResult = new List<ExpandoObject>();
+        foreach (DataRow row in dt.Rows)
+            oResult.Add(row.ToExpando());
         return oResult;
     }
     public static List<K> To<K>(this DataTable dt) where K : new()
@@ -53,6 +68,10 @@ public static class DataRowExtensions
     public static dynamic ToDynamic(this DataRow dr)
     {
         return dr.ToKeyValue().ToDynamic();
+    }
+    public static ExpandoObject ToExpando(this DataRow dr)
+    {
+        return dr.ToKeyValue().ToExpando();
     }
     public static T To<T>(this DataRow row) where T : new()
     {
@@ -109,8 +128,18 @@ public static class DictionaryStringObjectExtensions
         }
         return response;
     }
+    public static ExpandoObject ToExpando(this Dictionary<string, object> dict)
+    {
+        var response = new ExpandoObject();
+        var eoColl = (ICollection<KeyValuePair<string, object>>)response;
+        foreach (var kvp in dict)
+        {
+            eoColl.Add(kvp);
+        }
+        return response;
+    }
 }
-    public static class RequestExtensions
+public static class RequestExtensions
 {
     public static async Task<string> ReadAsStringAsync(this Stream requestBody, bool leaveOpen = false)
     {
