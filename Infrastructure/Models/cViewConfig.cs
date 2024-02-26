@@ -2,9 +2,10 @@
 
 public class cViewConfig
 {
-    public List<cViewColumn> Columns { get; set; } = null;
-    public cViewEdit Edit { get; set; } = null;
-    public List<cViewParameter> Parameters { get; set; } = null;
+    public List<cViewColumn> Columns { get; set; } = [];
+    public cViewEdit Edit { get; set; } = new();
+    public List<cViewParameter> Parameters { get; set; } = [];
+    public List<cViewExpand> Extensions { get; set; } = [];
 }
 public class cViewColumn
 {
@@ -30,9 +31,10 @@ public class cViewSource
 }
 public class cViewExpand
 {
+    public string Name { get; set; } = string.Empty; // 
     public string Type { get; set; } = string.Empty; // control, grid, ...
-    public string Code { get; set; } = string.Empty; // USR_GESTCONTRSTTI, CONTROL_GEST_VENDITA
-    public List<cViewMaps> Maps { get; set; } = null;
+    public string Value { get; set; } = string.Empty; // USR_GESTCONTRSTTI, CONTROL_GEST_VENDITA
+    public List<cViewMaps> Maps { get; set; } = [];
 }
 public class cViewMaps
 {
