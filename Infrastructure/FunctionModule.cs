@@ -1,5 +1,5 @@
 ﻿namespace Solution.Infrastructure;
-abstract public class Module : ControllerBase 
+abstract public class FunctionModule : ControllerBase 
 {
     public DB? _DB = null;
     public DBConfig? _DBConfig = null;
@@ -52,7 +52,7 @@ abstract public class Module : ControllerBase
             Parameters = oParams;
         _DB = oDB;
     }
-    public void WriteLogDebug(string sMessage) => cLogger.WriteLine(TaskName + ": " + sMessage, cLogger.TipoLog.Debug);
+    public void WriteLogDebug(string sMessage) => Logger.WriteLine(TaskName + ": " + sMessage, Logger.TipoLog.Debug);
     public void WriteProgress(string sMessage, int iValueCurrent = 0, int iValueTotal = 0)
     {
         ConfigurationQueue Queue = DB.Configuration.Queues[this.Queue];

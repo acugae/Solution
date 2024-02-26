@@ -20,7 +20,7 @@ public class DBHttpRoutes
         DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, sQuery);
         return int.Parse(oDT.Rows[0][0].ToString());
     }
-    public int InsertHttpRoutesHistory(Route oRoute, string sBody, HttpRequest oRequest)
+    public int InsertHttpRoutesHistory(HttpRoutesRoute oRoute, string sBody, HttpRequest oRequest)
     {
         string sQuery = " INSERT INTO core_HttpRoutesHistory ([hrh_idHttpRoutes],[hrh_controller],[hrh_method],[hrh_request],[hrh_other]) VALUES (" + oRoute.ID + " ," + DB.GetValueString(oRoute.Class) + " ," + DB.GetValueString(oRoute.Function) + "," + DB.GetValueString(sBody) + "," + DB.GetValueString(GetOthers(oRequest)) + " ); select @@identity;";
         DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, sQuery);

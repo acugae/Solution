@@ -15,7 +15,7 @@ public class Service
         try
         {
             if (!string.IsNullOrEmpty(sJSON))
-                cLogger.WriteLine(String.Format("InvokeServiceJSON INIZIO: {0} {1} {2}", sURL, sMethod, sJSON.Length > maxBufferLengthToLog ? sJSON.Substring(0, maxBufferLengthToLog) : sJSON), cLogger.TipoLog.Debug);
+                Logger.WriteLine(String.Format("InvokeServiceJSON INIZIO: {0} {1} {2}", sURL, sMethod, sJSON.Length > maxBufferLengthToLog ? sJSON.Substring(0, maxBufferLengthToLog) : sJSON), Logger.TipoLog.Debug);
 
             ExtendedWebClient web = new ExtendedWebClient();
 
@@ -31,30 +31,30 @@ public class Service
                 web.Headers.Add("Content-Type", sContentType);
                 web.Headers.Add("accept", sContentType);
                 web.Headers = ParseHeader(web.Headers, sHeaders);
-                cLogger.WriteLine("Provo ad invocare il seguente url " + sURL, cLogger.TipoLog.Debug);
+                Logger.WriteLine("Provo ad invocare il seguente url " + sURL, Logger.TipoLog.Debug);
                 res = web.DownloadData(sURL);
-                cLogger.WriteLine("Il servizio è stato invocato con successo. Numero byte restituiti " + res.LongLength, cLogger.TipoLog.Debug);
+                Logger.WriteLine("Il servizio è stato invocato con successo. Numero byte restituiti " + res.LongLength, Logger.TipoLog.Debug);
             }
             else
             {
                 web.Headers.Add("Content-Type", sContentType);
                 web.Headers = ParseHeader(web.Headers, sHeaders);
                 Byte[] d = System.Text.Encoding.UTF8.GetBytes(sJSON);
-                cLogger.WriteLine("Provo ad invocare il seguente url " + sURL, cLogger.TipoLog.Debug);
+                Logger.WriteLine("Provo ad invocare il seguente url " + sURL, Logger.TipoLog.Debug);
                 res = web.UploadData(sURL, sMethod, d);
-                cLogger.WriteLine("Il servizio è stato invocato con successo. Numero byte restituiti " + res.LongLength, cLogger.TipoLog.Debug);
+                Logger.WriteLine("Il servizio è stato invocato con successo. Numero byte restituiti " + res.LongLength, Logger.TipoLog.Debug);
             }
             //
             //WebHeaderCollection _ResponseHeaders = web.ResponseHeaders;
             //
             DateTime after = DateTime.Now;
             double diffInSeconds = (after - before).TotalSeconds;
-            cLogger.WriteLine("Il servizio è stato invocato con successo. Provo ad ottenre la risposta un utf ", cLogger.TipoLog.Debug);
+            Logger.WriteLine("Il servizio è stato invocato con successo. Provo ad ottenre la risposta un utf ", Logger.TipoLog.Debug);
             string response = System.Text.Encoding.UTF8.GetString(res);
-            cLogger.WriteLine("Il servizio è stato invocato con successo. Risposta ottenuta ", cLogger.TipoLog.Debug);
+            Logger.WriteLine("Il servizio è stato invocato con successo. Risposta ottenuta ", Logger.TipoLog.Debug);
 
             if (!string.IsNullOrEmpty(sJSON))
-                cLogger.WriteLine(String.Format("InvokeServiceJSON took {3} seconds: {0} {1} {2}", sURL, sMethod, response, diffInSeconds), cLogger.TipoLog.Debug);
+                Logger.WriteLine(String.Format("InvokeServiceJSON took {3} seconds: {0} {1} {2}", sURL, sMethod, response, diffInSeconds), Logger.TipoLog.Debug);
 
             //cambiato il tipo di Encoding. con ASCII non venivano riconosciute le vocali accentate
             //return System.Text.Encoding.ASCII.GetString(res);
@@ -62,7 +62,7 @@ public class Service
         }
         catch (Exception ex)
         {
-            cLogger.WriteLine(String.Format("InvokeServiceJSON ERRORE: {0} {1} {2} {3}", sURL, sMethod, sJSON, ex.Message), cLogger.TipoLog.Debug);
+            Logger.WriteLine(String.Format("InvokeServiceJSON ERRORE: {0} {1} {2} {3}", sURL, sMethod, sJSON, ex.Message), Logger.TipoLog.Debug);
             throw ex;
         }
     }
@@ -151,7 +151,7 @@ public class Service
 
             DateTime after = DateTime.Now;
             double diffInSeconds = (after - before).TotalSeconds;
-            cLogger.WriteLine(String.Format("InvokeServiceJSON took {3} seconds: {0} {1} {2}", (string)oDR["hc_url"], oDR["hc_method"], sResponse, diffInSeconds), cLogger.TipoLog.Debug);
+            Logger.WriteLine(String.Format("InvokeServiceJSON took {3} seconds: {0} {1} {2}", (string)oDR["hc_url"], oDR["hc_method"], sResponse, diffInSeconds), Logger.TipoLog.Debug);
             DBHttpClients.UpdateHttpClientHistory(idHistory, sResponse);
         }
         catch (Exception ex)

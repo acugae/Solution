@@ -1,5 +1,5 @@
 ﻿namespace Solution.Infrastructure.Models;
-public class Route
+public class HttpRoutesRoute
 {
     public int ID { get; set; }
     public string Pattern { get; set; }

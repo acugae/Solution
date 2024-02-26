@@ -1,6 +1,6 @@
 ﻿namespace Solution;
 
-public static class cLogger
+public static class Logger
 {
     //public static readonly log4net.ILog _log = log4net.LogManager.GetLogger(System.Reflection.MethodBase.GetCurrentMethod().DeclaringType);
     //public static readonly log4net.ILog _logPTime = log4net.LogManager.GetLogger("LogRequestAppender");

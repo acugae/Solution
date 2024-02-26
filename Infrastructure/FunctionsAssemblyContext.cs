@@ -90,7 +90,7 @@ public class FunctionsAssemblyContext : AssemblyLoadContext, IDisposable
         //
         MethodInfo oMethod = ocAssemblies[sAssemblyName].GetType(sClassName).GetMethod(sMethodName);
         object oObject = CreateObject(sAssemblyName, sClassName, null);
-        ((Module)oObject).Load(DB, oParameters);
+        ((FunctionModule)oObject).Load(DB, oParameters);
         //
         ParameterInfo[] ovPI = oMethod.GetParameters();
         List<object> oParams = null;

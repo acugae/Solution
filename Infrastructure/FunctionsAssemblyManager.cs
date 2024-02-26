@@ -3,10 +3,10 @@ public class FunctionsAssemblyManager
 {
     private string AssemblyPath { get; set; } = string.Empty;
     cFunctionAssemblyLoaderContext oAssemblies;
-    readonly DB DB = null;
+    readonly DB db = null;
     public FunctionsAssemblyManager(DB oDB, string sAssemblyPath)
     {
-        DB = oDB;
+        db = oDB;
         AssemblyPath = sAssemblyPath;
     }
     public Assembly LoadAssembly(string sAssemblyName)
@@ -31,7 +31,7 @@ public class FunctionsAssemblyManager
         //
         MethodInfo oMethod = oAssembly.GetType(sClassName).GetMethod(sMethodName);
         object oObject = CreateObject(oAssembly, sClassName, null);
-        ((Module)oObject).Load(DB, oParameters);
+        ((FunctionModule)oObject).Load(db, oParameters);
         //
         ParameterInfo[] ovPI = oMethod.GetParameters();
         List<object> oParams = null;

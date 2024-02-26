@@ -79,7 +79,7 @@ public class DB
                 }
                 catch (Exception ex)
                 {
-                    cLogger.WriteLine("????????????? cDB CLOSING EXCEPTION ????????? = " + oData.Connections[i].Key + "; error=" + ex.Message + "\n" + ex.StackTrace, cLogger.TipoLog.Error);
+                    Logger.WriteLine("????????????? DB CLOSING EXCEPTION ????????? = " + oData.Connections[i].Key + "; error=" + ex.Message + "\n" + ex.StackTrace, Logger.TipoLog.Error);
                     Console.WriteLine(" Errore ");
                 }
                 finally

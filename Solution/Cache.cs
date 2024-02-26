@@ -345,7 +345,7 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
 
     public Cache(long CacheSize, int TrashPeriod, bool IsZipped = false, bool IsUnitSize = false) : base()
     {
-        cLogger.WriteLine("StartService:cCache: Creating new cache Object of maximum bytes=" + CacheSize, cLogger.TipoLog.Debug);
+        Logger.WriteLine("StartService:cCache: Creating new cache Object of maximum bytes=" + CacheSize, Logger.TipoLog.Debug);
         _lock = new object();
         MaximumSize = CacheSize;
         CurrentSize = 0;
@@ -354,7 +354,7 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
         IsZip = IsZipped;
         TimerCallback tcb = DeleteExpired;
         object timerState = new object();
-        cLogger.WriteLine("Creating timer of " + TrashPeriod + " minutes for ThrashPeriod", cLogger.TipoLog.Debug);
+        Logger.WriteLine("Creating timer of " + TrashPeriod + " minutes for ThrashPeriod", Logger.TipoLog.Debug);
         stateTimer = new Timer(tcb, timerState, TrashPeriod * 60 * 1000, TrashPeriod * 60 * 1000);
     }
 
@@ -370,26 +370,26 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
 
     public new void Add(CacheKey Key, CacheValue<T> Value)
     {
-        cLogger.WriteLine("StartService:cCache: adding new value=" + Key.QueryString, cLogger.TipoLog.Debug);
+        Logger.WriteLine("StartService:cCache: adding new value=" + Key.QueryString, Logger.TipoLog.Debug);
         lock (_lock)
         {
             if (ContainsKey(Key))
             {
-                cLogger.WriteLine("StartService:cCache: key already present. Removing the oldest", cLogger.TipoLog.Debug);
+                Logger.WriteLine("StartService:cCache: key already present. Removing the oldest", Logger.TipoLog.Debug);
                 Remove(Key);
             }
             long newSize = CurrentSize + Value.Size;
-            cLogger.WriteLine("StartService:cCache: Number of Items = " + Length + ". Current size is " + CurrentSize + ". The new size will be =" + newSize, cLogger.TipoLog.Debug);
+            Logger.WriteLine("StartService:cCache: Number of Items = " + Length + ". Current size is " + CurrentSize + ". The new size will be =" + newSize, Logger.TipoLog.Debug);
             if (CurrentSize + Value.Size > MaximumSize)
             {
-                cLogger.WriteLine("StartService:cCache: size needed not sufficient. It will be cleaned", cLogger.TipoLog.Debug);
+                Logger.WriteLine("StartService:cCache: size needed not sufficient. It will be cleaned", Logger.TipoLog.Debug);
                 if (!Recycler(Value.Size))
                 {
-                    cLogger.WriteLine("StartService:cCache: unable to store cache object. Current cache size is=" + CurrentSize + " while object size is=" + Value.Size, cLogger.TipoLog.Warn);
+                    Logger.WriteLine("StartService:cCache: unable to store cache object. Current cache size is=" + CurrentSize + " while object size is=" + Value.Size, Logger.TipoLog.Warn);
                     return;
                 }
             }
-            cLogger.WriteLine("StartService:cCache: Adding Value = " + Value.Value.ToString(), cLogger.TipoLog.Debug);
+            Logger.WriteLine("StartService:cCache: Adding Value = " + Value.Value.ToString(), Logger.TipoLog.Debug);
             base.Add(Key, Value);
             //still newSize computing because after recycler currentSize could be changed
             newSize = CurrentSize + Value.Size;
@@ -405,7 +405,7 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
 
     public new bool Remove(CacheKey Key)
     {
-        cLogger.WriteLine("StartService:cCache: removing value=" + Key.QueryString, cLogger.TipoLog.Debug);
+        Logger.WriteLine("StartService:cCache: removing value=" + Key.QueryString, Logger.TipoLog.Debug);
         bool bRet = false;
         lock (_lock)
         {
@@ -414,7 +414,7 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
                 bRet = true;
                 CacheValue<T> Value = this[Key];
                 long newSize = CurrentSize - Value.Size;
-                cLogger.WriteLine("StartService:cCache: Number of Items = " + Length + ". Current size is " + CurrentSize + ". The new size will be =" + newSize, cLogger.TipoLog.Debug);
+                Logger.WriteLine("StartService:cCache: Number of Items = " + Length + ". Current size is " + CurrentSize + ". The new size will be =" + newSize, Logger.TipoLog.Debug);
                 base.Remove(Key);
                 CurrentSize = newSize;
                 Length--;
@@ -430,27 +430,27 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
 
     public T get(CacheKey Key)
     {
-        cLogger.WriteLine("StartService:cCache: getting value=" + Key.QueryString, cLogger.TipoLog.Debug);
+        Logger.WriteLine("StartService:cCache: getting value=" + Key.QueryString, Logger.TipoLog.Debug);
         T Value = default;
         lock (_lock)
         {
             if (ContainsKey(Key))
             {
-                cLogger.WriteLine("StartService:cCache: value is present", cLogger.TipoLog.Debug);
+                Logger.WriteLine("StartService:cCache: value is present", Logger.TipoLog.Debug);
                 CacheValue<T> TmpValue = this[Key];
                 if (DateTime.Now <= TmpValue.ExpirationTime)
                 {
                     Value = TmpValue.Value;
-                    cLogger.WriteLine("StartService:cCache: The values is not expired", cLogger.TipoLog.Debug);
+                    Logger.WriteLine("StartService:cCache: The values is not expired", Logger.TipoLog.Debug);
                     //Remove key with the oldest timestamp
                     base.Remove(Key);
                     //Add the same key with the new timestamp
                     base.Add(Key, TmpValue);
-                    cLogger.WriteLine("StartService:cCache: getting Value = " + Value.ToString(), cLogger.TipoLog.Debug);
+                    Logger.WriteLine("StartService:cCache: getting Value = " + Value.ToString(), Logger.TipoLog.Debug);
                 }
                 else
                 {
-                    cLogger.WriteLine("StartService:cCache: The values is expired. I'll remove it.", cLogger.TipoLog.Debug);
+                    Logger.WriteLine("StartService:cCache: The values is expired. I'll remove it.", Logger.TipoLog.Debug);
                     Remove(Key);
                 }
             }
@@ -460,7 +460,7 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
 
     private bool Recycler(long Bytes)
     {
-        cLogger.WriteLine("StartService:cCache: Recycled invoked to get " + Bytes + " bytes", cLogger.TipoLog.Debug);
+        Logger.WriteLine("StartService:cCache: Recycled invoked to get " + Bytes + " bytes", Logger.TipoLog.Debug);
         bool retValue = false;
 
         lock (_lock)
@@ -479,7 +479,7 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
                 {
                     CacheValue<T> Value = base[key];
                     Remove(key);
-                    cLogger.WriteLine("StartService:cCache: Recycled " + Value.Size + " of bytes because oldest even if it isn't expired", cLogger.TipoLog.Debug);
+                    Logger.WriteLine("StartService:cCache: Recycled " + Value.Size + " of bytes because oldest even if it isn't expired", Logger.TipoLog.Debug);
                     if (MaximumSize - CurrentSize >= Bytes)
                     {
                         retValue = true;
@@ -488,7 +488,7 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
                 }
             }
         }
-        cLogger.WriteLine("StartService:cCache: Recycled invoked to get " + Bytes + " bytes=" + retValue, cLogger.TipoLog.Debug);
+        Logger.WriteLine("StartService:cCache: Recycled invoked to get " + Bytes + " bytes=" + retValue, Logger.TipoLog.Debug);
         return retValue;
     }
 
@@ -496,7 +496,7 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
     {
         lock (_lock)
         {
-            cLogger.WriteLine("StartService:cCache: Delete expired task when  Number of Items = " + Length + ". Current size is " + CurrentSize, cLogger.TipoLog.Debug);
+            Logger.WriteLine("StartService:cCache: Delete expired task when  Number of Items = " + Length + ". Current size is " + CurrentSize, Logger.TipoLog.Debug);
             List<CacheKey> keys = base.Keys.ToList();
 
             foreach (CacheKey key in keys)
@@ -505,10 +505,10 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
                 if (DateTime.Now > Value.ExpirationTime)
                 {
                     Remove(key);
-                    cLogger.WriteLine("StartService:cCache: DeleteExpired " + Value.Size + " of bytes", cLogger.TipoLog.Debug);
+                    Logger.WriteLine("StartService:cCache: DeleteExpired " + Value.Size + " of bytes", Logger.TipoLog.Debug);
                 }
             }
-            cLogger.WriteLine("StartService:cCache: Delete expired task fineshed and  Number of Items = " + Length + ". Current size is" + CurrentSize, cLogger.TipoLog.Debug);
+            Logger.WriteLine("StartService:cCache: Delete expired task fineshed and  Number of Items = " + Length + ". Current size is" + CurrentSize, Logger.TipoLog.Debug);
         }
     }
 
@@ -516,7 +516,7 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
     {
         lock (_lock)
         {
-            cLogger.WriteLine("StartService:cCache: ExplicitClean when  Number of Items = " + Length + ". Current size is " + CurrentSize, cLogger.TipoLog.Debug);
+            Logger.WriteLine("StartService:cCache: ExplicitClean when  Number of Items = " + Length + ". Current size is " + CurrentSize, Logger.TipoLog.Debug);
             List<CacheKey> keys = base.Keys.ToList();
 
             foreach (CacheKey key in keys)
@@ -524,7 +524,7 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
                 CacheValue<T> Value = base[key];
                 Remove(key);
             }
-            cLogger.WriteLine("StartService:cCache: ExplicitClean fineshed and  Number of Items = " + Length + ". Current size is" + CurrentSize, cLogger.TipoLog.Debug);
+            Logger.WriteLine("StartService:cCache: ExplicitClean fineshed and  Number of Items = " + Length + ". Current size is" + CurrentSize, Logger.TipoLog.Debug);
         }
     }
 }
