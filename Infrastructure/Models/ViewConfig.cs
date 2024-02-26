@@ -5,6 +5,7 @@ public class ViewConfig
     public List<ViewColumn> Columns { get; set; } = null;
     public ViewEdit Edit { get; set; } = null;
     public List<ViewParameter> Parameters { get; set; } = null;
+    public List<ViewExpand> Extensions { get; set; } = [];
 }
 public class ViewColumn
 {
@@ -30,9 +31,10 @@ public class ViewSource
 }
 public class ViewExpand
 {
+    public string Name { get; set; } = string.Empty; // 
     public string Type { get; set; } = string.Empty; // control, grid, ...
-    public string Code { get; set; } = string.Empty; // USR_GESTCONTRSTTI, CONTROL_GEST_VENDITA
-    public List<ViewMaps> Maps { get; set; } = null;
+    public string Value { get; set; } = string.Empty; // USR_GESTCONTRSTTI, CONTROL_GEST_VENDITA
+    public List<ViewMaps> Maps { get; set; } = [];
 }
 public class ViewMaps
 {

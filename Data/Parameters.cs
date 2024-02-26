@@ -1,7 +1,7 @@
 namespace Solution.Data.Provider;
 
 /// <summary>
-/// Classe contenete collezione di oggetti cParameter.
+/// Classe contenete collezione di oggetti Parameter.
 /// </summary>
 public class Parameters
 {

@@ -95,6 +95,14 @@ public class DBQuery
             return new DataTable();
         }
     }
+    public DataTable GelQueryLinks(string sCode)
+    {
+        return DB.Get(DB.Configuration.InfrastructureConnection, "select syint_QueryLinks.* from syint_QueryLinks inner join syint_Query ON qu_id = ql_idQuery where qu_codice = '" + sCode + "'");
+    }
+    public DataTable GelQueryParams(string sCode)
+    {
+        return DB.Get(DB.Configuration.InfrastructureConnection, "select syint_QueryParams.* from syint_QueryParams inner join syint_Query ON qu_id = qp_idQuery where qu_codice = '" + sCode + "'");
+    }
     public int DelQuery(string sCode)
     {
         DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, "SELECT qu_id FROM [syint_Query] WHERE qu_codice = '" + sCode + "'");
