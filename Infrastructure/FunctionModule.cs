@@ -1,7 +1,7 @@
 ﻿namespace Solution.Infrastructure;
 abstract public class FunctionModule : ControllerBase 
 {
-    public DB? _DB = null;
+    public DB? db = null;
     public DBConfig? _DBConfig = null;
     public Service? _Service = null;
     private XLS? _XLS = null;
@@ -18,7 +18,7 @@ abstract public class FunctionModule : ControllerBase
     {
         get
         {
-            _Service ??= new(_DB);
+            _Service ??= new(db);
             return _Service;
         }
     }
@@ -26,7 +26,7 @@ abstract public class FunctionModule : ControllerBase
     {
         get
         {
-            _DBConfig ??= new(_DB);
+            _DBConfig ??= new(db);
             return _DBConfig;
         }
     }
@@ -37,7 +37,7 @@ abstract public class FunctionModule : ControllerBase
             return _Communication;
         }
     }
-    public DB DB { get { return _DB; } }
+    public DB DB { get { return db; } }
     public XLS XLS
     {
         get
@@ -50,7 +50,7 @@ abstract public class FunctionModule : ControllerBase
     {
         if (oParams != null)
             Parameters = oParams;
-        _DB = oDB;
+        db = oDB;
     }
     public void WriteLogDebug(string sMessage) => Logger.WriteLine(TaskName + ": " + sMessage, Logger.TipoLog.Debug);
     public void WriteProgress(string sMessage, int iValueCurrent = 0, int iValueTotal = 0)
