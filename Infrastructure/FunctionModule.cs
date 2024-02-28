@@ -37,6 +37,10 @@ abstract public class FunctionModule : ControllerBase
             return _Communication;
         }
     }
+    //public FunctionModule()
+    //{
+    //    db = new(Application.Configuration);
+    //}
     public DB DB { get { return db; } }
     public XLS XLS
     {
