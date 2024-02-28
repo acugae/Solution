@@ -181,18 +181,21 @@ public class XLS
                 string value = null;
                 try
                 {
-                    switch (cell.CellType)
+                    if (cell != null)
                     {
-                        case CellType.Numeric: // Numeric type
-                            if (DateUtil.IsCellDateFormatted(cell))
-                                value = cell.DateCellValue.ToString();
-                            else
-                                value = cell.NumericCellValue.ToString();
-                            break;
+                        switch (cell.CellType)
+                        {
+                            case CellType.Numeric: // Numeric type
+                                if (DateUtil.IsCellDateFormatted(cell))
+                                    value = cell.DateCellValue.ToString();
+                                else
+                                    value = cell.NumericCellValue.ToString();
+                                break;
 
-                        default: // String type
-                            value = cell.StringCellValue;
-                            break;
+                            default: // String type
+                                value = cell.StringCellValue;
+                                break;
+                        }
                     }
                 }
                 catch

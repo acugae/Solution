@@ -9,7 +9,7 @@ abstract public class FunctionModule : ControllerBase
     public FunctionParameters Parameters { get; set; } = new FunctionParameters();
     public int ID { get { return Parameters.ToInt("msg_id"); } }
     public int State { get { return Parameters.ToInt("msg_state"); } }
-    public string Value { get { return Parameters.ToString("Value"); } } 
+    public string Value { get { return Parameters.ToString("value"); } } 
     public string TaskName { get { return Parameters.ToString("msg_taskname"); } }
     public string Message { get { return Parameters.ToString("message"); } set { Parameters["message"] = value; } }
     public string Queue { get { return Parameters.ToString("queue"); } }

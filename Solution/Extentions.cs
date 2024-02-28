@@ -1,4 +1,5 @@
 ﻿using System.Dynamic;
+using static iTextSharp.text.pdf.AcroFields;
 
 namespace Solution;
 public static class HttpContextExtensions
@@ -147,4 +148,37 @@ public static class RequestExtensions
         var bodyAsString = await reader.ReadToEndAsync();
         return bodyAsString;
     }
+}
+
+public static class StringExtensions
+{
+    public static string[] GetIntoTag(this string _string, string sTagBegin, string sTagEnd)
+    {
+        List<string> vString = new List<string>();
+        Tuple<string?, int> item = new(null, 0);
+        for (; item.Item2 != -1;)
+        {
+            item = _string.GetIntoTag(sTagBegin, sTagEnd, item.Item2);
+            if (item.Item1 != null && item.Item2 != -1)
+                vString.Add(item.Item1);
+        }
+        return vString.ToArray();
+    }
+
+    private static Tuple<string, int> GetIntoTag(this string _string, string sTagBegin, string sTagEnd, int index)
+    {
+        int iBBody = _string.IndexOf(sTagBegin, index);
+        if (iBBody != -1)
+        {
+            int iEBody = _string.IndexOf(sTagEnd, iBBody + sTagBegin.Length + 1);
+            if (iEBody != -1)
+            {
+                index = iEBody + 1;
+                return new Tuple<string, int>(_string.Substring(iBBody + sTagBegin.Length, iEBody - (iBBody + sTagBegin.Length)), index);
+            }
+        }
+        index = -1;
+        return new Tuple<string,int>(_string, index);
+    }
+
 }

@@ -7,7 +7,7 @@ public class DB
     //
     public DB(Configuration oConfiguration)
     {
-        ModeConnection = enModeConnectionOpen.Whenever;
+        //ModeConnection = enModeConnectionOpen.Whenever;
         Configuration = oConfiguration;
         foreach (var conn in Configuration.Connections)
         {
