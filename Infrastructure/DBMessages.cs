@@ -7,7 +7,7 @@ public class DBMessages
     public string GetTasks(string sHost, string sName, int isParallel, string ExclusiveMessages = null)
     {
         string sTasks = "";
-        string sSQL = "SELECT tk_name FROM core_Tasks WHERE tk_parallelexec = " + isParallel.ToString() + " and tk_active = 1 AND ( ( (tk_hosts LIKE '{0},%') OR (tk_hosts LIKE '%,{0}') OR (tk_hosts LIKE '%,{0},%') OR (tk_hosts = '{0}') OR (tk_hosts = '*') ) AND ( (tk_services LIKE '{1},%') OR (tk_services LIKE '%,{1}') OR (tk_services LIKE '%,{1},%') OR (tk_services = '{1}') OR (tk_services = '*') ) ) ";
+        string sSQL = "SELECT tk_name FROM syint_Tasks WHERE tk_parallelexec = " + isParallel.ToString() + " and tk_active = 1 AND ( ( (tk_hosts LIKE '{0},%') OR (tk_hosts LIKE '%,{0}') OR (tk_hosts LIKE '%,{0},%') OR (tk_hosts = '{0}') OR (tk_hosts = '*') ) AND ( (tk_services LIKE '{1},%') OR (tk_services LIKE '%,{1}') OR (tk_services LIKE '%,{1},%') OR (tk_services = '{1}') OR (tk_services = '*') ) ) ";
         sSQL += (ExclusiveMessages == null || ExclusiveMessages.Trim().Equals("") ? "" : " AND tk_name in (" + ExclusiveMessages + ")");
         //
         DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, string.Format(sSQL, sHost, sName));
@@ -111,7 +111,7 @@ public class DBMessages
     }
     public void ExecPianif()
     {
-        DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, "SELECT * FROM syint_TasksPianif INNER JOIN core_Tasks ON tk_id = tkp_idTasks WHERE tkp_interval > 0 and tkp_active = 1 and getdate() between coalesce(tkp_inival, '01/01/1900') and coalesce(tkp_finval, '01/01/2900')  and tkp_expired <= GETDATE()");
+        DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, "SELECT * FROM syint_TasksPianif INNER JOIN syint_Tasks ON tk_id = tkp_idTasks WHERE tkp_interval > 0 and tkp_active = 1 and getdate() between coalesce(tkp_inival, '01/01/1900') and coalesce(tkp_finval, '01/01/2900')  and tkp_expired <= GETDATE()");
         if (oDT == null || oDT.Rows.Count == 0)
             return;
         //
@@ -136,17 +136,22 @@ public class DBMessages
     }
     public DataRow GetTask(string sTaskName)
     {
-        DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, "SELECT * FROM core_Tasks WHERE tk_name = '" + sTaskName + "'");
+        DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, "SELECT * FROM syint_Tasks WHERE tk_name = '" + sTaskName + "'");
         if (oDT != null && oDT.Rows.Count == 1)
             return oDT.Rows[0];
         return null;
     }
     public DataRow GetTask(int iIDTask)
     {
-        DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, "SELECT * FROM core_Tasks WHERE tk_id = " + iIDTask);
+        DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, "SELECT * FROM syint_Tasks WHERE tk_id = " + iIDTask);
         if (oDT != null && oDT.Rows.Count == 1)
             return oDT.Rows[0];
         return null;
+    }
+
+    public DataTable GelParams(string sName)
+    {
+        return DB.Get(DB.Configuration.InfrastructureConnection, "select syint_TasksParams.* from syint_TasksParams inner join syint_Tasks ON tk_id = tp_idTasks where tk_name = '" + sName + "'");
     }
     //public int Resubmit(int iMinutes, int iIDMsgRef = 0)
     //{
