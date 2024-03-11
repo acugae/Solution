@@ -4,7 +4,7 @@ public class ViewConfig
 {
     public List<ViewColumn> Columns { get; set; } = null;
     public ViewEdit Edit { get; set; } = null;
-    public List<ViewParameter> Parameters { get; set; } = null;
+    public List<ViewParameter> Parameters { get; set; } = [];
     public List<ViewExpand> Extensions { get; set; } = [];
 }
 public class ViewColumn

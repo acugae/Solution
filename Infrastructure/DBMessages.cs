@@ -151,7 +151,7 @@ public class DBMessages
 
     public DataTable GelParams(string sName)
     {
-        return DB.Get(DB.Configuration.InfrastructureConnection, "select syint_TasksParams.* from syint_TasksParams inner join syint_Tasks ON tk_id = tp_idTasks where tk_name = '" + sName + "'");
+        return DB.Get(DB.Configuration.InfrastructureConnection, "select syint_TasksParams.* from syint_TasksParams inner join syint_Tasks ON tk_id = tp_idTasks where tk_name = '" + sName + "' order by tp_order");
     }
     //public int Resubmit(int iMinutes, int iIDMsgRef = 0)
     //{
