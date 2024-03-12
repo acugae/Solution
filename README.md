@@ -1,10 +1,15 @@
 # Foobar
 
-Solution is a .Net Core library to manage different application needs.
+Solution is a .Net Core library to manage different application needs, speeds up the development of applications in the .net environment.
 
 ## Installation
 
+To install the Solution library, use the following command in the console:
+
+dotnet add package Solution
+
 ## Usage
+
 
 ## Contributing
 
