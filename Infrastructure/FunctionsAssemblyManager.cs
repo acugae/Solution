@@ -2,7 +2,7 @@
 public class FunctionsAssemblyManager
 {
     private string AssemblyPath { get; set; } = string.Empty;
-    cFunctionAssemblyLoaderContext oAssemblies;
+    FunctionAssemblyLoaderContext oAssemblies;
     readonly DB db = null;
     public FunctionsAssemblyManager(DB oDB, string sAssemblyPath)
     {
@@ -94,19 +94,19 @@ public class FunctionsAssemblyManager
     }
 }
 
-public class cFunctionAssemblyLoaderContext : AssemblyLoadContext
+public class FunctionAssemblyLoaderContext : AssemblyLoadContext
 {
     private readonly AssemblyDependencyResolver _assemblyDependencyResolver;
     private readonly HashSet<string> _defaultLoadedAssemblies = new HashSet<string>();
     private string AssemblyPath = "";
-    public cFunctionAssemblyLoaderContext(string pluginPath) : base(name: "FunctionAssemblyLoaderContext", isCollectible: true)
+    public FunctionAssemblyLoaderContext(string pluginPath) : base(name: "FunctionAssemblyLoaderContext", isCollectible: true)
     {
         AssemblyPath = pluginPath;
         _assemblyDependencyResolver = new AssemblyDependencyResolver(pluginPath);
         //
         this.Unloading += PluginLoaderContext_Unloading;
         this.Resolving += PluginLoaderContext_Resolving;
-        this.ResolvingUnmanagedDll += PluginLoaderContext_ResolvingUnmanagedDll;        
+        this.ResolvingUnmanagedDll += PluginLoaderContext_ResolvingUnmanagedDll;
         //foreach (var sharedAssembly in sharedAssemblies)
         //{
         //    AddToDefaultLoadedAssemblies(sharedAssembly);
@@ -131,7 +131,7 @@ public class cFunctionAssemblyLoaderContext : AssemblyLoadContext
         Console.WriteLine($"public Assembly Load: {sAssemblyName}");
         foreach (Assembly assembly in Assemblies)
         {
-            if (assembly.FullName.Equals(sAssemblyName))
+            if (assembly.GetName().Name.ToLower().Equals(sAssemblyName.ToLower().Replace(".dll", "")))
                 return assembly;
         }
         return LoadFromStream(GetBytesByFile(Path.Combine(AssemblyPath, sAssemblyName)));
