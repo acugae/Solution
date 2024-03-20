@@ -128,7 +128,7 @@ public class DBQuery
         try
         {
             DataTable result = new DataTable();
-            string sSQL = " SELECT top 1 qu_id,qu_name,qu_script,qu_connectionkey,qu_type,qu_active FROM syint_Query " +
+            string sSQL = " SELECT top 1 * FROM syint_Query " +
                           " where LTRIM(RTRIM(qu_codice)) = LTRIM(RTRIM('" + sCode + "')) order by qu_id desc";
             DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, sSQL);
             return oDT.Rows[0];

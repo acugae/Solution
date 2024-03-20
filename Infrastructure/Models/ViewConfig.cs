@@ -14,7 +14,6 @@ public class ViewColumn
     public bool IsPK { get; set; } = false;
     public bool IsEdit { get; set; } = false;
     public bool IsInsert { get; set; } = false;
-    public bool StickyLeft { get; set; } = false;
 }
 public class ViewEdit
 {
