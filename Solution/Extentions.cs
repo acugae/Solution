@@ -61,6 +61,8 @@ public static class DataRowExtensions
 {
     public static Dictionary<string, object> ToKeyValue(this DataRow dr)
     {
+        if (dr == null)
+            return [];
         Dictionary<string, object> oResult = new Dictionary<string, object>();
         foreach (DataColumn column in dr.Table.Columns)
             oResult[column.ColumnName] = dr[column];
