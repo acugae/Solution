@@ -1,9 +1,11 @@
 ﻿namespace Solution.Data;
 public class CRUDBase
 {
-    public CRUDBase(string sName)
+    public CRUDBase(string sName) => Name = sName;
+    public CRUDBase(string sName, Dictionary<string, object> Attributes)
     {
         Name = sName;
+        oAttributes = Attributes.ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
     }
     public string Name { get; set; }
     Dictionary<string, object> oAttributes = new Dictionary<string, object>(StringComparer.InvariantCultureIgnoreCase);
@@ -27,6 +29,8 @@ public class CRUDBase
 public class CRUDUpdate : CRUDBase
 {
     public CRUDUpdate(string sName) : base(sName) { }
+    public CRUDUpdate(string sName, Dictionary<string, object> Attributes) : base(sName, Attributes) { }
+    public CRUDUpdate(string sName, DataRow dataRow) : base(sName, dataRow.ToKeyValue()) { }
 
     private CRUDFilters oFilters = new CRUDFilters();
     public CRUDFilters Filters { get { return oFilters; } set { oFilters = value; } }
