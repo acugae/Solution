@@ -13,8 +13,8 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Authors>Gaetano Acunzo</Authors>
     <Product>Solution</Product>
-	<AssemblyVersion>1.0.4</AssemblyVersion>
-	<AssemblyFileVersion>1.0.4</AssemblyFileVersion>
+	<AssemblyVersion>1.0.5</AssemblyVersion>
+	<AssemblyFileVersion>1.0.5</AssemblyFileVersion>
 	<PackageProjectUrl>https://www.nuget.org/packages/Solution</PackageProjectUrl>
 	<RepositoryType>git</RepositoryType>
 	<PackageIcon>Logo.png</PackageIcon>
