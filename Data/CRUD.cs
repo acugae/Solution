@@ -244,6 +244,26 @@ public class CRUD
         return oDB.InvokeSQL(_sKey, sSQL);
     }
 
+    public DataRow Find0(string sEntityName, params object[] ovKeyValue)
+    {
+        DataTable dataTable = Find(sEntityName, ovKeyValue);
+        if (dataTable == null || dataTable.Rows.Count == 0)
+            return null;
+        return dataTable.Rows[0];
+    }
+
+    public DataTable Find(string sEntityName, params object[] ovKeyValue)
+    {
+        CRUDFind cRUDFind = new CRUDFind(sEntityName);
+        if (ovKeyValue == null || ovKeyValue.Length % 2 == 1)
+            return null;
+        for (int i = 0; i < ovKeyValue.Length; i += 2)
+            cRUDFind.Filters.AddFilter(ovKeyValue[i].ToString(), "=", ovKeyValue[i + 1].ToString());
+        DataTable dataTable = oDB[_sKey].Find(cRUDFind);
+        dataTable.TableName = sEntityName;
+        return dataTable;
+    }
+
     public int Insert(CRUDBase oItem)
     {
         StringBuilder oSql = new StringBuilder();
