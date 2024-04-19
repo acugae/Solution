@@ -1,4 +1,5 @@
-﻿using System.Dynamic;
+﻿using NPOI.XWPF.UserModel;
+using System.Dynamic;
 using static iTextSharp.text.pdf.AcroFields;
 
 namespace Solution;
@@ -65,7 +66,7 @@ public static class DataRowExtensions
             return [];
         Dictionary<string, object> oResult = new Dictionary<string, object>();
         foreach (DataColumn column in dr.Table.Columns)
-            oResult[column.ColumnName] = dr[column];
+            oResult[column.ColumnName] = (Convert.IsDBNull(dr[column]) ? null : dr[column]);
         return oResult;
     }
     public static dynamic ToDynamic(this DataRow dr)
