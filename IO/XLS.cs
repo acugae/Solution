@@ -107,7 +107,7 @@ public class XLS
         return oCell.StringCellValue;
     }
 
-    public DateTime GetDate(ICell oCell)
+    public DateTime? GetDate(ICell oCell)
     {
         try
         {
