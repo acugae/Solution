@@ -1,10 +1,46 @@
-﻿namespace Solution.Infrastructure;
+﻿using SkiaSharp;
+
+namespace Solution.Infrastructure;
 public class DBQuery
 {
     readonly DB DB;
     public DB Base => DB;
     public DBQuery(Configuration oConfiguration) => DB = new(oConfiguration);
     public DBQuery(DB oDB) => DB = oDB;
+
+    public DataTable GetQueryExecute(string sCode, Dictionary<string, object> oParams = null)
+    {
+        try
+        {
+            DataTable result = new DataTable();
+            //
+            DataRow row = GetQuery(sCode);
+            string DbKey = row["qu_connectionkey"].ToString();
+            string Query = row["qu_script"].ToString();
+            int Type = int.Parse(row["qu_type"].ToString());
+            if (Type == 0) // Query
+            {
+                if (Query != null)
+                {
+                    foreach(var param in oParams)
+                        Query = Query.Replace(param.Key, param.Value == null ? "null" : param.Value.ToString());
+                    result = DB.Get(DbKey, Query);
+                }
+            }
+            else if (Type == 1) // Stored procedure
+            {
+                List<Parameter> oParamsTmp = new List<Parameter>();
+                foreach (var param in oParams)
+                    oParamsTmp.Add(DB.CreateParameter(DbKey, DbType.String, ParameterDirection.Input, param.Key, param.Value ?? DBNull.Value));
+                result = DB.Invoke(DbKey, Query, oParamsTmp.ToArray());
+            }
+            return result;
+        }
+        catch
+        {
+            return new DataTable();
+        }
+    }
     public DataTable GetQueryExecute(string sCode, GCollection<string, object> oParams = null, bool bOnlyVerified = false)
     {
         try
@@ -95,11 +131,11 @@ public class DBQuery
             return new DataTable();
         }
     }
-    public DataTable GelQueryLinks(string sCode)
+    public DataTable GetQueryLinks(string sCode)
     {
         return DB.Get(DB.Configuration.InfrastructureConnection, "select syint_QueryLinks.* from syint_QueryLinks inner join syint_Query ON qu_id = ql_idQuery where qu_codice = '" + sCode + "'");
     }
-    public DataTable GelQueryParams(string sCode)
+    public DataTable GetQueryParams(string sCode)
     {
         return DB.Get(DB.Configuration.InfrastructureConnection, "select syint_QueryParams.* from syint_QueryParams inner join syint_Query ON qu_id = qp_idQuery where qu_codice = '" + sCode + "'");
     }

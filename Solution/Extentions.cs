@@ -1,4 +1,5 @@
-﻿using NPOI.XWPF.UserModel;
+﻿using Newtonsoft.Json.Linq;
+using NPOI.XWPF.UserModel;
 using System.Dynamic;
 using static iTextSharp.text.pdf.AcroFields;
 
@@ -49,11 +50,11 @@ public static class DataTableExtensions
             oResult.Add(row.ToExpando());
         return oResult;
     }
-    public static List<K> To<K>(this DataTable dt) where K : new()
+    public static List<K> To<K>(this DataTable dt, OneMaps maps = null) where K : new()
     {
         List<K> oResult = new List<K>();
         foreach (DataRow row in dt.Rows)
-            oResult.Add(row.To<K>());
+            oResult.Add(row.To<K>(maps));
         return oResult;
     }
 }
@@ -77,42 +78,56 @@ public static class DataRowExtensions
     {
         return dr.ToKeyValue().ToExpando();
     }
-    public static T To<T>(this DataRow row) where T : new()
+    /// <summary>
+    /// Converet un DataRow in un oggetto prestabilito.
+    /// </summary>
+    /// <typeparam name="T">Tipo di destinazione</typeparam>
+    /// <param name="row"></param>
+    /// <param name="maps"></param>
+    /// <returns></returns>
+    public static T To<T>(this DataRow row, OneMaps maps = null) where T : new()
     {
+        PropertyInfo[] Properties = typeof(T).GetProperties();
         T obj = new();
-        try
+
+        if (maps is null)
         {
-            string columnname = "";
-            string value = "";
-            PropertyInfo[] Properties;
-            Properties = typeof(T).GetProperties();
+            maps = new();
             foreach (PropertyInfo objProperty in Properties)
             {
-                //columnname = columnsName.Find(name => name.ToLower() == objProperty.Name.ToLower());
                 if (!row.Table.Columns.Contains(objProperty.Name))
                     continue;
-                columnname = row.Table.Columns[objProperty.Name].ColumnName;
-                if (!string.IsNullOrEmpty(columnname))
+                maps.Add(objProperty.Name, objProperty.Name);
+            }
+        }
+
+        try
+        {
+            foreach (PropertyInfo objProperty in Properties)
+            {
+                if (!maps.Targets.ContainsKey(objProperty.Name))
+                    continue;
+                string sourceName = maps.Targets[objProperty.Name].Source;
+                object? value = row[sourceName];
+                //if (value is null || value == DBNull.Value)
+                //    continue;
+                if (!string.IsNullOrEmpty(value.ToString()))
                 {
-                    value = row[columnname].ToString();
-                    if (!string.IsNullOrEmpty(value))
+                    if (Nullable.GetUnderlyingType(objProperty.PropertyType) != null)
                     {
-                        if (Nullable.GetUnderlyingType(objProperty.PropertyType) != null)
-                        {
-                            value = row[columnname].ToString().Replace("$", "").Replace(",", "");
-                            objProperty.SetValue(obj, Convert.ChangeType(value, Type.GetType(Nullable.GetUnderlyingType(objProperty.PropertyType).ToString())), null);
-                        }
-                        else
-                        {
-                            value = row[columnname].ToString().Replace("%", "");
-                            objProperty.SetValue(obj, Convert.ChangeType(value, Type.GetType(objProperty.PropertyType.ToString())), null);
-                        }
+                        //value = row[sourceName].ToString().Replace("$", "").Replace(",", "");
+                        objProperty.SetValue(obj, Convert.ChangeType(value, Type.GetType(Nullable.GetUnderlyingType(objProperty.PropertyType).ToString())), null);
+                    }
+                    else
+                    {
+                        //value = row[sourceName].ToString().Replace("%", "");
+                        objProperty.SetValue(obj, Convert.ChangeType(value, Type.GetType(objProperty.PropertyType.ToString())), null);
                     }
                 }
             }
             return obj;
         }
-        catch
+        catch(Exception ex)
         {
             return obj;
         }
