@@ -13,8 +13,8 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Authors>Gaetano Acunzo</Authors>
     <Product>Solution</Product>
-	<AssemblyVersion>1.0.5</AssemblyVersion>
-	<AssemblyFileVersion>1.0.5</AssemblyFileVersion>
+	<AssemblyVersion>1.0.6</AssemblyVersion>
+	<AssemblyFileVersion>1.0.6</AssemblyFileVersion>
 	<PackageProjectUrl>https://www.nuget.org/packages/Solution</PackageProjectUrl>
 	<RepositoryType>git</RepositoryType>
 	<PackageIcon>Logo.png</PackageIcon>
@@ -32,9 +32,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="iTextSharp.LGPLv2.Core" Version="3.4.19" />
+    <PackageReference Include="iTextSharp.LGPLv2.Core" Version="3.4.20" />
     <PackageReference Include="log4net" Version="2.0.17" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.5" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.6" />
     <PackageReference Include="MySql.Data" Version="8.4.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <PackageReference Include="Npgsql" Version="8.0.3" />
