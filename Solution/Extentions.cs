@@ -32,7 +32,7 @@ public static class DataTableExtensions
     {
         List<Dictionary<string, object>> oResult = new List<Dictionary<string, object>>();
         foreach (DataRow row in dt.Rows)
-            oResult.Add(row.ToKeyValue());
+            oResult.Add(row.ToDictionary());
         return oResult;
     }
 
@@ -61,7 +61,7 @@ public static class DataTableExtensions
 
 public static class DataRowExtensions
 {
-    public static Dictionary<string, object> ToKeyValue(this DataRow dr)
+    public static Dictionary<string, object> ToDictionary(this DataRow dr)
     {
         if (dr == null)
             return [];
@@ -70,13 +70,22 @@ public static class DataRowExtensions
             oResult[column.ColumnName] = (Convert.IsDBNull(dr[column]) ? null : dr[column]);
         return oResult;
     }
+    public static List<KeyValuePair<string, object>> ToKeyValue(this DataRow dr)
+    {
+        if (dr == null)
+            return [];
+        var keyValuePairs = new List<KeyValuePair<string, object>>();
+        foreach (DataColumn column in dr.Table.Columns)
+            keyValuePairs.Add(new KeyValuePair<string, object>(column.ColumnName, (Convert.IsDBNull(dr[column]) ? null : dr[column])));
+        return keyValuePairs;
+    }
     public static dynamic ToDynamic(this DataRow dr)
     {
-        return dr.ToKeyValue().ToDynamic();
+        return dr.ToDictionary().ToDynamic();
     }
     public static ExpandoObject ToExpando(this DataRow dr)
     {
-        return dr.ToKeyValue().ToExpando();
+        return dr.ToDictionary().ToExpando();
     }
     /// <summary>
     /// Converet un DataRow in un oggetto prestabilito.

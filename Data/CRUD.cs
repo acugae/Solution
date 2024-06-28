@@ -30,7 +30,7 @@ public class CRUDUpdate : CRUDBase
 {
     public CRUDUpdate(string sName) : base(sName) { }
     public CRUDUpdate(string sName, Dictionary<string, object> Attributes) : base(sName, Attributes) { }
-    public CRUDUpdate(string sName, DataRow dataRow) : base(sName, dataRow.ToKeyValue()) { }
+    public CRUDUpdate(string sName, DataRow dataRow) : base(sName, dataRow.ToDictionary()) { }
 
     private CRUDFilters oFilters = new CRUDFilters();
     public CRUDFilters Filters { get { return oFilters; } set { oFilters = value; } }

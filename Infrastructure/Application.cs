@@ -21,7 +21,7 @@ public static class Application
     {
         get
         {
-            _FunctionsAssemblyContext ??= new(DB, Application.AssemblyPath);
+            _FunctionsAssemblyContext ??= new(DB, AssemblyPath);
             return _FunctionsAssemblyContext;
         }
     }
