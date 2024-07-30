@@ -14,7 +14,7 @@ public class DBAuth
         string _sDominio = (sDomain ?? sUsername.Split('\\')[0]);
         string _sUsername = sUsername.Split('\\')[1];
 
-        List<Parameter> oParams = new List<Parameter>();
+        List<Parameter> oParams = [];
         oParams.Add(DB.CreateParameter(Application.Configuration.InfrastructureConnection, DbType.String, ParameterDirection.Input, "@domain", _sDominio));
         oParams.Add(DB.CreateParameter(Application.Configuration.InfrastructureConnection, DbType.String, ParameterDirection.Input, "@username", _sUsername));
         oParams.Add(DB.CreateParameter(Application.Configuration.InfrastructureConnection, DbType.String, ParameterDirection.Input, "@password", sPassword));

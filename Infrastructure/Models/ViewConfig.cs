@@ -79,12 +79,12 @@ public class OneMap
 }
 public class OneParameter
 {
-    public string Name { get; set; } = string.Empty; // idContratto
-    public string Type { get; set; } = string.Empty; // string, int
-    public string Descri { get; set; } = string.Empty; // idContratto Punto
+    public string? Name { get; set; } = null; // idContratto
+    public string? Type { get; set; } = null; // string, int
+    public string? Descri { get; set; } = null; // idContratto Punto
     public int AllowNull { get; set; } = 0;
-    public string Default { get; set; } = string.Empty; // combo, text, file
-    public string Control { get; set; } = string.Empty; // combo, text, file
-    public string Source { get; set; } = string.Empty; // list;0=Scegli,1=Si,2=No | sql;dbCRMOptima;name;title;select name, title from sys_tTables  where state=1 order by name
+    public string? Default { get; set; } = null; // combo, text, file
+    public string? Control { get; set; } = null; // combo, text, file
+    public string? Source { get; set; } = null; // list;0=Scegli,1=Si,2=No | sql;dbCRMOptima;name;title;select name, title from sys_tTables  where state=1 order by name
     public object? Value { get; set; } = null;
 }

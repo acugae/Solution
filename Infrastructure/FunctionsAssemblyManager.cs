@@ -14,6 +14,11 @@ public class FunctionsAssemblyManager
         oAssemblies ??= new(AssemblyPath);
         return oAssemblies.LoadAssembly(sAssemblyName);
     }
+    public Assembly LoadAssembly(string sAssemblyName, byte[] assembly)
+    {
+        oAssemblies ??= new(AssemblyPath);
+        return oAssemblies.LoadAssembly(sAssemblyName, assembly);
+    }
     public void UnLoad()
     {
         oAssemblies?.Unload();
@@ -21,16 +26,20 @@ public class FunctionsAssemblyManager
         GC.Collect();
         GC.WaitForPendingFinalizers();
     }
-    public object CallFunction(string sAssemblyName, string sClassName, string sMethodName, FunctionParameters oParameters)
+    public Type GetType(string sAssemblyName, string sClassName)
     {
         Assembly oAssembly = LoadAssembly(sAssemblyName);
         if (oAssembly is null)
         {
             throw new Exception($"Non è possibile caricare l'assembly: {sAssemblyName}");
         }
-        //
-        MethodInfo oMethod = oAssembly.GetType(sClassName).GetMethod(sMethodName);
-        object oObject = CreateObject(oAssembly, sClassName, null);
+        return oAssembly.GetType(sClassName);
+    }
+    public object CallFunction(string sAssemblyName, string sClassName, string sMethodName, FunctionParameters oParameters)
+    {
+        Type oType = GetType(sAssemblyName, sClassName);
+        MethodInfo oMethod = oType.GetMethod(sMethodName);
+        object oObject = CreateObject(oType, null);
         ((FunctionModule)oObject).Load(db, oParameters);
         //
         ParameterInfo[] ovPI = oMethod.GetParameters();
@@ -71,9 +80,8 @@ public class FunctionsAssemblyManager
         object oResult = CallMethod(oObject, oMethod, oParams.ToArray());
         return oResult;
     }
-    public object CreateObject(Assembly oAssembly, string strClassName, object[] oParamsConstructor)
+    public object CreateObject(Type oType, object[] oParamsConstructor)
     {
-        Type oType = oAssembly.GetType(strClassName);
         if (oParamsConstructor == null)
             return Activator.CreateInstance(oType);
         return Activator.CreateInstance(oType, oParamsConstructor.ToArray());
@@ -137,13 +145,29 @@ public class FunctionAssemblyLoaderContext : AssemblyLoadContext
         return LoadFromStream(GetBytesByFile(Path.Combine(AssemblyPath, sAssemblyName)));
         //return LoadFromAssemblyPath(Path.Combine(AssemblyPath, sAssemblyName));
     }
+    public Assembly LoadAssembly(string sAssemblyName, byte[] assembly)
+    {
+        return (GetAssembly(sAssemblyName) ?? LoadFromStream(new MemoryStream(assembly)));
+    }
+    private Assembly GetAssembly(string assemblyName)
+    {
+        return Assemblies.FirstOrDefault(c => c.GetName().Name.ToLower().Equals(assemblyName.ToLower().Replace(".dll", "")));
+
+        //foreach (Assembly assembly in Assemblies)
+        //{
+        //    if (assembly.GetName().Name.ToLower().Equals(sAssemblyName.ToLower().Replace(".dll", "")))
+        //        return assembly;
+        //}
+        //return null;
+    }
+
     //public void AddToDefaultLoadedAssemblies(AssemblyName sharedAssembly)
     //{
     //    if (_defaultLoadedAssemblies.Contains(sharedAssembly.Name))
     //    {
     //        return;
     //    }
-        
+
     //    _defaultLoadedAssemblies.Add(sharedAssembly.Name);
 
     //    var assembly = AssemblyLoadContext.Default.LoadFromAssemblyName(sharedAssembly);
