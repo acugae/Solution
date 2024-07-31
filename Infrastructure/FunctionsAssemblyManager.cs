@@ -1,8 +1,11 @@
-﻿namespace Solution.Infrastructure;
+﻿using System.Reflection;
+
+namespace Solution.Infrastructure;
 public class FunctionsAssemblyManager
 {
     private string AssemblyPath { get; set; } = string.Empty;
     FunctionAssemblyLoaderContext oAssemblies;
+    public FunctionAssemblyLoaderContext Assemblies { get { return oAssemblies ??= new(AssemblyPath); } }
     readonly DB db = null;
     public FunctionsAssemblyManager(DB oDB, string sAssemblyPath)
     {
@@ -11,13 +14,11 @@ public class FunctionsAssemblyManager
     }
     public Assembly LoadAssembly(string sAssemblyName)
     {
-        oAssemblies ??= new(AssemblyPath);
-        return oAssemblies.LoadAssembly(sAssemblyName);
+        return Assemblies.LoadAssembly(sAssemblyName);
     }
     public Assembly LoadAssembly(string sAssemblyName, byte[] assembly)
     {
-        oAssemblies ??= new(AssemblyPath);
-        return oAssemblies.LoadAssembly(sAssemblyName, assembly);
+        return Assemblies.LoadAssembly(sAssemblyName, assembly);
     }
     public void UnLoad()
     {
@@ -107,6 +108,9 @@ public class FunctionAssemblyLoaderContext : AssemblyLoadContext
     private readonly AssemblyDependencyResolver _assemblyDependencyResolver;
     private readonly HashSet<string> _defaultLoadedAssemblies = new HashSet<string>();
     private string AssemblyPath = "";
+
+    public Assembly? this[string name] => Assemblies?.FirstOrDefault(c => c.GetName().Name.ToLower().Equals(name.ToLower().Replace(".dll", "")));
+
     public FunctionAssemblyLoaderContext(string pluginPath) : base(name: "FunctionAssemblyLoaderContext", isCollectible: true)
     {
         AssemblyPath = pluginPath;
@@ -136,7 +140,7 @@ public class FunctionAssemblyLoaderContext : AssemblyLoadContext
     }
     public Assembly LoadAssembly(string sAssemblyName)
     {
-        Console.WriteLine($"public Assembly Load: {sAssemblyName}");
+        Console.WriteLine($"Assembly Load: {sAssemblyName}");
         foreach (Assembly assembly in Assemblies)
         {
             if (assembly.GetName().Name.ToLower().Equals(sAssemblyName.ToLower().Replace(".dll", "")))
@@ -147,19 +151,19 @@ public class FunctionAssemblyLoaderContext : AssemblyLoadContext
     }
     public Assembly LoadAssembly(string sAssemblyName, byte[] assembly)
     {
-        return (GetAssembly(sAssemblyName) ?? LoadFromStream(new MemoryStream(assembly)));
+        return (this[sAssemblyName] ?? LoadFromStream(new MemoryStream(assembly)));
     }
-    private Assembly GetAssembly(string assemblyName)
-    {
-        return Assemblies.FirstOrDefault(c => c.GetName().Name.ToLower().Equals(assemblyName.ToLower().Replace(".dll", "")));
+    //private Assembly GetAssembly(string assemblyName)
+    //{
+    //    return Assemblies.FirstOrDefault(c => c.GetName().Name.ToLower().Equals(assemblyName.ToLower().Replace(".dll", "")));
 
-        //foreach (Assembly assembly in Assemblies)
-        //{
-        //    if (assembly.GetName().Name.ToLower().Equals(sAssemblyName.ToLower().Replace(".dll", "")))
-        //        return assembly;
-        //}
-        //return null;
-    }
+    //    //foreach (Assembly assembly in Assemblies)
+    //    //{
+    //    //    if (assembly.GetName().Name.ToLower().Equals(sAssemblyName.ToLower().Replace(".dll", "")))
+    //    //        return assembly;
+    //    //}
+    //    //return null;
+    //}
 
     //public void AddToDefaultLoadedAssemblies(AssemblyName sharedAssembly)
     //{
