@@ -21,6 +21,15 @@ public class FunctionsAssemblyManager
         GC.Collect();
         GC.WaitForPendingFinalizers();
     }
+
+    public object CallFunctionNoRemote(string sAssemblyName, string sClassName, string sMethodName, FunctionParameters oParameters)
+    {
+        Type? type = Type.GetType(sClassName + ", " + sAssemblyName.Replace(".dll", ""));
+        MethodInfo? method = type.GetMethod(sMethodName);
+        object? OBJ = Activator.CreateInstance(type);
+        ((FunctionModule)OBJ).Load(db, oParameters);
+        return method.Invoke(OBJ, null);
+    }
     public object CallFunction(string sAssemblyName, string sClassName, string sMethodName, FunctionParameters oParameters)
     {
         Assembly oAssembly = LoadAssembly(sAssemblyName);
