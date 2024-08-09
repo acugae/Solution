@@ -2,6 +2,7 @@
 abstract public class FunctionModule : ControllerBase 
 {
     public DB? db = null;
+    public string dbKey = null;
     public DBConfig? _DBConfig = null;
     public Service? _Service = null;
     private XLS? _XLS = null;
@@ -18,7 +19,7 @@ abstract public class FunctionModule : ControllerBase
     {
         get
         {
-            _Service ??= new(db);
+            _Service ??= new(db, dbKey);
             return _Service;
         }
     }
@@ -26,7 +27,7 @@ abstract public class FunctionModule : ControllerBase
     {
         get
         {
-            _DBConfig ??= new(db);
+            _DBConfig ??= new(db, dbKey);
             return _DBConfig;
         }
     }
@@ -50,11 +51,12 @@ abstract public class FunctionModule : ControllerBase
             return _XLS;
         }
     }
-    public void Load(DB oDB, FunctionParameters oParams)
+    public void Load(DB oDB, string sKey, FunctionParameters oParams)
     {
         if (oParams != null)
             Parameters = oParams;
         db = oDB;
+        dbKey = sKey;
     }
     public void WriteLogDebug(string sMessage) => Logger.WriteLine(TaskName + ": " + sMessage, Logger.TipoLog.Debug);
     public void WriteProgress(string sMessage, int iValueCurrent = 0, int iValueTotal = 0)

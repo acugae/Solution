@@ -1,13 +1,11 @@
 ﻿namespace Solution.Infrastructure;
-public class DBConfig
+public class DBConfig : DBEntity
 {
-    readonly DB DB;
-    public DBConfig(Configuration oConfiguration) => DB = new(oConfiguration);
-    public DBConfig(DB oDB) => DB = oDB;
+    public DBConfig(DB DB, string dbKey) : base(DB, dbKey, "syint_Config") { }
     public string GetConfig(string sKeyConfig, string sValueDefault)
     {
         string sQuery = "SELECT co_value FROM syint_Config WHERE co_key = '" + sKeyConfig + "'";
-        DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, sQuery);
+        DataTable oDT = _DB.Get(_dbKey, sQuery);
         if (oDT == null || oDT.Rows.Count == 0)
             return sValueDefault;
         return oDT.Rows[0]["co_value"].ToString();
@@ -15,19 +13,19 @@ public class DBConfig
     public int SetConfig(string sKeyConfig, string sValue)
     {
         string sQuery = "SELECT co_value FROM syint_Config WHERE co_key = '" + sKeyConfig + "'";
-        DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, sQuery);
+        DataTable oDT = _DB.Get(_dbKey, sQuery);
         try
         {
             if (oDT == null || oDT.Rows.Count == 0)
             {
                 string sInsert = string.Format("insert into syint_Config (co_key, co_value, co_date, co_dateModified) Values ('{0}', '{1}', getdate(), getdate())", sKeyConfig, sValue.Replace("'", "''"));
-                DB.Execute(DB.Configuration.InfrastructureConnection, sInsert);
+                _DB.Execute(_dbKey, sInsert);
                 return 0;
             }
             else
             {
                 string sUpdate = string.Format("update syint_Config set co_value = '{1}', co_dateModified = getdate() where co_key = '{0}'", sKeyConfig, sValue.Replace("'", "''"));
-                DB.Execute(DB.Configuration.InfrastructureConnection, sUpdate);
+                _DB.Execute(_dbKey, sUpdate);
                 return 1;
             }
         }

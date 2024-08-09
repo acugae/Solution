@@ -1,10 +1,10 @@
-﻿namespace Solution.Data;
+﻿//namespace Solution.Data;
 public class DB
 {
-    DataManager oData = new DataManager();
+    DataManager oData = new();
     public Configuration Configuration { get; }
     ~DB(){}
-    //
+    public DB(){}
     public DB(Configuration oConfiguration)
     {
         //ModeConnection = enModeConnectionOpen.Whenever;
@@ -79,7 +79,7 @@ public class DB
                 }
                 catch (Exception ex)
                 {
-                    Logger.WriteLine("????????????? DB CLOSING EXCEPTION ????????? = " + oData.Connections[i].Key + "; error=" + ex.Message + "\n" + ex.StackTrace, Logger.TipoLog.Error);
+                    //Logger.WriteLine("????????????? DB CLOSING EXCEPTION ????????? = " + oData.Connections[i].Key + "; error=" + ex.Message + "\n" + ex.StackTrace, Logger.TipoLog.Error);
                     Console.WriteLine(" Errore ");
                 }
                 finally
@@ -308,18 +308,18 @@ public class DB
             throw (exResult);
         return oDT;
     }
-    public DataTable Get(string sKey, string sSQL, Cache<DataTable> DBCache, int cacheThreeshold)
-    {
-        CacheKey cacheKey = new CacheKey(sKey + "_" + sSQL);
-        DataTable oDT = DBCache.get(cacheKey);
-        if (oDT == null)
-        {
-            oDT = Get(sKey, sSQL);
-            CacheValue<DataTable> cacheValue = new CacheValue<DataTable>(oDT, cacheThreeshold);
-            DBCache.Add(cacheKey, cacheValue);
-        }
-        return oDT;
-    }
+    //public DataTable Get(string sKey, string sSQL, Cache<DataTable> DBCache, int cacheThreeshold)
+    //{
+    //    CacheKey cacheKey = new CacheKey(sKey + "_" + sSQL);
+    //    DataTable oDT = DBCache.get(cacheKey);
+    //    if (oDT == null)
+    //    {
+    //        oDT = Get(sKey, sSQL);
+    //        CacheValue<DataTable> cacheValue = new CacheValue<DataTable>(oDT, cacheThreeshold);
+    //        DBCache.Add(cacheKey, cacheValue);
+    //    }
+    //    return oDT;
+    //}
     public DataTable Get(string sKey, string sSQL)
     {
         Exception exResult = null;

@@ -3,6 +3,7 @@ public static class Application
 {
     //public static cCacheManager CacheManager;
     public static DB DB = null;
+    public static string dbKey = null;
     public static Guid ID { get; } = Guid.NewGuid();
     public static string[] Args { get; set; }
     public static string Title { get { return ("Process-" + ID + "," + UserName + "," + ProcessName); } }
@@ -21,7 +22,7 @@ public static class Application
     {
         get
         {
-            _FunctionsAssemblyContext ??= new(DB, AssemblyPath);
+            _FunctionsAssemblyContext ??= new(DB, Configuration.InfrastructureConnection, AssemblyPath);
             return _FunctionsAssemblyContext;
         }
     }

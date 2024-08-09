@@ -4,7 +4,7 @@ using Renci.SshNet.Messages;
 namespace Solution.Infrastructure;
 public class DBAssemblies : DBCore
 {
-    public DBAssemblies(DB oDB) : base(oDB, "core_Assemblies") { }
+    public DBAssemblies(DB DB, string dbKey) : base(DB, dbKey, "core_Assemblies") { }
     
     public void Set(Guid? id, string name, string type, byte[] executable)
     {

@@ -12,6 +12,20 @@ public class Configuration
     public bool IsLocalAssembly { get; set; } = false;
     public string ExclusiveMessages { get; set; } = string.Empty;
 }
+
+public class ConfigurationFederation
+{
+    public string Target { get; set; } = string.Empty;
+    public string Connection { get; set; } = string.Empty;
+    public Dictionary<string, ConfigurationOrganization> Organizations { get; set; } = [];
+}
+
+public class ConfigurationOrganization
+{
+    public DB DB{ get; set; } = null;
+    public string dbKey { get; set; } = null;
+}
+
 public class ConfigurationConnection
 {
     public ConfigurationConnection(string sKey, string sConnection, string sProvider)

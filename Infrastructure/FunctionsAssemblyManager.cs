@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using Org.BouncyCastle.Crypto.Parameters;
+using System.Reflection;
 
 namespace Solution.Infrastructure;
 public class FunctionsAssemblyManager
@@ -7,9 +8,11 @@ public class FunctionsAssemblyManager
     FunctionAssemblyLoaderContext oAssemblies;
     public FunctionAssemblyLoaderContext Assemblies { get { return oAssemblies ??= new(AssemblyPath); } }
     readonly DB db = null;
-    public FunctionsAssemblyManager(DB oDB, string sAssemblyPath)
+    readonly string dbKey = null;
+    public FunctionsAssemblyManager(DB oDB, string sKey, string sAssemblyPath)
     {
         db = oDB;
+        dbKey = sKey;
         AssemblyPath = sAssemblyPath;
     }
     public Assembly LoadAssembly(string sAssemblyName)
@@ -36,12 +39,20 @@ public class FunctionsAssemblyManager
         }
         return oAssembly.GetType(sClassName);
     }
+    public object CallFunctionNoRemote(string sAssemblyName, string sClassName, string sMethodName, FunctionParameters oParameters)
+    {
+        Type? type = Type.GetType(sClassName + ", " + sAssemblyName.Replace(".dll", ""));
+        MethodInfo? method = type.GetMethod(sMethodName);
+        object? OBJ = Activator.CreateInstance(type);
+        ((FunctionModule)OBJ).Load(db, dbKey, oParameters);
+        return method.Invoke(OBJ, null);
+    }
     public object CallFunction(string sAssemblyName, string sClassName, string sMethodName, FunctionParameters oParameters)
     {
         Type oType = GetType(sAssemblyName, sClassName);
         MethodInfo oMethod = oType.GetMethod(sMethodName);
         object oObject = CreateObject(oType, null);
-        ((FunctionModule)oObject).Load(db, oParameters);
+        ((FunctionModule)oObject).Load(db, dbKey, oParameters);
         //
         ParameterInfo[] ovPI = oMethod.GetParameters();
         List<object> oParams = null;

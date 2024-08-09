@@ -1,12 +1,9 @@
 ﻿using SkiaSharp;
 
 namespace Solution.Infrastructure;
-public class DBQuery
+public class DBQuery : DBEntity
 {
-    readonly DB DB;
-    public DB Base => DB;
-    public DBQuery(Configuration oConfiguration) => DB = new(oConfiguration);
-    public DBQuery(DB oDB) => DB = oDB;
+    public DBQuery(DB DB, string dbKey) : base(DB, dbKey, "syint_Query") { }
 
     public DataTable GetQueryExecute(string sCode, Dictionary<string, object> oParams = null)
     {
@@ -24,15 +21,15 @@ public class DBQuery
                 {
                     foreach(var param in oParams)
                         Query = Query.Replace(param.Key, param.Value == null ? "null" : param.Value.ToString());
-                    result = DB.Get(DbKey, Query);
+                    result = _DB.Get(DbKey, Query);
                 }
             }
             else if (Type == 1) // Stored procedure
             {
                 List<Parameter> oParamsTmp = new List<Parameter>();
                 foreach (var param in oParams)
-                    oParamsTmp.Add(DB.CreateParameter(DbKey, DbType.String, ParameterDirection.Input, param.Key, param.Value ?? DBNull.Value));
-                result = DB.Invoke(DbKey, Query, oParamsTmp.ToArray());
+                    oParamsTmp.Add(_DB.CreateParameter(DbKey, DbType.String, ParameterDirection.Input, param.Key, param.Value ?? DBNull.Value));
+                result = _DB.Invoke(DbKey, Query, oParamsTmp.ToArray());
             }
             return result;
         }
@@ -48,7 +45,7 @@ public class DBQuery
             DataTable result = new DataTable();
             //
             string sSQL = " SELECT top 1 qu_id,qu_name,qu_script,qu_connectionkey,qu_type,qu_active FROM syint_Query WHERE LTRIM(RTRIM(qu_codice)) = LTRIM(RTRIM('" + sCode + "')) order by qu_id desc";
-            DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, sSQL);
+            DataTable oDT = _DB.Get(_dbKey, sSQL);
             DataRow row = oDT.Rows[0];
             string DbKey = row["qu_connectionkey"].ToString();
             string Query = row["qu_script"].ToString();
@@ -59,7 +56,7 @@ public class DBQuery
                 {
                     for (int i = 0; oParams != null && i < oParams.Count; i++)
                         Query = Query.Replace(oParams.GetKey(i), oParams.GetValue(i) == null ? "null" : oParams.GetValue(i).ToString());
-                    result = DB.Get(DbKey, Query);
+                    result = _DB.Get(DbKey, Query);
                 }
             }
             else if (Type == 1)
@@ -67,11 +64,11 @@ public class DBQuery
                 List<Parameter> oParamsPar = new List<Parameter>();
                 List<Parameter> oParamsTmp = new List<Parameter>();
                 for (int i = 0; oParams != null && i < oParams.Count; i++)
-                    oParamsPar.Add(DB.CreateParameter(DbKey, DbType.String, ParameterDirection.Input, oParams.GetKey(i), oParams.GetValue(i) == null ? DBNull.Value : oParams.GetValue(i)));
+                    oParamsPar.Add(_DB.CreateParameter(DbKey, DbType.String, ParameterDirection.Input, oParams.GetKey(i), oParams.GetValue(i) == null ? DBNull.Value : oParams.GetValue(i)));
                 //
                 if (bOnlyVerified)
                 {
-                    DataTable oDTParams = DB.Get(DbKey, "SELECT p.name AS Parameter, t.name AS [Type] FROM sys.procedures sp JOIN sys.parameters p ON sp.object_id = p.object_id JOIN sys.types t ON p.system_type_id = t.system_type_id WHERE sp.name = '" + Query + "'");
+                    DataTable oDTParams = _DB.Get(DbKey, "SELECT p.name AS Parameter, t.name AS [Type] FROM sys.procedures sp JOIN sys.parameters p ON sp.object_id = p.object_id JOIN sys.types t ON p.system_type_id = t.system_type_id WHERE sp.name = '" + Query + "'");
                     for (int i = 0; i < oParamsPar.Count; i++)
                     {
                         DataRow[] oDRParam = oDTParams.Select("Parameter = '" + oParamsPar[i].ParameterName + "'");
@@ -80,11 +77,11 @@ public class DBQuery
                             oParamsTmp.Add(oParamsPar[i]);
                         }
                     }
-                    result = DB.Invoke(DbKey, Query, oParamsTmp.ToArray());
+                    result = _DB.Invoke(DbKey, Query, oParamsTmp.ToArray());
                 }
                 else
                 {
-                    result = DB.Invoke(DbKey, Query, oParamsTmp.ToArray());
+                    result = _DB.Invoke(DbKey, Query, oParamsTmp.ToArray());
                 }
 
             }
@@ -103,7 +100,7 @@ public class DBQuery
             if (svKey_Value != null && (svKey_Value.Length % 2 == 1))
                 return null;
             string sSQL = " SELECT top 1 qu_id,qu_name,qu_script,qu_connectionkey,qu_type,qu_active FROM syint_Query WHERE LTRIM(RTRIM(qu_codice)) = LTRIM(RTRIM('" + sCode + "')) order by qu_id desc";
-            DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, sSQL);
+            DataTable oDT = _DB.Get(_dbKey, sSQL);
             DataRow row = oDT.Rows[0];
             string DbKey = row["qu_connectionkey"].ToString();
             string Query = row["qu_script"].ToString();
@@ -116,12 +113,12 @@ public class DBQuery
                     {
                         Query = Query.Replace(svKey_Value[i].ToString(), svKey_Value[i + 1]);
                     }
-                    result = DB.Get(DbKey, Query);
+                    result = _DB.Get(DbKey, Query);
                 }
             }
             else if (Type == 1)
             {
-                result = DB.Invoke(DbKey, Query);
+                result = _DB.Invoke(DbKey, Query);
                 //result = DataManager.InvokeStore(DbKey, Query);
             }
             return result;
@@ -133,29 +130,29 @@ public class DBQuery
     }
     public DataTable GetQueryLinks(string sCode)
     {
-        return DB.Get(DB.Configuration.InfrastructureConnection, "select syint_QueryLinks.* from syint_QueryLinks inner join syint_Query ON qu_id = ql_idQuery where qu_codice = '" + sCode + "'");
+        return _DB.Get(_dbKey, "select syint_QueryLinks.* from syint_QueryLinks inner join syint_Query ON qu_id = ql_idQuery where qu_codice = '" + sCode + "'");
     }
     public DataTable GetQueryParams(string sCode)
     {
-        return DB.Get(DB.Configuration.InfrastructureConnection, "select syint_QueryParams.* from syint_QueryParams inner join syint_Query ON qu_id = qp_idQuery where qu_codice = '" + sCode + "'");
+        return _DB.Get(_dbKey, "select syint_QueryParams.* from syint_QueryParams inner join syint_Query ON qu_id = qp_idQuery where qu_codice = '" + sCode + "'");
     }
     public int DelQuery(string sCode)
     {
-        DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, "SELECT qu_id FROM [syint_Query] WHERE qu_codice = '" + sCode + "'");
+        DataTable oDT = _DB.Get(_dbKey, "SELECT qu_id FROM [syint_Query] WHERE qu_codice = '" + sCode + "'");
         if (oDT != null && oDT.Rows.Count > 0)
         {
-            DB.Execute(DB.Configuration.InfrastructureConnection, "DELETE FROM [syint_QueryParams] WHERE qp_idQuery = " + oDT.Rows[0]["qu_id"].ToString());
-            DB.Execute(DB.Configuration.InfrastructureConnection, "DELETE FROM [syint_QueryLinks]  WHERE ql_idQuery = " + oDT.Rows[0]["qu_id"].ToString());
-            return DB.Execute(DB.Configuration.InfrastructureConnection, "DELETE FROM [syint_Query] WHERE qu_id = " + oDT.Rows[0]["qu_id"].ToString());
+            _DB.Execute(_dbKey, "DELETE FROM [syint_QueryParams] WHERE qp_idQuery = " + oDT.Rows[0]["qu_id"].ToString());
+            _DB.Execute(_dbKey, "DELETE FROM [syint_QueryLinks]  WHERE ql_idQuery = " + oDT.Rows[0]["qu_id"].ToString());
+            return _DB.Execute(_dbKey, "DELETE FROM [syint_Query] WHERE qu_id = " + oDT.Rows[0]["qu_id"].ToString());
         }
         return 0;
     }
     public int DelQueryParams(string sCode, string sName)
     {
-        DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, "SELECT qu_id FROM [syint_Query] WHERE qu_codice = '" + sCode + "'");
+        DataTable oDT = _DB.Get(_dbKey, "SELECT qu_id FROM [syint_Query] WHERE qu_codice = '" + sCode + "'");
         if (oDT != null && oDT.Rows.Count > 0)
         {
-            return DB.Execute(DB.Configuration.InfrastructureConnection, "DELETE FROM [syint_QueryParams] WHERE qp_idQuery = " + oDT.Rows[0]["qu_id"].ToString() + " AND qp_name = '" + sName + "'");
+            return _DB.Execute(_dbKey, "DELETE FROM [syint_QueryParams] WHERE qp_idQuery = " + oDT.Rows[0]["qu_id"].ToString() + " AND qp_name = '" + sName + "'");
         }
         return 0;
     }
@@ -166,7 +163,7 @@ public class DBQuery
             DataTable result = new DataTable();
             string sSQL = " SELECT top 1 * FROM syint_Query " +
                           " where LTRIM(RTRIM(qu_codice)) = LTRIM(RTRIM('" + sCode + "')) order by qu_id desc";
-            DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, sSQL);
+            DataTable oDT = _DB.Get(_dbKey, sSQL);
             return oDT.Rows[0];
         }
         catch
@@ -186,13 +183,13 @@ public class DBQuery
             {
                 if (Query != null)
                 {
-                    result = DB.Get(DbKey, Query);
+                    result = _DB.Get(DbKey, Query);
                 }
             }
             else if (Type == 1)
             {
                 //result = DataManager.InvokeStore(DbKey, Query);
-                result = DB.Invoke(DbKey, Query);
+                result = _DB.Invoke(DbKey, Query);
             }
             return result;
         }
@@ -208,7 +205,7 @@ public class DBQuery
         DataTable result = new DataTable();
         string sSQL = " SELECT top 1 qu_id,qu_name,qu_script,qu_connectionkey,qu_type,qu_active FROM syint_Query " +
                       " where LTRIM(RTRIM(qu_codice)) = LTRIM(RTRIM('" + sCode + "')) order by qu_id desc";
-        DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, sSQL);
+        DataTable oDT = _DB.Get(_dbKey, sSQL);
         DataRow row = oDT.Rows[0];
         string DbKey = row["qu_connectionkey"].ToString();
         string Query = row["qu_script"].ToString();
@@ -217,13 +214,13 @@ public class DBQuery
         {
             if (Query != null)
             {
-                result = DB.Get(DbKey, Query);
+                result = _DB.Get(DbKey, Query);
             }
         }
         else if (Type == 1)
         {
             //result = DataManager.InvokeStore(DbKey, Query);
-            result = DB.Invoke(DbKey, Query);
+            result = _DB.Invoke(DbKey, Query);
         }
         return result;
         //}
@@ -236,7 +233,7 @@ public class DBQuery
     {
         string sql = "";
 
-        DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, "SELECT qu_codice FROM syint_Query WHERE qu_codice = '" + sCode + "'");
+        DataTable oDT = _DB.Get(_dbKey, "SELECT qu_codice FROM syint_Query WHERE qu_codice = '" + sCode + "'");
         if (oDT == null || oDT.Rows.Count == 0)
         {
             sql = "INSERT INTO [syint_Query] ([qu_codice],[qu_name],[qu_script],[qu_connectionkey],[qu_type],[qu_active],[qu_eventLoad]) VALUES (";
@@ -260,13 +257,13 @@ public class DBQuery
                     "    ,[qu_eventLoad] = '" + PreparaSql(sOnLoad) + "' " +
                     "  WHERE qu_codice = '" + sCode + "'";
         }
-        return DB.Execute(DB.Configuration.InfrastructureConnection, sql);
+        return _DB.Execute(_dbKey, sql);
     }
     public int SetQuery(string sCode, string sName, string sScript, string sKeyDB, int iType, int iActive, string sCheckedKey, string sCheckedName, string sOnLoad)
     {
         string sql = "";
 
-        DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, "SELECT qu_codice FROM syint_Query WHERE qu_codice = '" + sCode + "'");
+        DataTable oDT = _DB.Get(_dbKey, "SELECT qu_codice FROM syint_Query WHERE qu_codice = '" + sCode + "'");
         if (oDT == null || oDT.Rows.Count == 0)
         {
             sql = "INSERT INTO [syint_Query] ([qu_codice],[qu_name],[qu_script],[qu_connectionkey],[qu_type],[qu_active],[qu_checkedkey],[qu_checkedname],[qu_eventLoad]) VALUES (";
@@ -294,16 +291,16 @@ public class DBQuery
                     "    ,[qu_eventLoad] = '" + PreparaSql(sOnLoad) + "' " +
                     "  WHERE qu_codice = '" + sCode + "'";
         }
-        return DB.Execute(DB.Configuration.InfrastructureConnection, sql);
+        return _DB.Execute(_dbKey, sql);
     }
     public int SetQueryLink(string sCode, string sName, string sType, string sUrl, string sParams, int iOrder, int iVisible, int iChecked)
     {
         string sql = "";
-        DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, "SELECT qu_id FROM [syint_Query] WHERE qu_codice = '" + sCode + "'");
+        DataTable oDT = _DB.Get(_dbKey, "SELECT qu_id FROM [syint_Query] WHERE qu_codice = '" + sCode + "'");
         if (oDT == null || oDT.Rows.Count == 0)
             throw new Exception("Query non trovata");
         //
-        DataTable oDTLinks = DB.Get(DB.Configuration.InfrastructureConnection, "SELECT * FROM [syint_QueryLinks] WHERE ql_idQuery = " + oDT.Rows[0]["qu_id"].ToString() + " AND ql_name = '" + sName + "'");
+        DataTable oDTLinks = _DB.Get(_dbKey, "SELECT * FROM [syint_QueryLinks] WHERE ql_idQuery = " + oDT.Rows[0]["qu_id"].ToString() + " AND ql_name = '" + sName + "'");
         DataRow oDR = oDT.Rows[0];
         if (oDTLinks == null || oDTLinks.Rows.Count == 0)
         {
@@ -330,16 +327,16 @@ public class DBQuery
                     "    ,[ql_date] = getdate()" +
                     "  WHERE ql_idQuery = " + oDR["qu_id"].ToString() + " AND ql_name = '" + sName + "'";
         }
-        return DB.Execute(DB.Configuration.InfrastructureConnection, sql);
+        return _DB.Execute(_dbKey, sql);
     }
     public int SetQueryParams(string sCode, string sName, string sDescri, int iOrder, string sType, string sControl, string sSource, int iAllowNull, string sReplace)
     {
         string sql = "";
-        DataTable oDT = DB.Get(DB.Configuration.InfrastructureConnection, "SELECT qu_id FROM [syint_Query] WHERE qu_codice = '" + sCode + "'");
+        DataTable oDT = _DB.Get(_dbKey, "SELECT qu_id FROM [syint_Query] WHERE qu_codice = '" + sCode + "'");
         if (oDT == null || oDT.Rows.Count == 0)
             throw new Exception("Query non trovata");
         //
-        DataTable oDTParams = DB.Get(DB.Configuration.InfrastructureConnection, "SELECT * FROM [syint_QueryParams] WHERE qp_idQuery = " + oDT.Rows[0]["qu_id"].ToString() + " AND qp_name = '" + sName + "'");
+        DataTable oDTParams = _DB.Get(_dbKey, "SELECT * FROM [syint_QueryParams] WHERE qp_idQuery = " + oDT.Rows[0]["qu_id"].ToString() + " AND qp_name = '" + sName + "'");
         DataRow oDR = oDT.Rows[0];
         if (oDTParams == null || oDTParams.Rows.Count == 0)
         {
@@ -369,7 +366,7 @@ public class DBQuery
                     (sReplace != null ? " ,[qp_replace] = '" + sReplace + "' " : " , [qp_replace] = null ") +
                     "  WHERE qp_idQuery = " + oDR["qu_id"].ToString() + " AND qp_name = '" + sName + "'";
         }
-        return DB.Execute(DB.Configuration.InfrastructureConnection, sql);
+        return _DB.Execute(_dbKey, sql);
     }
     public string PreparaSql(string sql)
     {

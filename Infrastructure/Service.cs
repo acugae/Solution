@@ -3,10 +3,10 @@ public class Service
 {
     public DBHttpClients DBHttpClients = null;
     public DBConfig DBConfig = null;
-    public Service(DB oDB)
+    public Service(DB oDB, string sKey)
     {
-        DBHttpClients = new(oDB);
-        DBConfig = new(oDB);
+        DBHttpClients = new(oDB, sKey);
+        DBConfig = new(oDB, sKey);
         ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls | SecurityProtocolType.Tls11 | SecurityProtocolType.Tls12 | SecurityProtocolType.Tls13;
     }
     public string InvokeServiceJSON(string sURL, string sJSON, string sMethod = "POST", string sContentType = "application/json;charset=utf-8", int iTimeout = 1200000, string sHeaders = null)

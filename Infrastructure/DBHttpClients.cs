@@ -4,8 +4,8 @@ namespace Solution.Infrastructure;
 public class DBHttpClients
 {
     readonly DB DB;
-    public DBHttpClients(Configuration oConfiguration) => DB = new(oConfiguration);
-    public DBHttpClients(DB oDB) => DB = oDB;
+    readonly string dbKey;
+    public DBHttpClients(DB oDB, string sKey) { DB = oDB; dbKey = sKey; }
     public int InsertHttpClient(string sCodice, int iActive, string sMethod, string sContextType, string sUrl, string sPayload, string? sHeader = null)
     {
         string sQuery = "INSERT INTO[dbo].[syint_HttpClient] ([hc_codice],[hc_active],[hc_method],[hc_contextType],[hc_url],[hc_payload],[hc_header]) VALUES ";
