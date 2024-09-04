@@ -29,8 +29,11 @@ public static class Federation
 
     public static string Target { get; set; } = string.Empty;
     public static string Connection { get; set; } = string.Empty;
-    public static Dictionary<string, ConfigurationOrganization> Organizations { get; set; } = [];
+    public static Dictionary<string, Configuration> Organizations { get; set; } = [];
 
+    //public static DB GetDB(string organization) { 
+    //    return new(Organizations[organization]);
+    //}
     public static void Start(string[] args, XML XMLManager)
     {
         Organizations.Clear();
@@ -46,26 +49,42 @@ public static class Federation
         DataTable dtOrganizations = DBOrganizations.Get();
         for (int i = 0; i < dtOrganizations?.Rows.Count; i++)
         {
+            Configuration organization = new();
+            
             string keyOrg = dtOrganizations.Rows[i]["name"].ToString();
-            string dbKeyOrg = dtOrganizations.Rows[i]["dbKey"].ToString();
             DB.DataManager.Connections.Add(keyOrg, "sqldb", dtOrganizations.Rows[i]["connection"].ToString());
             //
-            DBConnections DBOrg = new(DB, keyOrg);
-            DataTable OrgDT = DBOrg.Get();
-            DB oDB = new();
-            for (int c = 0; OrgDT != null && c < OrgDT.Rows.Count; c++)
+            DBConnections DBConnections = new(DB, keyOrg);
+            DataTable dtConnections = DBConnections.Get();
+            for (int c = 0; dtConnections != null && c < dtConnections.Rows.Count; c++)
             {
-                string name = OrgDT.Rows[c]["name"].ToString();
-                string connection = OrgDT.Rows[c]["connection"].ToString();
-                string provider = OrgDT.Rows[c]["provider"].ToString().Equals("") ? "sqldb" : OrgDT.Rows[c]["provider"].ToString();
-                //
-                oDB.DataManager.Connections.Add(name, provider, connection);
+                string name = dtConnections.Rows[c]["name"].ToString();
+                string connection = dtConnections.Rows[c]["connection"].ToString();
+                string provider = dtConnections.Rows[c]["provider"].ToString().Equals("") ? "sqldb" : dtConnections.Rows[c]["provider"].ToString();
+                int isInfrastructure = dtConnections.Rows[c]["isInfrastructure"].ToString().Equals("1") ? 1 : 0;
+                if (isInfrastructure == 1)
+                    organization.InfrastructureConnection = name;
+                organization.Connections.Add(name, new ConfigurationConnection(name, connection, provider));
             }
             //
-            ConfigurationOrganization oOrg = new();
-            oOrg.DB = oDB;
-            oOrg.dbKey = dbKeyOrg;
-            Organizations.Add(keyOrg, oOrg);
+            DBQueues DBQueues = new(DB, keyOrg);
+            DataTable dtQueues = DBQueues.Get();
+            for (int c = 0; dtQueues != null && c < dtQueues.Rows.Count; c++)
+            {
+                string name = dtQueues.Rows[c]["name"].ToString();
+                string dbKey = dtQueues.Rows[c]["dbKey"].ToString();
+                string tableName = dtQueues.Rows[c]["tableName"].ToString();
+                int isPianif = dtQueues.Rows[c]["isPianif"].ToString().Equals("1") ? 1 : 0;
+                if (isPianif == 1)
+                    organization.PianifQueue = name;
+                int isSystem = dtQueues.Rows[c]["isSystem"].ToString().Equals("1") ? 1 : 0;
+                if (isSystem == 1)
+                    organization.SystemQueue = name;
+                organization.Queues.Add(name, new(name, dbKey, tableName));
+            }
+
+            //organization.Connections.Add("default", new ConfigurationConnection("default", Connection, "sqldb"));
+            Organizations.Add(keyOrg, organization);
         }
     }
 

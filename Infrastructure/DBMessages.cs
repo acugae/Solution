@@ -2,9 +2,20 @@
 using static System.Net.Mime.MediaTypeNames;
 
 namespace Solution.Infrastructure;
-public class DBMessages : DBEntity
+public class DBMessages //: DBEntity
 {
-    public DBMessages(DB DB, string dbKey) : base(DB, dbKey, "syint_Messages") { }
+    readonly protected DB _DB;
+    readonly protected string _entityName;
+    readonly protected string _dbKey;
+    public Dictionary<string, ConfigurationQueue> _Queues { get; set; } = [];
+    public string PianifQueue { get; set; }
+    public DBMessages(DB DB, string dbKey, Dictionary<string, ConfigurationQueue> Queue, string pianifQueue) //: base(DB, dbKey, null)
+    {
+        _DB = DB;
+        _dbKey = dbKey;
+        _Queues = Queue;
+        PianifQueue = pianifQueue;
+    }
     //public DBMessages(Configuration oConfiguration) => _DB = new(oConfiguration);
     public string GetTasks(string sHost, string sName, int isParallel, string ExclusiveMessages = null)
     {
@@ -12,7 +23,7 @@ public class DBMessages : DBEntity
         string sSQL = "SELECT tk_name FROM syint_Tasks WHERE tk_parallelexec = " + isParallel.ToString() + " and tk_active = 1 AND ( ( (tk_hosts LIKE '{0},%') OR (tk_hosts LIKE '%,{0}') OR (tk_hosts LIKE '%,{0},%') OR (tk_hosts = '{0}') OR (tk_hosts = '*') ) AND ( (tk_services LIKE '{1},%') OR (tk_services LIKE '%,{1}') OR (tk_services LIKE '%,{1},%') OR (tk_services = '{1}') OR (tk_services = '*') ) ) ";
         sSQL += (ExclusiveMessages == null || ExclusiveMessages.Trim().Equals("") ? "" : " AND tk_name in (" + ExclusiveMessages + ")");
         //
-        DataTable oDT = _DB.Get(_DB.Configuration.InfrastructureConnection, string.Format(sSQL, sHost, sName));
+        DataTable oDT = _DB.Get(_dbKey, string.Format(sSQL, sHost, sName));
         for (int i = 0; oDT != null && i < oDT.Rows.Count; i++)
         {
             if (i == 0)
@@ -113,7 +124,7 @@ public class DBMessages : DBEntity
     }
     public void ExecPianif()
     {
-        DataTable oDT = _DB.Get(_DB.Configuration.InfrastructureConnection, "SELECT * FROM syint_TasksPianif INNER JOIN syint_Tasks ON tk_id = tkp_idTasks WHERE tkp_interval > 0 and tkp_active = 1 and getdate() between coalesce(tkp_inival, '01/01/1900') and coalesce(tkp_finval, '01/01/2900')  and tkp_expired <= GETDATE()");
+        DataTable oDT = _DB.Get(_dbKey, "SELECT * FROM syint_TasksPianif INNER JOIN syint_Tasks ON tk_id = tkp_idTasks WHERE tkp_interval > 0 and tkp_active = 1 and getdate() between coalesce(tkp_inival, '01/01/1900') and coalesce(tkp_finval, '01/01/2900')  and tkp_expired <= GETDATE()");
         if (oDT == null || oDT.Rows.Count == 0)
             return;
         //
@@ -126,7 +137,7 @@ public class DBMessages : DBEntity
                 int iTemp = 0;
                 for (iTemp = iInterval; oDateExpired.AddMinutes(iTemp) < DateTime.Now; iTemp += iInterval) ;
                 //
-                int count = _DB.Execute(_DB.Configuration.InfrastructureConnection, "UPDATE syint_TasksPianif set tkp_expired = DATEADD( MINUTE, " + iTemp + " ,tkp_expired), tkp_lastexec = GETDATE() where tkp_active = 1 and tkp_expired <= GETDATE() and tkp_id = " + oDT.Rows[i]["tkp_id"].ToString());
+                int count = _DB.Execute(_dbKey, "UPDATE syint_TasksPianif set tkp_expired = DATEADD( MINUTE, " + iTemp + " ,tkp_expired), tkp_lastexec = GETDATE() where tkp_active = 1 and tkp_expired <= GETDATE() and tkp_id = " + oDT.Rows[i]["tkp_id"].ToString());
                 if (count > 0)
                 {
                     int idMsg = InsertQueue(_DB.Configuration.PianifQueue, oDT.Rows[i]["tkp_value"].ToString(), oDT.Rows[i]["tk_name"].ToString(), 0, null, null, null, Convert.ToInt32(oDT.Rows[i]["tkp_id"]));
@@ -138,14 +149,14 @@ public class DBMessages : DBEntity
     }
     public DataRow GetTask(string sTaskName)
     {
-        DataTable oDT = _DB.Get(_DB.Configuration.InfrastructureConnection, "SELECT * FROM syint_Tasks WHERE tk_name = '" + sTaskName + "'");
+        DataTable oDT = _DB.Get(_dbKey, "SELECT * FROM syint_Tasks WHERE tk_name = '" + sTaskName + "'");
         if (oDT != null && oDT.Rows.Count == 1)
             return oDT.Rows[0];
         return null;
     }
     public DataRow GetTask(int iIDTask)
     {
-        DataTable oDT = _DB.Get(_DB.Configuration.InfrastructureConnection, "SELECT * FROM syint_Tasks WHERE tk_id = " + iIDTask);
+        DataTable oDT = _DB.Get(_dbKey, "SELECT * FROM syint_Tasks WHERE tk_id = " + iIDTask);
         if (oDT != null && oDT.Rows.Count == 1)
             return oDT.Rows[0];
         return null;
@@ -153,13 +164,28 @@ public class DBMessages : DBEntity
 
     public DataTable GetParams(string sName)
     {
-        return _DB.Get(_DB.Configuration.InfrastructureConnection, "select syint_TasksParams.* from syint_TasksParams inner join syint_Tasks ON tk_id = tp_idTasks where tk_name = '" + sName + "' order by tp_order");
+        return _DB.Get(_dbKey, "select syint_TasksParams.* from syint_TasksParams inner join syint_Tasks ON tk_id = tp_idTasks where tk_name = '" + sName + "' order by tp_order");
     }
 
-    public DataTable GetLastMessageUser(string user)
+    public DataTable GetMessageByUser(string user)
     {
-        return _DB.Get(_DB.Configuration.Queues[_DB.Configuration.PianifQueue].Key, "SELECT TOP 10 * FROM " + _DB.Configuration.Queues[_DB.Configuration.PianifQueue].Table + " WHERE msg_user = 'user." + user + "' ORDER BY msg_id DESC");
+        DataTable oDT = _DB.Get(_Queues[PianifQueue].Connection, "SELECT TOP 10 * FROM syint_Messages WHERE msg_user = 'user." + user + "' ORDER BY msg_id DESC");
+        return oDT;
+        //string sValues = "";
+        //for (int i = 0; oDT != null && i < oDT.Rows.Count; i++)
+        //{
+        //    sValues += "'" + oDT.Rows[i]["msg_class"].ToString() + "'";
+        //    sValues += (i < (oDT.Rows.Count - 1)) ? "," : "";
+        //}
+
+        //DataTable oDTTask = _DB.Get(_dbKey, "SELECT distinct top 10 tk_name, tk_title FROM syint_Tasks WHERE tk_name in (" + sValues + ")");
+
     }
+
+    //public DataTable GetLastMessageUser(string user)
+    //{
+    //    return _DB.Get(_DB.Configuration.Queues[_DB.Configuration.PianifQueue].Key, "SELECT TOP 10 * FROM " + _DB.Configuration.Queues[_DB.Configuration.PianifQueue].Table + " WHERE msg_user = 'user." + user + "' ORDER BY msg_id DESC");
+    //}
     //public int Resubmit(int iMinutes, int iIDMsgRef = 0)
     //{
     //    return InsertQueue(Queue, Value, TaskName, 0, null, DateTime.Now.AddMinutes(iMinutes).ToString("yyyy-MM-ddTHH:mm:ss.000"), null, null, "system.integration.message." + (iIDMsgRef == 0 ? ID.ToString() : "rif." + iIDMsgRef.ToString()));

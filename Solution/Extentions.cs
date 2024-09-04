@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json.Linq;
 using NPOI.XWPF.UserModel;
+using Solution.Data;
 using System.Dynamic;
 using static iTextSharp.text.pdf.AcroFields;
 
@@ -56,6 +57,19 @@ public static class DataTableExtensions
         foreach (DataRow row in dt.Rows)
             oResult.Add(row.To<K>(maps));
         return oResult;
+    }
+
+    public static CRUDBase[] ToCrud(this DataTable dataTable)
+    {
+        List<CRUDBase> oResult = new List<CRUDBase>();
+        for (int i = 0; dataTable != null && i < dataTable.Rows.Count; i++)
+        {
+            DataRow oDR = dataTable.Rows[i];
+            CRUDBase oCB = new CRUDBase(dataTable.TableName);
+            oCB.Attributes = dataTable.Columns.Cast<DataColumn>().ToDictionary(column => column.ColumnName, column => oDR[column]);
+            oResult.Add(oCB);
+        }
+        return oResult.ToArray();
     }
 }
 
