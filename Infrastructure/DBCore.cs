@@ -51,7 +51,10 @@ public class DBCore
     {
         try
         {
-            return _DB.Get(_dbKey, "SELECT * FROM " + _entityName + " WHERE name = '" + name + "' and deletionStateCode = 0").Rows[0];
+            DataTable result = _DB.Get(_dbKey, "SELECT * FROM " + _entityName + " WHERE name = '" + name + "' and deletionStateCode = 0");
+            if(result is null || result.Rows.Count == 0)
+                return null;
+            return result.Rows[0];
         }
         catch { return null; }
     }
