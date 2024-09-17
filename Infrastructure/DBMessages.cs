@@ -16,7 +16,6 @@ public class DBMessages //: DBEntity
         _Queues = Queue;
         PianifQueue = pianifQueue;
     }
-    //public DBMessages(Configuration oConfiguration) => _DB = new(oConfiguration);
     public string GetTasks(string sHost, string sName, int isParallel, string ExclusiveMessages = null)
     {
         string sTasks = "";

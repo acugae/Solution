@@ -49,10 +49,32 @@ public class FunctionsAssemblyManager
     }
     public object CallFunction(string sAssemblyName, string sClassName, string sMethodName, FunctionParameters oParameters)
     {
-        Type oType = GetType(sAssemblyName, sClassName);
-        MethodInfo oMethod = oType.GetMethod(sMethodName);
-        object oObject = CreateObject(oType, null);
-        ((FunctionModule)oObject).Load(db, dbKey, oParameters);
+        Type oType;
+        MethodInfo oMethod;
+        object oObject;
+        try
+        {
+            oType = GetType(sAssemblyName, sClassName);
+        }
+        catch{ throw new Exception($"CallFunction: GetType error. ({sAssemblyName}, {sClassName})"); }
+
+        try
+        {
+            oMethod = oType.GetMethod(sMethodName);
+        }
+        catch{ throw new Exception($"CallFunction: GetMethod error. ({sMethodName})"); }
+
+        try
+        {
+            oObject = CreateObject(oType, null);
+        }
+        catch { throw new Exception($"CallFunction: CreateObject error. ({oType.ToString()})"); }
+
+        try
+        {
+            ((FunctionModule)oObject).Load(db, dbKey, oParameters);
+        }
+        catch{ throw new Exception($"CallFunction: Load error."); }
         //
         ParameterInfo[] ovPI = oMethod.GetParameters();
         List<object> oParams = null;
@@ -89,7 +111,13 @@ public class FunctionsAssemblyManager
                 }
             }
         }
-        object oResult = CallMethod(oObject, oMethod, oParams.ToArray());
+        object oResult = null;
+        try
+        {
+            oResult = CallMethod(oObject, oMethod, oParams.ToArray());
+        }
+        catch { throw new Exception($"CallFunction: CallMethod error."); }
+
         return oResult;
     }
     public object CreateObject(Type oType, object[] oParamsConstructor)
