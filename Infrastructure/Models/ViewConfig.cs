@@ -87,4 +87,5 @@ public class OneParameter
     public string? Control { get; set; } = null; // combo, text, file
     public string? Source { get; set; } = null; // list;0=Scegli,1=Si,2=No | sql;dbCRMOptima;name;title;select name, title from sys_tTables  where state=1 order by name
     public object? Value { get; set; } = null;
+    public bool IsReadOnly { get; set; } = false;
 }
