@@ -5,6 +5,52 @@ using System.Dynamic;
 using static iTextSharp.text.pdf.AcroFields;
 
 namespace Solution;
+
+public class Map
+{
+    public Map() { }
+    public Map(string map)
+    {
+        string[] oValues = map.Split('=');
+        Source = oValues[0];
+        Target = oValues[1];
+        if (oValues.Length >= 3)
+            Type = oValues[2];
+    }
+
+    public string Source { get; set; } = string.Empty; // co_id
+    public string Target { get; set; } = string.Empty; // idContratto
+    public string? Type { get; set; } = string.Empty; // string
+}
+
+public class Maps
+{
+    public Dictionary<string, Map> Sources { get; set; } = new();
+    public Dictionary<string, Map> Targets { get; set; } = new();
+
+    public Maps() { }
+    // "source1=target1;source2=target2"
+    public Maps(string maps)
+    {
+        if (string.IsNullOrEmpty(maps.Trim()))
+            return;
+        string[] oV = maps.Split(';');
+        for (int i = 0; i < oV.Length; i++)
+        {
+            Map oM = new(oV[i]);
+            Sources.Add(oM.Source, oM);
+            Targets.Add(oM.Target, oM);
+        }
+    }
+
+    public void Add(string source, string target, string? type = null)
+    {
+        Map oM = new();
+        oM.Source = source; oM.Target = target; oM.Type = type;
+        Sources.Add(oM.Source, oM);
+        Targets.Add(oM.Target, oM);
+    }
+}
 public static class HttpContextExtensions
 {
     public static async Task<string> GetBody(this HttpRequest oRequest)
@@ -51,14 +97,13 @@ public static class DataTableExtensions
             oResult.Add(row.ToExpando());
         return oResult;
     }
-    public static List<K> To<K>(this DataTable dt, OneMaps maps = null) where K : new()
+    public static List<K> To<K>(this DataTable dt, Maps maps = null) where K : new()
     {
         List<K> oResult = new List<K>();
         foreach (DataRow row in dt.Rows)
             oResult.Add(row.To<K>(maps));
         return oResult;
     }
-
     public static CRUDBase[] ToCrud(this DataTable dataTable)
     {
         List<CRUDBase> oResult = new List<CRUDBase>();
@@ -70,6 +115,10 @@ public static class DataTableExtensions
             oResult.Add(oCB);
         }
         return oResult.ToArray();
+    }
+    public static string Serialize(this DataTable dataTable)
+    {
+        return JsonConvert.SerializeObject(dataTable, Newtonsoft.Json.Formatting.Indented);
     }
 }
 
@@ -108,7 +157,7 @@ public static class DataRowExtensions
     /// <param name="row"></param>
     /// <param name="maps"></param>
     /// <returns></returns>
-    public static T To<T>(this DataRow row, OneMaps maps = null) where T : new()
+    public static T To<T>(this DataRow row, Maps maps = null) where T : new()
     {
         PropertyInfo[] Properties = typeof(T).GetProperties();
         T obj = new();
