@@ -271,4 +271,8 @@ public static class StringExtensions
         return new Tuple<string,int>(_string, index);
     }
 
+    public static bool IsNumber(this string _string)
+    {
+        return int.TryParse(_string, out _);
+    }
 }
