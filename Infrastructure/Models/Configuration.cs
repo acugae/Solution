@@ -11,12 +11,17 @@ public class Configuration
     public bool IsStandalone { get; set; } = false;
     public bool IsLocalAssembly { get; set; } = false;
     public string ExclusiveMessages { get; set; } = string.Empty;
-    public DB NewDB()
+    public DB DB()
     {
-        return new(this);
+        DB db = new();
+        db.connectionDefault = InfrastructureConnection;
+        foreach (var conn in Connections)
+        {
+            db.DataManager.Connections.Add(conn.Key, conn.Value.Provider, conn.Value.Connection);
+        }
+        return db;
     }
 }
-
 public class ConfigurationFederation
 {
     public string Target { get; set; } = string.Empty;
@@ -24,7 +29,6 @@ public class ConfigurationFederation
     //public Dictionary<string, ConfigurationOrganization> Organizations { get; set; } = [];
     public Dictionary<string, Configuration> Organizations { get; set; } = [];
 }
-
 public class ConfigurationOrganization
 {
     public DB DB{ get; set; } = null;
@@ -33,7 +37,6 @@ public class ConfigurationOrganization
     public string SystemQueue { get; set; } = null;
     public Dictionary<string, ConfigurationQueue> Queues { get; set; } = [];
 }
-
 public class ConfigurationConnection
 {
     public ConfigurationConnection(string sKey, string sConnection, string sProvider)
@@ -46,7 +49,6 @@ public class ConfigurationConnection
     public string Connection { get; set; } = string.Empty;
     public string Provider { get; set; } = "sqldb";
 }
-
 public class ConfigurationQueue
 {
     public ConfigurationQueue(string sKey, string sConnection, string sTable)
@@ -60,7 +62,6 @@ public class ConfigurationQueue
     public string Table { get; set; } = string.Empty;
 
 }
-
 public class ConfigurationMessage
 {
     public ConfigurationMessage(string sAssembly, string sClass, string sFunction, string sValue)

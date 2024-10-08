@@ -4,9 +4,10 @@ using Renci.SshNet.Messages;
 namespace Solution.Infrastructure;
 public class DBCore
 {
-    readonly protected DB _DB;
-    readonly protected string _entityName;
-    readonly protected string _dbKey;
+    protected DB _DB;
+    protected string _entityName;
+    protected string _dbKey;
+    public DBCore(DB DB, string entityName) { _DB = DB; _dbKey = DB.connectionDefault; _entityName = entityName; }
     public DBCore(DB DB, string dbKey, string entityName) { _DB = DB; _dbKey = dbKey; _entityName = entityName; }
     public void Set(Dictionary<string, object> Attributes)
     {

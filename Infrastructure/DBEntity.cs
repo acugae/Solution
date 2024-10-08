@@ -7,6 +7,7 @@ public class DBEntity
     readonly protected DB _DB;
     readonly protected string _entityName;
     readonly protected string _dbKey;
+    public DBEntity(DB DB, string entityName) { _DB = DB; _dbKey = DB.connectionDefault; _entityName = entityName; }
     public DBEntity(DB DB, string dbKey, string entityName) { _DB = DB; _dbKey = dbKey; _entityName = entityName; }
     public DataTable Get()
     {
@@ -15,6 +16,10 @@ public class DBEntity
             return _DB.Get(_dbKey, "SELECT * FROM [" + _entityName + "]");
         }
         catch { return null; }
+    }
+    public string GetValueString(string sValue)
+    {
+        return sValue == null ? "null" : "'" + sValue.Replace("'", "''") + "'";
     }
 }
 

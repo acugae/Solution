@@ -14,7 +14,7 @@ public class DBProcess : DBEntity
         tabService["pr_name"] = ProcessName;
         tabService["pr_user"] = UserName;
         tabService["pr_path"] = HomePath;
-        tabService["pr_config"] = JSON.Serialize(_DB.Configuration);
+        //tabService["pr_config"] = JSON.Serialize(_DB.Configuration);
         oCrud.Insert(tabService);
     }
     public DataRow ReadProcess(Guid ID)

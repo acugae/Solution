@@ -59,18 +59,6 @@ abstract public class FunctionModule : ControllerBase
         dbKey = sKey;
     }
     public void WriteLogDebug(string sMessage) => Logger.WriteLine(TaskName + ": " + sMessage, Logger.TipoLog.Debug);
-    public void WriteProgress(string sMessage, int iValueCurrent = 0, int iValueTotal = 0)
-    {
-        ConfigurationQueue Queue = DB.Configuration.Queues[this.Queue];
-        DataTable oDT = DB.Get(Queue.Connection, "SELECT * FROM " + Queue.Table + "Extend WHERE msg_id = " + ID.ToString());
-        if (oDT.Rows.Count == 0)
-        {
-            DB.Execute(Queue.Connection, string.Format("INSERT INTO " + Queue.Table + "Extend (msg_id, msg_valuecurrent, msg_valuetotal, msg_message) VALUES ({0}, {1}, {2}, '{3}')", ID, iValueCurrent, iValueTotal, sMessage.Replace("'", "''")));
-        }
-        else
-        {
-            DB.Execute(Queue.Connection, string.Format("UPDATE " + Queue.Table + "Extend SET msg_valuecurrent = {0}, msg_valuetotal = {1}, msg_message = '{2}' WHERE msg_id = {3}", iValueCurrent, iValueTotal, sMessage.Replace("'", "''"), ID));
-        }
-    }
+
     //public abstract void Execute();
 }

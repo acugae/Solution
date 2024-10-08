@@ -8,13 +8,13 @@ public class DBMessages //: DBEntity
     readonly protected string _entityName;
     readonly protected string _dbKey;
     public Dictionary<string, ConfigurationQueue> _Queues { get; set; } = [];
-    public string PianifQueue { get; set; }
+    private string _pianifQueue;
     public DBMessages(DB DB, string dbKey, Dictionary<string, ConfigurationQueue> Queue, string pianifQueue) //: base(DB, dbKey, null)
     {
         _DB = DB;
         _dbKey = dbKey;
         _Queues = Queue;
-        PianifQueue = pianifQueue;
+        _pianifQueue = pianifQueue;
     }
     public string GetTasks(string sHost, string sName, int isParallel, string ExclusiveMessages = null)
     {
@@ -34,7 +34,7 @@ public class DBMessages //: DBEntity
     }
     public DataTable GetMessageByState(string sQueue, string sTasksParallel, string sTasksSerial)
     {
-        ConfigurationQueue Queue = _DB.Configuration.Queues[sQueue];
+        ConfigurationQueue Queue = _Queues[sQueue];
         string sTable = Queue.Table;
         //
         string sSerial = sTasksSerial.Trim().Equals("") ? "null" : sTasksSerial.Trim();
@@ -71,7 +71,7 @@ public class DBMessages //: DBEntity
 
     public DataRow GetMessageSystem(string sQueue, Guid ID)
     {
-        ConfigurationQueue Queue = _DB.Configuration.Queues[sQueue];
+        ConfigurationQueue Queue = _Queues[sQueue];
         string sTable = Queue.Table;
         //
         string sSQL = @"
@@ -86,7 +86,7 @@ public class DBMessages //: DBEntity
     }
     public int GetDeQueue(string sQueue, int IDMsg, Guid GuidService)
     {
-        ConfigurationQueue Queue = _DB.Configuration.Queues[sQueue];
+        ConfigurationQueue Queue = _Queues[sQueue];
         string sConnection = Queue.Connection;
         Parameter oPIn0 = _DB.DataManager.CreateParameter(sConnection, DbType.String, ParameterDirection.Input, "p_nTableName", Queue.Table);
         Parameter oPIn1 = _DB.DataManager.CreateParameter(sConnection, DbType.Int32, ParameterDirection.Input, "@p_nIDMsg", IDMsg);
@@ -99,13 +99,13 @@ public class DBMessages //: DBEntity
     }
     public void UpdateMessage(string sQueue, int id, int state, string message)
     {
-        ConfigurationQueue Queue = _DB.Configuration.Queues[sQueue];
+        ConfigurationQueue Queue = _Queues[sQueue];
         string sUpdate = string.Format("update " + Queue.Table + " SET msg_state = {0}, msg_message = {1}, msg_dateEnd = getdate() where msg_id = {2}", state, (message == null ? "null" : ("'" + message.Replace("'", "''") + "'")), id);
         _DB.Execute(Queue.Connection, sUpdate);
     }
     public int InsertQueue(string sQueue, string value, string taskname, int state = 0, string? message = null, string? inival = null, string? finval = null, object? IDTaskPianif = null, string user = "system.integration")
     {
-        ConfigurationQueue Queue = _DB.Configuration.Queues[sQueue];
+        ConfigurationQueue Queue = _Queues[sQueue];
         string sConnection = Queue.Connection;
         Parameter oPIn0 = _DB.DataManager.CreateParameter(sConnection, DbType.String, ParameterDirection.Input, "p_nTableName", Queue.Table);
         Parameter oPIn1 = _DB.DataManager.CreateParameter(sConnection, DbType.String, ParameterDirection.Input, "p_nValue", value);
@@ -139,7 +139,7 @@ public class DBMessages //: DBEntity
                 int count = _DB.Execute(_dbKey, "UPDATE syint_TasksPianif set tkp_expired = DATEADD( MINUTE, " + iTemp + " ,tkp_expired), tkp_lastexec = GETDATE() where tkp_active = 1 and tkp_expired <= GETDATE() and tkp_id = " + oDT.Rows[i]["tkp_id"].ToString());
                 if (count > 0)
                 {
-                    int idMsg = InsertQueue(_DB.Configuration.PianifQueue, oDT.Rows[i]["tkp_value"].ToString(), oDT.Rows[i]["tk_name"].ToString(), 0, null, null, null, Convert.ToInt32(oDT.Rows[i]["tkp_id"]));
+                    int idMsg = InsertQueue(_pianifQueue, oDT.Rows[i]["tkp_value"].ToString(), oDT.Rows[i]["tk_name"].ToString(), 0, null, null, null, Convert.ToInt32(oDT.Rows[i]["tkp_id"]));
                 }
             }
             catch
@@ -168,7 +168,7 @@ public class DBMessages //: DBEntity
 
     public DataTable GetMessageByUser(string user)
     {
-        DataTable oDT = _DB.Get(_Queues[PianifQueue].Connection, "SELECT TOP 10 * FROM syint_Messages WHERE msg_user = 'user." + user + "' ORDER BY msg_id DESC");
+        DataTable oDT = _DB.Get(_Queues[_pianifQueue].Connection, "SELECT TOP 10 * FROM syint_Messages WHERE msg_user = 'user." + user + "' ORDER BY msg_id DESC");
         return oDT;
         //string sValues = "";
         //for (int i = 0; oDT != null && i < oDT.Rows.Count; i++)
@@ -179,6 +179,20 @@ public class DBMessages //: DBEntity
 
         //DataTable oDTTask = _DB.Get(_dbKey, "SELECT distinct top 10 tk_name, tk_title FROM syint_Tasks WHERE tk_name in (" + sValues + ")");
 
+    }
+
+    public void WriteProgress(string queue, int idMsg, string sMessage, int iValueCurrent = 0, int iValueTotal = 0)
+    {
+        ConfigurationQueue Queue = _Queues[queue];
+        DataTable oDT = _DB.Get(Queue.Connection, "SELECT * FROM " + Queue.Table + "Extend WHERE msg_id = " + idMsg.ToString());
+        if (oDT.Rows.Count == 0)
+        {
+            _DB.Execute(Queue.Connection, string.Format("INSERT INTO " + Queue.Table + "Extend (msg_id, msg_valuecurrent, msg_valuetotal, msg_message) VALUES ({0}, {1}, {2}, '{3}')", idMsg, iValueCurrent, iValueTotal, sMessage.Replace("'", "''")));
+        }
+        else
+        {
+            _DB.Execute(Queue.Connection, string.Format("UPDATE " + Queue.Table + "Extend SET msg_valuecurrent = {0}, msg_valuetotal = {1}, msg_message = '{2}' WHERE msg_id = {3}", iValueCurrent, iValueTotal, sMessage.Replace("'", "''"), idMsg));
+        }
     }
 
     //public DataTable GetLastMessageUser(string user)

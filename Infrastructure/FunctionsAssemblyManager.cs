@@ -165,21 +165,21 @@ public class FunctionAssemblyLoaderContext : AssemblyLoadContext
     }
     private void PluginLoaderContext_Unloading(AssemblyLoadContext arg1)
     {
-        Console.WriteLine($"PluginLoaderContext_Unloading: {arg1.Name}");
+        //Console.WriteLine($"PluginLoaderContext_Unloading: {arg1.Name}");
     }
     private Assembly PluginLoaderContext_Resolving(AssemblyLoadContext arg1, AssemblyName arg2)
     {
-        Console.WriteLine($"PluginLoaderContext_Resolving: {arg1.Name}, {arg2.Name}");
+        //Console.WriteLine($"PluginLoaderContext_Resolving: {arg1.Name}, {arg2.Name}");
         return null;
     }
     private nint PluginLoaderContext_ResolvingUnmanagedDll(Assembly arg1, string arg2)
     {
-        Console.WriteLine($"PluginLoaderContext_ResolvingUnmanagedDll: {arg1.FullName}, {arg2}");
+        //Console.WriteLine($"PluginLoaderContext_ResolvingUnmanagedDll: {arg1.FullName}, {arg2}");
         return nint.Zero;
     }
     public Assembly LoadAssembly(string sAssemblyName)
     {
-        Console.WriteLine($"Assembly Load: {sAssemblyName}");
+        //Console.WriteLine($"Assembly Load: {sAssemblyName}");
         foreach (Assembly assembly in Assemblies)
         {
             if (assembly.GetName().Name.ToLower().Equals(sAssemblyName.ToLower().Replace(".dll", "")))
@@ -221,7 +221,7 @@ public class FunctionAssemblyLoaderContext : AssemblyLoadContext
     //}
     protected override Assembly Load(AssemblyName assemblyName)
     {
-        Console.WriteLine($"override Assembly Load: {assemblyName.Name}");
+        //Console.WriteLine($"override Assembly Load: {assemblyName.Name}");
         return null;
     }
     protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)

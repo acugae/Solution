@@ -89,7 +89,7 @@ public static class Application
                 Configuration.Messages.Add(oMessage);
             }
         }
-        DB = new(Configuration);
+        DB = Configuration.DB();
         Log.WriteLine("Process:" + Application.ID, "HostName: " + Application.HostName, "ProcessName: " + Application.ProcessName, "Mode: " + Application.Mode, "Standalone: " + Application.Configuration.IsStandalone.ToString());
     }
 

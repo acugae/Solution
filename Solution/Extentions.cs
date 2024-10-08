@@ -6,51 +6,6 @@ using static iTextSharp.text.pdf.AcroFields;
 
 namespace Solution;
 
-public class Map
-{
-    public Map() { }
-    public Map(string map)
-    {
-        string[] oValues = map.Split('=');
-        Source = oValues[0];
-        Target = oValues[1];
-        if (oValues.Length >= 3)
-            Type = oValues[2];
-    }
-
-    public string Source { get; set; } = string.Empty; // co_id
-    public string Target { get; set; } = string.Empty; // idContratto
-    public string? Type { get; set; } = string.Empty; // string
-}
-
-public class Maps
-{
-    public Dictionary<string, Map> Sources { get; set; } = new();
-    public Dictionary<string, Map> Targets { get; set; } = new();
-
-    public Maps() { }
-    // "source1=target1;source2=target2"
-    public Maps(string maps)
-    {
-        if (string.IsNullOrEmpty(maps.Trim()))
-            return;
-        string[] oV = maps.Split(';');
-        for (int i = 0; i < oV.Length; i++)
-        {
-            Map oM = new(oV[i]);
-            Sources.Add(oM.Source, oM);
-            Targets.Add(oM.Target, oM);
-        }
-    }
-
-    public void Add(string source, string target, string? type = null)
-    {
-        Map oM = new();
-        oM.Source = source; oM.Target = target; oM.Type = type;
-        Sources.Add(oM.Source, oM);
-        Targets.Add(oM.Target, oM);
-    }
-}
 public static class HttpContextExtensions
 {
     public static async Task<string> GetBody(this HttpRequest oRequest)
@@ -116,10 +71,10 @@ public static class DataTableExtensions
         }
         return oResult.ToArray();
     }
-    public static string Serialize(this DataTable dataTable)
-    {
-        return JsonConvert.SerializeObject(dataTable, Newtonsoft.Json.Formatting.Indented);
-    }
+    //public static string Serialize(this DataTable dataTable)
+    //{
+    //    return JsonConvert.SerializeObject(dataTable, Newtonsoft.Json.Formatting.Indented);
+    //}
 }
 
 public static class DataRowExtensions
@@ -242,6 +197,9 @@ public static class RequestExtensions
 
 public static class StringExtensions
 {
+    public static T Deserialize<T>(this string _string) { return JsonConvert.DeserializeObject<T>(_string); }
+    public static T Deserialize<T>(string sJson, JsonSerializerSettings oSetting) { return JsonConvert.DeserializeObject<T>(sJson, oSetting); }
+    public static T Deserialize<T>(string sJson, params JsonConverter[] converter) { return JsonConvert.DeserializeObject<T>(sJson, converter); }
     public static string[] GetIntoTag(this string _string, string sTagBegin, string sTagEnd)
     {
         List<string> vString = new List<string>();
@@ -274,5 +232,13 @@ public static class StringExtensions
     public static bool IsNumber(this string _string)
     {
         return int.TryParse(_string, out _);
+    }
+}
+
+public static class ObjectExtensions
+{
+    public static string Serialize(this object obj, JsonSerializerSettings? oSetting = null)
+    {
+        return JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented, oSetting);
     }
 }
