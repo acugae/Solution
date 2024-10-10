@@ -116,7 +116,7 @@ public class FunctionsAssemblyManager
         {
             oResult = CallMethod(oObject, oMethod, oParams.ToArray());
         }
-        catch { throw new Exception($"CallFunction: CallMethod error."); }
+        catch(Exception ex) { throw new Exception($"CallFunction: CallMethod error. " + ex.Message); }
 
         return oResult;
     }

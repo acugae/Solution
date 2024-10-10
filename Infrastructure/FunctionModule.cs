@@ -1,4 +1,6 @@
-﻿namespace Solution.Infrastructure;
+﻿using Solution.Communication;
+
+namespace Solution.Infrastructure;
 abstract public class FunctionModule : ControllerBase 
 {
     public DB? db = null;

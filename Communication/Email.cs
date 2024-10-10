@@ -1,4 +1,4 @@
-﻿namespace Solution.Infrastructure;
+﻿namespace Solution.Communication;
 
 public class Email
 {
@@ -131,7 +131,7 @@ public class Email
                 if (!sVBcc[i].Trim().Equals(""))
                     MyMessage.Bcc.Add(sVBcc[i].Trim());
             }
-        } 
+        }
         MyMessage.Subject = Subject;
         MyMessage.IsBodyHtml = IsHtml;
         MyMessage.Body = sBody;
