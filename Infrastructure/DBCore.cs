@@ -4,14 +4,14 @@ using Renci.SshNet.Messages;
 namespace Solution.Infrastructure;
 public class DBCore
 {
-    protected DB _DB;
+    protected DB db;
     protected string _entityName;
     protected string _dbKey;
-    public DBCore(DB DB, string entityName) { _DB = DB; _dbKey = DB.connectionDefault; _entityName = entityName; }
-    public DBCore(DB DB, string dbKey, string entityName) { _DB = DB; _dbKey = dbKey; _entityName = entityName; }
+    public DBCore(DB DB, string entityName) { db = DB; _dbKey = DB.connectionDefault; _entityName = entityName; }
+    public DBCore(DB DB, string dbKey, string entityName) { db = DB; _dbKey = dbKey; _entityName = entityName; }
     public void Set(Dictionary<string, object> Attributes)
     {
-        CRUD oCrud = new(_DB, _dbKey);
+        CRUD oCrud = new(db, _dbKey);
         CRUDBase tabAssemblies = new(_entityName, Attributes);
 
         Guid? ID = (Attributes.ContainsKey("id") ? Guid.Parse( Attributes["id"].ToString() ) : null);
@@ -27,7 +27,7 @@ public class DBCore
     }
     public void SetField(Guid? ID, string nameField, object valueField)
     {
-        CRUD oCrud = new(_DB, _dbKey);
+        CRUD oCrud = new(db, _dbKey);
         CRUDBase tabAssemblies = new(_entityName);
         tabAssemblies[nameField] = valueField;
         tabAssemblies["modifiedOn"] = DateTime.Now;
@@ -44,7 +44,7 @@ public class DBCore
     {
         try
         {
-            return _DB.Get(_dbKey, "SELECT * FROM " + _entityName + " WHERE deletionStateCode = 0");
+            return db.Get(_dbKey, "SELECT * FROM " + _entityName + " WHERE deletionStateCode = 0");
         }
         catch { return null; }
     }
@@ -52,7 +52,7 @@ public class DBCore
     {
         try
         {
-            DataTable result = _DB.Get(_dbKey, "SELECT * FROM " + _entityName + " WHERE name = '" + name + "' and deletionStateCode = 0");
+            DataTable result = db.Get(_dbKey, "SELECT * FROM " + _entityName + " WHERE name = '" + name + "' and deletionStateCode = 0");
             if(result is null || result.Rows.Count == 0)
                 return null;
             return result.Rows[0];
@@ -63,7 +63,7 @@ public class DBCore
     {
         try
         {
-            return _DB.Get(_dbKey, "SELECT * FROM " + _entityName + " WHERE id = '" + id.ToString() + "'").Rows[0];
+            return db.Get(_dbKey, "SELECT * FROM " + _entityName + " WHERE id = '" + id.ToString() + "'").Rows[0];
         }
         catch { return null; }
     }

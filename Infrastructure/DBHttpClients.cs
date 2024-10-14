@@ -13,7 +13,7 @@ public class DBHttpClients : DBEntity
         sQuery += " (" + GetValueString(sCodice) + "," + iActive.ToString() + "," + GetValueString(sMethod) + "," + GetValueString(sContextType) + "," + GetValueString(sUrl) + "," + GetValueString(sPayload) + "," + GetValueString(sHeader) + ") ";
         sQuery += "; select @@identity;";
         //
-        DataTable oDT = _DB.Get(_dbKey, sQuery);
+        DataTable oDT = DB.Get(dbKey, sQuery);
         return int.Parse(oDT.Rows[0][0].ToString());
     }
     public int UpdateHttpClient(string sCodice, int iActive, string sMethod, string sContextType, string sUrl, string sPayload, string? sHeader = null)
@@ -22,7 +22,7 @@ public class DBHttpClients : DBEntity
         sQuery += " [hc_active] = " + iActive.ToString() + ", [hc_method] = " + GetValueString(sMethod) + ", [hc_contextType] = " + GetValueString(sContextType) + ", [hc_url] = " + GetValueString(sUrl) + ", [hc_payload] = " + GetValueString(sPayload) + ", [hc_header] = " + GetValueString(sHeader);
         sQuery += " WHERE hc_codice = " + GetValueString(sCodice);
         //
-        return _DB.Execute(_dbKey, sQuery);
+        return DB.Execute(dbKey, sQuery);
     }
     public int UpdateHttpClientHistory(int idHttpClientHistory, string sResponse, int isError = 0)
     {
@@ -30,7 +30,7 @@ public class DBHttpClients : DBEntity
         sQuery += " [hch_response] = " + GetValueString(sResponse) + ", [hch_responseDate] = getdate(), [hch_isError] = " + isError.ToString();
         sQuery += " WHERE hch_id = " + idHttpClientHistory.ToString();
         //
-        return _DB.Execute(_dbKey, sQuery);
+        return DB.Execute(dbKey, sQuery);
     }
     public int InsertHttpClientHistory(int idHttpClient, string sMethod, string sContextType, string sUrl, string sPayload, string? sHeader = null)
     {
@@ -40,13 +40,13 @@ public class DBHttpClients : DBEntity
         sQuery += " (" + idHttpClient.ToString() + "," + GetValueString(sMethod) + "," + GetValueString(sContextType) + "," + GetValueString(sUrl) + "," + GetValueString(sPayload) + ",getdate(), 0, " + GetValueString(sHeader) + ") ";
         sQuery += "; select @@identity;";
         //
-        DataTable oDT = _DB.Get(_dbKey, sQuery);
+        DataTable oDT = DB.Get(dbKey, sQuery);
         return int.Parse(oDT.Rows[0][0].ToString());
     }
     public DataRow GetHttpClient(string sCodice)
     {
         string sQuery = "SELECT * FROM syint_HttpClient WHERE hc_codice = '" + sCodice + "'";
-        DataTable oDT = _DB.Get(_dbKey, sQuery);
+        DataTable oDT = DB.Get(dbKey, sQuery);
         if (oDT == null || oDT.Rows.Count == 0)
             return null;
         return oDT.Rows[0];
@@ -54,7 +54,7 @@ public class DBHttpClients : DBEntity
     public DataRow GetHttpClient(int id)
     {
         string sQuery = "SELECT * FROM syint_HttpClient WHERE hc_id = '" + id.ToString() + "'";
-        DataTable oDT = _DB.Get(_dbKey, sQuery);
+        DataTable oDT = DB.Get(dbKey, sQuery);
         if (oDT == null || oDT.Rows.Count == 0)
             return null;
         return oDT.Rows[0];

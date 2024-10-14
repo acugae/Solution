@@ -22,6 +22,6 @@ public class DBTreeview : DBEntity
         //sSQL = sSQL.Replace("@applicationuserid", cApplication.Profile.User.ID.ToString());
         sSQL = sSQL.Replace("@usergroups", "''");
 
-        return _DB.Get(_dbKey, sSQL);
+        return DB.Get(dbKey, sSQL);
     }
 }

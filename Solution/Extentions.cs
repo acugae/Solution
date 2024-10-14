@@ -71,10 +71,21 @@ public static class DataTableExtensions
         }
         return oResult.ToArray();
     }
-    //public static string Serialize(this DataTable dataTable)
-    //{
-    //    return JsonConvert.SerializeObject(dataTable, Newtonsoft.Json.Formatting.Indented);
-    //}
+    public static Dictionary<string, object> ToKeyValueByColumns(this DataTable dt, string columnNameKey, string columnNameValue)
+    {
+        if (!dt.Columns.Contains(columnNameKey) || !dt.Columns.Contains(columnNameValue))
+            throw new Exception("ToKeyValueByColumns, column name not found.");
+
+        Dictionary<string, object> oResult = new Dictionary<string, object>();
+        foreach (DataRow row in dt.Rows)
+        {
+            object value = row[columnNameValue];
+            if (row[columnNameValue] == DBNull.Value)
+                value = null;
+            oResult[row[columnNameKey].ToString()] = value;
+        }
+        return oResult;
+    }
 }
 
 public static class DataRowExtensions

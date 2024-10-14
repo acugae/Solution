@@ -17,16 +17,16 @@ public static class Application
     public static string AssemblyPath { get; } = Path.Combine(HomePath, "assembly");
     public static string HostName { get; } = Environment.MachineName;
     public static string UserName { get; } = Environment.UserName;
-    //private static FunctionsAssemblyManager _FunctionsAssemblyContext = null;
-    //public static FunctionsAssemblyManager FunctionsAssemblyContext 
-    //{
-    //    get
-    //    {
-    //        _FunctionsAssemblyContext ??= new(DB, Configuration.InfrastructureConnection, AssemblyPath);
-    //        return _FunctionsAssemblyContext;
-    //    }
-    //}
-    private static FunctionsAssemblyManager FunctionsAssemblyContext = null;
+    private static FunctionsAssemblyManager assemblyManager = null;
+    public static FunctionsAssemblyManager AssemblyManager
+    {
+        get
+        {
+            assemblyManager ??= new(DB, Configuration.InfrastructureConnection, AssemblyPath);
+            return assemblyManager;
+        }
+    }
+    //private static FunctionsAssemblyManager FunctionsAssemblyContext = null;
 
     public static Configuration Configuration { get; set; } = new Configuration();
     public static void Start(string[] args, XML XMLManager)
@@ -91,19 +91,8 @@ public static class Application
             }
         }
         DB = Configuration.DB();
-        FunctionsAssemblyContext = new(DB, Configuration.InfrastructureConnection, AssemblyPath);
+        assemblyManager = new(DB, Configuration.InfrastructureConnection, AssemblyPath);
         Log.WriteLine("ModeConnection:" + DB.ModeConnection);
         Log.WriteLine("Process:" + Application.ID, "HostName: " + Application.HostName, "ProcessName: " + Application.ProcessName, "Mode: " + Application.Mode, "Standalone: " + Application.Configuration.IsStandalone.ToString());
     }
-
-    public static object CallFunction(string sAssemblyName, string sClassName, string sMethodName, FunctionParameters oParameters)
-    { 
-        return FunctionsAssemblyContext.CallFunction(sAssemblyName, sClassName, sMethodName, oParameters);
-    }
-
-    public static void UnLoad()
-    {
-        FunctionsAssemblyContext.UnLoad();
-    }
-
 }

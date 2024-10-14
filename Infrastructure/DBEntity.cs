@@ -4,16 +4,16 @@ using Renci.SshNet.Messages;
 namespace Solution.Infrastructure;
 public class DBEntity
 {
-    readonly protected DB _DB;
-    readonly protected string _entityName;
-    readonly protected string _dbKey;
-    public DBEntity(DB DB, string entityName) { _DB = DB; _dbKey = DB.connectionDefault; _entityName = entityName; }
-    public DBEntity(DB DB, string dbKey, string entityName) { _DB = DB; _dbKey = dbKey; _entityName = entityName; }
+    readonly protected DB DB;
+    readonly protected string entityName;
+    readonly protected string dbKey;
+    public DBEntity(DB DB, string entityName) { this.DB = DB; dbKey = DB.connectionDefault; this.entityName = entityName; }
+    public DBEntity(DB DB, string dbKey, string entityName) { this.DB = DB; this.dbKey = dbKey; this.entityName = entityName; }
     public DataTable Get()
     {
         try
         {
-            return _DB.Get(_dbKey, "SELECT * FROM [" + _entityName + "]");
+            return DB.Get(dbKey, "SELECT * FROM [" + entityName + "]");
         }
         catch { return null; }
     }

@@ -2,20 +2,8 @@
 public class DB
 {
     DataManager oData = new();
-    //public Configuration Configuration { get; }
     public string connectionDefault { get; set; }
-    ~DB(){}
     public DB(){}
-    //public DB(Configuration configuration)
-    //{
-    //    connectionDefault = configuration.InfrastructureConnection;
-    //    ////ModeConnection = enModeConnectionOpen.Whenever;
-    //    //Configuration = oConfiguration;
-    //    foreach (var conn in configuration.Connections)
-    //    {
-    //        oData.Connections.Add(conn.Key, conn.Value.Provider, conn.Value.Connection);
-    //    }
-    //}
     public CRUD this[string sKeyDb]
     {
         get
