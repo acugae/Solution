@@ -73,7 +73,7 @@ public static class DataTableExtensions
     }
     public static Dictionary<string, object> ToKeyValueByColumns(this DataTable dt, string columnNameKey, string columnNameValue)
     {
-        if (!dt.Columns.Contains(columnNameKey) || !dt.Columns.Contains(columnNameValue))
+        if (dt is null || !dt.Columns.Contains(columnNameKey) || !dt.Columns.Contains(columnNameValue))
             throw new Exception("ToKeyValueByColumns, column name not found.");
 
         Dictionary<string, object> oResult = new Dictionary<string, object>();

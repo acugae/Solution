@@ -1,3 +1,5 @@
+using Microsoft.AspNetCore.Components;
+
 namespace Solution.Reflection;
 /// <summary>
 /// Classe utilizzata per il recuperano di informazioni su assembly, moduli, membri, parametri e altre entità nel codice gestito esaminandone i metadati. 
@@ -103,8 +105,6 @@ public class ReflectionManager
             throw new Exception(err.Message);
         }
     }
-
-
     /// <summary>
     /// Restituisce i metodi (Statici e Pubblici) di un oggetto.
     /// </summary>
@@ -236,6 +236,15 @@ public class ReflectionManager
         {
             throw new Exception(err.Message);
         }
+    }
+    /// <summary>
+    /// Verifica se la proprietà è un parametro.
+    /// </summary>
+    public bool IsParameter(PropertyInfo property)
+    {
+        // Verifica se la proprietà ha l'attributo [Parameter] o [CascadingParameter]
+        return property.GetCustomAttributes(typeof(ParameterAttribute), true).Any() ||
+               property.GetCustomAttributes(typeof(CascadingParameterAttribute), true).Any();
     }
     /// <summary>
     /// Ritorna gli eventi di un oggetto.
