@@ -2,6 +2,7 @@
 using NPOI.XWPF.UserModel;
 using Solution.Data;
 using System.Dynamic;
+using System.Web;
 using static iTextSharp.text.pdf.AcroFields;
 
 namespace Solution;
@@ -172,7 +173,6 @@ public static class DataRowExtensions
     }
 
 }
-
 public static class DictionaryStringObjectExtensions
 {
     public static dynamic ToDynamic(this Dictionary<string, object> dict)
@@ -194,6 +194,14 @@ public static class DictionaryStringObjectExtensions
             eoColl.Add(kvp);
         }
         return response;
+    }
+}
+public static class DictionaryExtensions
+{
+    public static Dictionary<TKey, TValue> Set<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key, TValue value)
+    {
+        dict[key] = value;
+        return dict;
     }
 }
 public static class RequestExtensions
@@ -239,10 +247,37 @@ public static class StringExtensions
         index = -1;
         return new Tuple<string,int>(_string, index);
     }
-
     public static bool IsNumber(this string _string)
     {
         return int.TryParse(_string, out _);
+    }
+    public static Dictionary<string, string> ToDictionary(this string _string, string pairSeparator, string keyValueSeparator)
+    {
+        var result = new Dictionary<string, string>();
+
+        // Verifica che la stringa non sia nulla o vuota
+        if (string.IsNullOrEmpty(_string))
+            return result;
+
+        foreach (var pair in _string.Split(pairSeparator))
+        {
+            var keyValue = pair.Split(keyValueSeparator);
+            if (keyValue.Length == 2)
+            {
+                string key = keyValue[0].Trim();
+                string value = keyValue[1].Trim();
+                result[key] = value;
+            }
+        }
+
+        return result;
+    }
+    public static TEnum ParseEnum<TEnum>(this string value, TEnum defaultValue = default, bool ignoreCase = false) where TEnum : struct, Enum
+    {
+        // Parsing case insensitive con valore di default in caso di errore
+        return Enum.TryParse(value, ignoreCase, out TEnum parsedValue) && Enum.IsDefined(typeof(TEnum), parsedValue)
+            ? parsedValue
+            : defaultValue;
     }
 }
 
