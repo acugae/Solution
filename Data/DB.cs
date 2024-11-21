@@ -269,11 +269,11 @@ public class DB
     //    }
     //    return oDT;
     //}
-    public DataTable Get(string sSQL)
+    public DataTable Get(string sSQL, Dictionary<string, object>? parameters = null)
     {
         return Get(connectionDefault, sSQL);
     }
-    public DataTable Get(string sKey, string sSQL)
+    public DataTable Get(string sKey, string sSQL, Dictionary<string, object>? parameters = null)
     {
         Exception exResult = null;
         DataSet oDS = null;
@@ -301,7 +301,7 @@ public class DB
                 }
             }
             DateTime before = DateTime.Now;
-            oDS = oData.GetDS(oConn, sSQL);
+            oDS = oData.GetDS(oConn, sSQL, parameters);
             TimeSpan tsDuration = DateTime.Now.Subtract(before);
         }
         catch (Exception ex)

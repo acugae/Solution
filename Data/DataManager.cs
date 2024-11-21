@@ -1,3 +1,6 @@
+using Solution.Data.Provider;
+using System.Data.Common;
+
 namespace Solution.Data;
 
 public enum enSQLFIELD { String, Date, Numeric, NumericNull, Bool, None };
@@ -73,28 +76,28 @@ public class DataManager : MarshalByRefObject
     }
 
     // strParams = "[nomecampo]=[valuecampo]&[nomecampo]=[valuecampo]&[nomecampo]=[valuecampo]"
-    private string[] ParseStringParmas(string strParams, int type)
-    {
-        lock (this)
-        {
-            int numCampi = 0;
-            string[] tmpStrings = null;
-            string[] _strName = null;
-            //
-            // Caricamento Campi Chiave
-            if (strParams.Length > 0)
-            {
-                tmpStrings = strParams.Split('&');
-                numCampi = tmpStrings.Length;
-                _strName = new string[numCampi];
-                for (int i = 0; i < numCampi; i++)
-                {
-                    _strName[i] = tmpStrings[i].Split('=')[type];
-                }
-            }
-            return _strName;
-        }
-    }
+    //private string[] ParseStringParmas(string strParams, int type)
+    //{
+    //    lock (this)
+    //    {
+    //        int numCampi = 0;
+    //        string[] tmpStrings = null;
+    //        string[] _strName = null;
+    //        //
+    //        // Caricamento Campi Chiave
+    //        if (strParams.Length > 0)
+    //        {
+    //            tmpStrings = strParams.Split('&');
+    //            numCampi = tmpStrings.Length;
+    //            _strName = new string[numCampi];
+    //            for (int i = 0; i < numCampi; i++)
+    //            {
+    //                _strName[i] = tmpStrings[i].Split('=')[type];
+    //            }
+    //        }
+    //        return _strName;
+    //    }
+    //}
     /// <summary>
     /// Esegue l'struzione SQL e restituisce il contenuto in un cDataReader. 
     /// </summary>
@@ -105,36 +108,23 @@ public class DataManager : MarshalByRefObject
     {
         lock (this)
         {
-            DataReader oDRE = null;
-
-            Command oCMD = new Command(_oCns[sKeyConnection], strSQL);
-            if (_iTimeoutCommand >= 0)
-                oCMD.CommandTimeout = _iTimeoutCommand;
-            oCMD.Parameters.AddParameterString(strParams);
-            oDRE = new DataReader(oCMD.ExecuteReader());
-
-            return oDRE;
+            return ExecuteReader(GetCO(sKeyConnection), strSQL, strParams);
         }
     }
-
     public DataReader ExecuteReader(Connection oConnection, string strSQL, string strParams)
     {
         lock (this)
         {
-            DataReader oDRE = null;
             try
             {
-                Command oCMD = new Command(oConnection, strSQL);
-                if (_iTimeoutCommand >= 0)
-                    oCMD.CommandTimeout = _iTimeoutCommand;
+                Command oCMD = GetCM(oConnection, strSQL, null, _iTimeoutCommand);
                 oCMD.Parameters.AddParameterString(strParams);
-                oDRE = new DataReader(oCMD.ExecuteReader());
+                return new DataReader(oCMD.ExecuteReader());
             }
             catch (Exception e)
             {
                 throw (e);
             }
-            return oDRE;
         }
     }
     /// <summary>
@@ -147,41 +137,23 @@ public class DataManager : MarshalByRefObject
     {
         lock (this)
         {
-            object oObject = null;
-            try
-            {
-                Command oCMD = new Command(_oCns[sKeyConnection], strSQL);
-                if (_iTimeoutCommand >= 0)
-                    oCMD.CommandTimeout = _iTimeoutCommand;
-                oCMD.Parameters.AddParameterString(strParams);
-                oObject = oCMD.ExecuteScalar();
-            }
-            catch (Exception e)
-            {
-                throw e;
-            }
-            return oObject;
+            return ExecuteScalar(GetCO(sKeyConnection), strSQL, strParams);
         }
     }
-
     public object ExecuteScalar(Connection oConnection, string strSQL, string strParams)
     {
         lock (this)
         {
-            object oObject = null;
             try
             {
-                Command oCMD = new Command(oConnection, strSQL);
-                if (_iTimeoutCommand >= 0)
-                    oCMD.CommandTimeout = _iTimeoutCommand;
+                Command oCMD = GetCM(oConnection, strSQL, null, _iTimeoutCommand);
                 oCMD.Parameters.AddParameterString(strParams);
-                oObject = oCMD.ExecuteScalar();
+                return oCMD.ExecuteScalar();
             }
             catch (Exception e)
             {
                 throw e;
             }
-            return oObject;
         }
     }
     /// <summary>
@@ -194,27 +166,18 @@ public class DataManager : MarshalByRefObject
     {
         lock (this)
         {
-
-            Command oCMD = new Command(_oCns[sKeyConnection], strSQL);
-            if (_iTimeoutCommand >= 0)
-                oCMD.CommandTimeout = _iTimeoutCommand;
-            oCMD.Parameters.AddParameterString(strParams);
-            return oCMD.ExecuteNonQuery();
+            return ExecuteNonQuery(GetCO(sKeyConnection), strSQL, strParams);
         }
     }
-
     public int ExecuteNonQuery(Connection oConnection, string strSQL, string strParams)
     {
         lock (this)
         {
-            Command oCMD = new Command(oConnection, strSQL);
-            if (_iTimeoutCommand >= 0)
-                oCMD.CommandTimeout = _iTimeoutCommand;
+            Command oCMD = GetCM(oConnection, strSQL, null, _iTimeoutCommand);
             oCMD.Parameters.AddParameterString(strParams);
             return oCMD.ExecuteNonQuery();
         }
     }
-
     protected string DBFieldToString(object oField)
     {
         lock (this)
@@ -281,90 +244,97 @@ public class DataManager : MarshalByRefObject
     /// </summary>
     /// <param name="sKeyConnection">Chiave della connessione</param>
     /// <returns></returns>
-    public Command GetCM(string sKeyConnection)
-    {
-        lock (this)
-        {
-            try
-            {
-                Command oCMD = new Command(_oCns[sKeyConnection]);
-                if (_iTimeoutCommand >= 0)
-                    oCMD.CommandTimeout = _iTimeoutCommand;
-                return oCMD;
-                //return new cCommand(_oCns[sKeyConnection]);
-            }
-            catch (Exception e)
-            {
-                if (_oCns[sKeyConnection].State == ConnectionState.Open) _oCns[sKeyConnection].Close();
-                throw (e);
-            }
-        }
-    }
+    //public Command GetCM(string sKeyConnection)
+    //{
+    //    lock (this)
+    //    {
+    //        try
+    //        {
+    //            Command oCMD = new Command(_oCns[sKeyConnection]);
+    //            if (_iTimeoutCommand >= 0)
+    //                oCMD.CommandTimeout = _iTimeoutCommand;
+    //            return oCMD;
+    //            //return new cCommand(_oCns[sKeyConnection]);
+    //        }
+    //        catch (Exception e)
+    //        {
+    //            if (_oCns[sKeyConnection].State == ConnectionState.Open) _oCns[sKeyConnection].Close();
+    //            throw (e);
+    //        }
+    //    }
+    //}
     /// <summary>
     /// 
     /// </summary>
     /// <param name="oConnection"></param>
     /// <returns></returns>
-    public Command GetCM(Connection oConnection)
-    {
-        lock (this)
-        {
-            try
-            {
-                Command oCMD = new Command(oConnection);
-                if (_iTimeoutCommand >= 0)
-                    oCMD.CommandTimeout = _iTimeoutCommand;
-                return oCMD;
-                //return new cCommand(oConnection);
-            }
-            catch (Exception e)
-            {
-                //if (_oCns[sKeyConnection].State == ConnectionState.Open) _oCns[sKeyConnection].Close();
-                throw (e);
-            }
-        }
-    }
+    //public Command GetCM(Connection oConnection)
+    //{
+    //    lock (this)
+    //    {
+    //        try
+    //        {
+    //            Command oCMD = new Command(oConnection);
+    //            if (_iTimeoutCommand >= 0)
+    //                oCMD.CommandTimeout = _iTimeoutCommand;
+    //            return oCMD;
+    //            //return new cCommand(oConnection);
+    //        }
+    //        catch (Exception e)
+    //        {
+    //            //if (_oCns[sKeyConnection].State == ConnectionState.Open) _oCns[sKeyConnection].Close();
+    //            throw (e);
+    //        }
+    //    }
+    //}
     /// <summary>
     /// Viene utilizzata per creare un cCommand sulla connessione specificata.
     /// </summary>
     /// <param name="sKeyConnection">Chiave della connessione</param>
-    /// <param name="strSQL">Stringa SQL</param>
+    /// <param name="cmdText">Stringa SQL</param>
     /// <returns></returns>
-    public Command GetCM(string sKeyConnection, string strSQL)
-    {
-        lock (this)
-        {
-            try
-            {
-                Command oCMD = new Command(_oCns[sKeyConnection], strSQL);
-                if (_iTimeoutCommand >= 0)
-                    oCMD.CommandTimeout = _iTimeoutCommand;
-                return oCMD;
-            }
-            catch (Exception e)
-            {
-                //if (_oCns[sKeyConnection].State == ConnectionState.Open) _oCns[sKeyConnection].Close();
-                throw (e);
-            }
-        }
-    }
+    //public Command GetCM(string sKeyConnection, string cmdText)
+    //{
+    //    lock (this)
+    //    {
+    //        try
+    //        {
+    //            Command oCMD = new Command(_oCns[sKeyConnection], cmdText);
+    //            if (_iTimeoutCommand >= 0)
+    //                oCMD.CommandTimeout = _iTimeoutCommand;
+    //            return oCMD;
+    //        }
+    //        catch (Exception e)
+    //        {
+    //            //if (_oCns[sKeyConnection].State == ConnectionState.Open) _oCns[sKeyConnection].Close();
+    //            throw (e);
+    //        }
+    //    }
+    //}
     /// <summary>
     /// 
     /// </summary>
-    /// <param name="oConnection"></param>
-    /// <param name="strSQL"></param>
+    /// <param name="connection"></param>
+    /// <param name="cmdText"></param>
     /// <returns></returns>
-    public Command GetCM(Connection oConnection, string strSQL)
+    public Command GetCM(Connection connection, string cmdText, Dictionary<string, object>? parameters = null, int? timeout = null)
     {
         lock (this)
         {
             try
             {
-                Command oCMD = new Command(oConnection, strSQL);
-                if (_iTimeoutCommand >= 0)
-                    oCMD.CommandTimeout = _iTimeoutCommand;
+                Command oCMD = new Command(connection, cmdText);
+                if (timeout is not null && timeout > 0)
+                    oCMD.CommandTimeout = (int)timeout; // _iTimeoutCommand;
+
+                if (parameters != null)
+                {
+                    foreach (var param in parameters)
+                    {
+                        oCMD.Parameters.Add(param.Key, param.Value ?? DBNull.Value);
+                    }
+                }
                 return oCMD;
-                //return new cCommand(oConnection, strSQL);
             }
             catch (Exception e)
             {
@@ -384,7 +354,7 @@ public class DataManager : MarshalByRefObject
         {
             try
             {
-                return new Provider.DataAdapter(GetCM(sKeyConnection, strSQL));
+                return new Provider.DataAdapter(GetCM(GetCO(sKeyConnection), strSQL));
             }
             catch (Exception e)
             {
@@ -398,13 +368,13 @@ public class DataManager : MarshalByRefObject
     /// <param name="sKeyConnection"></param>
     /// <param name="strSQL"></param>
     /// <returns></returns>
-    public Provider.DataAdapter GetDA(Connection oConnection, string strSQL)
+    public Provider.DataAdapter GetDA(Connection oConnection, string strSQL, Dictionary<string, object>? parameters = null)
     {
         lock (this)
         {
             try
             {
-                return new Provider.DataAdapter(GetCM(oConnection, strSQL));
+                return new Provider.DataAdapter(GetCM(oConnection, strSQL, parameters, _iTimeoutCommand));
             }
             catch (Exception e)
             {
@@ -416,21 +386,21 @@ public class DataManager : MarshalByRefObject
     /// Viene utilizzata per creare un cDataAdapter sulla connessione specificata.
     /// </summary>
     /// <param name="sKeyConnection">Chiave di connessione</param>
-    public Provider.DataAdapter GetDA(string sKeyConnection)
-    {
-        lock (this)
-        {
-            return new Provider.DataAdapter(GetCM(sKeyConnection));
-        }
-    }
+    //public Provider.DataAdapter GetDA(string sKeyConnection)
+    //{
+    //    lock (this)
+    //    {
+    //        return new Provider.DataAdapter(GetCM(sKeyConnection));
+    //    }
+    //}
 
-    public Provider.DataAdapter GetDA(Connection oConnection)
-    {
-        lock (this)
-        {
-            return new Provider.DataAdapter(GetCM(oConnection));
-        }
-    }
+    //public Provider.DataAdapter GetDA(Connection oConnection)
+    //{
+    //    lock (this)
+    //    {
+    //        return new Provider.DataAdapter(GetCM(oConnection));
+    //    }
+    //}
     /// <summary>
     /// Restituisce la cConnection specificata.
     /// </summary>
@@ -451,23 +421,16 @@ public class DataManager : MarshalByRefObject
     {
         lock (this)
         {
-            if (_oCns.Contains(sKeyConnection))
-            {
-                DataSet odsTemp = new DataSet();
-                GetDA(sKeyConnection, strSQL).Fill(odsTemp);
-                return odsTemp;
-            }
-            else
-                return null;
+            return GetDS(GetCO(sKeyConnection), strSQL, null);
         }
     }
 
-    public DataSet GetDS(Connection oConnection, string strSQL)
+    public DataSet GetDS(Connection oConnection, string strSQL, Dictionary<string, object>? parameters = null)
     {
         lock (this)
         {
             DataSet odsTemp = new DataSet();
-            GetDA(oConnection, strSQL).Fill(odsTemp);
+            GetDA(oConnection, strSQL, parameters).Fill(odsTemp);
             return odsTemp;
         }
     }
@@ -512,36 +475,36 @@ public class DataManager : MarshalByRefObject
     /// <param name="sKeyConnection">Chiave di connessione.</param>
     /// <param name="strSQL">Istruzione SQL.</param>
     /// <param name="MappingTableName">Nome della tabella all'interno del DataSet.</param>
-    public DataSet GetDS(string sKeyConnection, string strSQL, string MappingTableName)
-    {
-        lock (this)
-        {
-            if (_oCns.Contains(sKeyConnection))
-            {
-                DataSet odsTemp = new DataSet(MappingTableName);
-                GetDA(sKeyConnection, strSQL).Fill(odsTemp, MappingTableName);
-                return odsTemp;
-            }
-            else
-                return null;
-        }
-    }
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="sKeyConnection"></param>
-    /// <param name="strSQL"></param>
-    /// <param name="MappingTableName"></param>
-    /// <returns></returns>
-    public DataSet GetDS(Connection oConnection, string strSQL, string MappingTableName)
-    {
-        lock (this)
-        {
-            DataSet odsTemp = new DataSet(MappingTableName);
-            GetDA(oConnection, strSQL).Fill(odsTemp, MappingTableName);
-            return odsTemp;
-        }
-    }
+    //public DataSet GetDS(string sKeyConnection, string strSQL, string MappingTableName)
+    //{
+    //    lock (this)
+    //    {
+    //        if (_oCns.Contains(sKeyConnection))
+    //        {
+    //            DataSet odsTemp = new DataSet(MappingTableName);
+    //            GetDA(sKeyConnection, strSQL).Fill(odsTemp, MappingTableName);
+    //            return odsTemp;
+    //        }
+    //        else
+    //            return null;
+    //    }
+    //}
+    ///// <summary>
+    ///// 
+    ///// </summary>
+    ///// <param name="sKeyConnection"></param>
+    ///// <param name="strSQL"></param>
+    ///// <param name="MappingTableName"></param>
+    ///// <returns></returns>
+    //public DataSet GetDS(Connection oConnection, string strSQL, string MappingTableName, Dictionary<string, object>? parameters = null)
+    //{
+    //    lock (this)
+    //    {
+    //        DataSet odsTemp = new DataSet(MappingTableName);
+    //        GetDA(oConnection, strSQL, parameters).Fill(odsTemp, MappingTableName);
+    //        return odsTemp;
+    //    }
+    //}
     /// <summary>
     /// Resitituisce un DataSet contenente le informazioni selezionate con l'istruzione specificata. Il DataSet conterrà una tabela denominata con il valore di MappingTableName.
     /// </summary>
@@ -549,34 +512,19 @@ public class DataManager : MarshalByRefObject
     /// <param name="strSQL">Istruzione SQL.</param>
     /// <param name="MappingTableName">Nome della tabella all'interno del DataSet.</param>
     /// <param name="dsSource">DataSet a cui aggiungere la tabella.</param>
-    public DataSet GetDS(string sKeyConnection, string strSQL, string MappingTableName, DataSet dsSource)
+    public DataSet GetDS(string sKeyConnection, string strSQL, string MappingTableName, DataSet dsSource = null)
     {
         lock (this)
         {
-            if (_oCns.Contains(sKeyConnection))
-            {
-                dsSource ??= new DataSet();
-                GetDA(sKeyConnection, strSQL).Fill(dsSource, MappingTableName);
-                return dsSource;
-            }
-            else
-                return null;
+            return GetDS(GetCO(sKeyConnection), strSQL, MappingTableName, dsSource);
         }
     }
-    /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="oConnection"></param>
-    /// <param name="strSQL"></param>
-    /// <param name="MappingTableName"></param>
-    /// <param name="dsSource"></param>
-    /// <returns></returns>
-    public DataSet GetDS(Connection oConnection, string strSQL, string MappingTableName, DataSet dsSource)
+    public DataSet GetDS(Connection oConnection, string strSQL, string MappingTableName, DataSet dsSource, Dictionary<string, object>? parameters = null)
     {
         lock (this)
         {
-            dsSource ??= new DataSet();
-            GetDA(oConnection, strSQL).Fill(dsSource, MappingTableName);
+            dsSource ??= new DataSet(MappingTableName);
+            GetDA(oConnection, strSQL, parameters).Fill(dsSource, MappingTableName);
 
             return dsSource;
         }
@@ -629,73 +577,120 @@ public class DataManager : MarshalByRefObject
             return cTMP;
         }
     }
-    /// <summary>
-    /// Invoca una Store Procedure.
-    /// </summary>
-    /// <param name="sKeyConnection">Chiave di connessione.</param>
-    /// <param name="sNameStore">Nome della procedura.</param>
-    /// <param name="ovNameFields">Lista di parametri da valorizzare.</param>
-    /// <param name="ovValueFields">Lista di valori.</param>
-    public object InvokeStore(string sKeyConnection, string sNameStore, string[] ovNameFields, object[] ovValueFields)
-    {
-        lock (this)
-        {
-            object oReturn = null;
-            if (ovNameFields.Length != ovValueFields.Length)
-                return null;
+    ///// <summary>
+    ///// Invoca una Store Procedure.
+    ///// </summary>
+    ///// <param name="sKeyConnection">Chiave di connessione.</param>
+    ///// <param name="sNameStore">Nome della procedura.</param>
+    ///// <param name="ovNameFields">Lista di parametri da valorizzare.</param>
+    ///// <param name="ovValueFields">Lista di valori.</param>
+    //public object InvokeStore(string sKeyConnection, string sNameStore, string[] ovNameFields, object[] ovValueFields)
+    //{
+    //    lock (this)
+    //    {
+    //        object oReturn = null;
+    //        if (ovNameFields.Length != ovValueFields.Length)
+    //            return null;
 
-            Command oCM = new Command(_oCns[sKeyConnection], sNameStore);
-            if (_iTimeoutCommand >= 0)
-                oCM.CommandTimeout = _iTimeoutCommand;
-            oCM.CommandType = CommandType.StoredProcedure;
-            Parameters oPS = new Parameters(_oCns[sKeyConnection], oCM);
-            for (int i = 0; i < ovNameFields.Length; i++)
-            {
-                oPS.Add(ovNameFields[i], ovValueFields[i]);
-            }
-            //
-            Parameter oP = new Parameter(_oCns[sKeyConnection]);
-            oP.ParameterName = "Return_Value";
-            oP.Direction = ParameterDirection.ReturnValue;
-            oP.DbType = DbType.Object;
-            oPS.Add(oP);
-            //
-            oCM.ExecuteNonQuery();
-            oReturn = oP.Value;
+    //        Command oCM = new Command(_oCns[sKeyConnection], sNameStore);
+    //        if (_iTimeoutCommand >= 0)
+    //            oCM.CommandTimeout = _iTimeoutCommand;
+    //        oCM.CommandType = CommandType.StoredProcedure;
+    //        Parameters oPS = new Parameters(_oCns[sKeyConnection], oCM);
+    //        for (int i = 0; i < ovNameFields.Length; i++)
+    //        {
+    //            oPS.Add(ovNameFields[i], ovValueFields[i]);
+    //        }
+    //        //
+    //        Parameter oP = new Parameter(_oCns[sKeyConnection]);
+    //        oP.ParameterName = "Return_Value";
+    //        oP.Direction = ParameterDirection.ReturnValue;
+    //        oP.DbType = DbType.Object;
+    //        oPS.Add(oP);
+    //        //
+    //        oCM.ExecuteNonQuery();
+    //        oReturn = oP.Value;
 
-            return oReturn;
-        }
-    }
+    //        return oReturn;
+    //    }
+    //}
 
-    public object InvokeStore(Connection oConnection, string sNameStore, string[] ovNameFields, object[] ovValueFields)
-    {
-        lock (this)
-        {
-            object oReturn = null;
-            if (ovNameFields.Length != ovValueFields.Length)
-                return null;
-            Command oCM = new Command(oConnection, sNameStore);
-            if (_iTimeoutCommand >= 0)
-                oCM.CommandTimeout = _iTimeoutCommand;
-            oCM.CommandType = CommandType.StoredProcedure;
-            Parameters oPS = new Parameters(oConnection, oCM);
-            for (int i = 0; i < ovNameFields.Length; i++)
-            {
-                oPS.Add(ovNameFields[i], ovValueFields[i]);
-            }
-            //
-            Parameter oP = new Parameter(oConnection);
-            oP.ParameterName = "Return_Value";
-            oP.Direction = ParameterDirection.ReturnValue;
-            oP.DbType = DbType.Object;
-            oPS.Add(oP);
-            //
-            oCM.ExecuteNonQuery();
-            oReturn = oP.Value;
+    //public object InvokeStore(Connection oConnection, string sNameStore, string[] ovNameFields, object[] ovValueFields)
+    //{
+    //    lock (this)
+    //    {
+    //        object oReturn = null;
+    //        if (ovNameFields.Length != ovValueFields.Length)
+    //            return null;
+    //        Command oCM = new Command(oConnection, sNameStore);
+    //        if (_iTimeoutCommand >= 0)
+    //            oCM.CommandTimeout = _iTimeoutCommand;
+    //        oCM.CommandType = CommandType.StoredProcedure;
+    //        Parameters oPS = new Parameters(oConnection, oCM);
+    //        for (int i = 0; i < ovNameFields.Length; i++)
+    //        {
+    //            oPS.Add(ovNameFields[i], ovValueFields[i]);
+    //        }
+    //        //
+    //        Parameter oP = new Parameter(oConnection);
+    //        oP.ParameterName = "Return_Value";
+    //        oP.Direction = ParameterDirection.ReturnValue;
+    //        oP.DbType = DbType.Object;
+    //        oPS.Add(oP);
+    //        //
+    //        oCM.ExecuteNonQuery();
+    //        oReturn = oP.Value;
 
-            return oReturn;
-        }
-    }
+    //        return oReturn;
+    //    }
+    //}
+
+
+
+    //public DataTable Invoke(Connection oConnection, string sSQL, params Parameter[] oParams)
+    //{
+    //    lock (this)
+    //    {
+    //        IDataReader oDataReader;
+    //        DataTable _oDt = null;
+
+    //        Command oCM = new Command(oConnection, sSQL);
+    //        if (_iTimeoutCommand >= 0)
+    //            oCM.CommandTimeout = _iTimeoutCommand;
+    //        //oCM.CommandType = oCommandType;
+    //        Parameters oPS = new Parameters(oConnection, oCM);
+    //        for (int i = 0; i < oParams.Length; i++)
+    //        {
+    //            Parameter oP = new Parameter(oConnection);
+    //            oP.DbType = oParams[i].DbType;
+    //            oP.Direction = oParams[i].Direction;
+    //            oP.ParameterName = oParams[i].ParameterName;
+    //            oP.Value = oParams[i].Value;
+    //            oPS.Add(oP);
+    //        }
+    //        //
+    //        oDataReader = oCM.ExecuteReader();
+    //        if (oDataReader != null)
+    //        {
+    //            try
+    //            {
+    //                _oDt = new DataTable();
+    //                _oDt.Load(oDataReader);
+    //            }
+    //            catch
+    //            { }
+    //            finally
+    //            {
+    //                oDataReader.Close();
+    //            }
+    //        }
+    //        //
+    //        for (int i = 0; oCM.Parameters != null && i < oCM.Parameters.Count; i++)
+    //            oParams[i].IDataParameter = oCM.Parameters[i] as IDataParameter;
+
+    //        return _oDt;
+    //    }
+    //}
 
     /// <summary>
     /// Invoca una Store Procedure.
@@ -703,53 +698,26 @@ public class DataManager : MarshalByRefObject
     /// <param name="sKeyConnection">Chiave di connessione.</param>
     /// <param name="sNameStore">Nome della procedura.</param>
     /// <param name="oParams">Lista di parametri.</param>
-    public DataTable InvokeStore(string sKeyConnection, string sNameStore, params Parameter[] oParams)
+    //public DataTable? InvokeStore(string sKeyConnection, string sNameStore, params Parameter[] oParams)
+    //{
+    //    lock (this)
+    //    {
+    //        return InvokeStore(GetCO(sKeyConnection), sNameStore, oParams.ToArray<Parameter[]>);
+    //    }
+    //}
+    public DataTable? InvokeStore(Connection oConnection, string sNameStore, Parameter[]? oParams = null)
     {
         lock (this)
         {
-            IDataReader oDataReader;
-            DataTable _oDt = null;
-
-            Command oCM = new Command(_oCns[sKeyConnection], sNameStore);
-            if (_iTimeoutCommand >= 0)
-                oCM.CommandTimeout = _iTimeoutCommand;
-            oCM.CommandType = CommandType.StoredProcedure;
-            Parameters oPS = new Parameters(_oCns[sKeyConnection], oCM);
-            for (int i = 0; i < oParams.Length; i++)
-            {
-                Parameter oP = new Parameter(_oCns[sKeyConnection]);
-                oP.DbType = oParams[i].DbType;
-                oP.Direction = oParams[i].Direction;
-                oP.ParameterName = oParams[i].ParameterName;
-                oP.Value = oParams[i].Value;
-                oPS.Add(oP);
-            }
-            //
-            oDataReader = oCM.ExecuteReader();
-            if (oDataReader != null)
-            {
-                _oDt = new DataTable();
-                _oDt.Load(oDataReader);
-                oDataReader.Close();
-            }
-            for (int i = 0; oCM.Parameters != null && i < oCM.Parameters.Count; i++)
-                oParams[i].IDataParameter = oCM.Parameters[i] as IDataParameter;
-
-            return _oDt;
+            return Invoke(oConnection, sNameStore, oParams, CommandType.StoredProcedure);
         }
     }
-
-    public DataTable Invoke(Connection oConnection, string sSQL, params Parameter[] oParams)
+    public DataTable? Invoke(Connection oConnection, string sNameStore, Parameter[]? oParams = null, CommandType commandType = CommandType.Text)
     {
         lock (this)
         {
-            IDataReader oDataReader;
-            DataTable _oDt = null;
-
-            Command oCM = new Command(oConnection, sSQL);
-            if (_iTimeoutCommand >= 0)
-                oCM.CommandTimeout = _iTimeoutCommand;
-            //oCM.CommandType = oCommandType;
+            Command oCM = GetCM(oConnection, sNameStore);
+            oCM.CommandType = commandType; // CommandType.StoredProcedure;
             Parameters oPS = new Parameters(oConnection, oCM);
             for (int i = 0; i < oParams.Length; i++)
             {
@@ -760,8 +728,8 @@ public class DataManager : MarshalByRefObject
                 oP.Value = oParams[i].Value;
                 oPS.Add(oP);
             }
-            //
-            oDataReader = oCM.ExecuteReader();
+            IDataReader oDataReader = oCM.ExecuteReader();
+            DataTable? _oDt = null;
             if (oDataReader != null)
             {
                 try
@@ -779,53 +747,6 @@ public class DataManager : MarshalByRefObject
             //
             for (int i = 0; oCM.Parameters != null && i < oCM.Parameters.Count; i++)
                 oParams[i].IDataParameter = oCM.Parameters[i] as IDataParameter;
-
-            return _oDt;
-        }
-    }
-
-
-    public DataTable InvokeStore(Connection oConnection, string sNameStore, params Parameter[] oParams)
-    {
-        lock (this)
-        {
-            IDataReader oDataReader;
-            DataTable _oDt = null;
-
-            Command oCM = new Command(oConnection, sNameStore);
-            if (_iTimeoutCommand >= 0)
-                oCM.CommandTimeout = _iTimeoutCommand;
-            oCM.CommandType = CommandType.StoredProcedure;
-            Parameters oPS = new Parameters(oConnection, oCM);
-            for (int i = 0; i < oParams.Length; i++)
-            {
-                Parameter oP = new Parameter(oConnection);
-                oP.DbType = oParams[i].DbType;
-                oP.Direction = oParams[i].Direction;
-                oP.ParameterName = oParams[i].ParameterName;
-                oP.Value = oParams[i].Value;
-                oPS.Add(oP);
-            }
-            //
-            oDataReader = oCM.ExecuteReader();
-            if (oDataReader != null)
-            {
-                try
-                {
-                    _oDt = new DataTable();
-                    _oDt.Load(oDataReader);
-                }
-                catch
-                { }
-                finally
-                {
-                    oDataReader.Close();
-                }
-            }
-            //
-            for (int i = 0; oCM.Parameters != null && i < oCM.Parameters.Count; i++)
-                oParams[i].IDataParameter = oCM.Parameters[i] as IDataParameter;
-
             return _oDt;
         }
     }
@@ -861,50 +782,50 @@ public class DataManager : MarshalByRefObject
     /// Carica i providers con le relative connessioni.
     /// </summary>
     /// <param name="sFile">File di configurazione.</param>
-    public void Load(string sFile)
-    {
-        XML oRegSchema = new XML();
-        sFile = FileManager.GetPathRoot(FileManager.NormalizePath(sFile));
-        //
-        oRegSchema.Load(sFile);
-        //
-        Load(oRegSchema);
-    }
-    /// <summary>
-    /// Carica i providers con le relative connessioni.
-    /// </summary>
-    /// <param name="oXMLManager">Manager del file di configurazione.</param>
-    public void Load(XML oXMLManager)
-    {
-        string[] sProvidersKey = oXMLManager.GetX("/registry/providers/provider/@name");
-        string[] sConnectionsKey = oXMLManager.GetX("/registry/connections/connection/@name");
-        string[] sInclusions = oXMLManager.GetX("/registry/inclusions/include/@filename");
-        //
-        // Providers inclusi nel file di configurazione.
-        for (int i = 0; sProvidersKey != null && i < sProvidersKey.Length; i++)
-        {
-            string[] sClassName = oXMLManager.GetX("/registry/providers/provider[@name='" + sProvidersKey[i] + "']/@classname");
-            string[] sAssembly = oXMLManager.GetX("/registry/providers/provider[@name='" + sProvidersKey[i] + "']/@assemblyname");
-            //
-            sAssembly[0] = FileManager.GetPathRoot(FileManager.NormalizePath(sAssembly[0]));
-            this.Providers.Add(sProvidersKey[i], sClassName[0], sAssembly[0]);
-        }
-        //
-        // Connessioni incluse nel file di configurazione.
-        for (int i = 0; sConnectionsKey != null && i < sConnectionsKey.Length; i++)
-        {
-            string[] sString = oXMLManager.GetX("/registry/connections/connection[@name='" + sConnectionsKey[i] + "']/@string");
-            string[] sType = oXMLManager.GetX("/registry/connections/connection[@name='" + sConnectionsKey[i] + "']/@type");
-            string[] sOpenType = oXMLManager.GetX("/registry/connections/connection[@name='" + sConnectionsKey[i] + "']/@opentype");
-            if (sString == null || sType == null)
-                throw (new Exception());
-            this.Connections.Add(sConnectionsKey[i], sType[0].ToLower(), sString[0]);
-        }
-        //
-        // Fine inclusi nel file di configurazione.
-        for (int i = 0; sInclusions != null && i < sInclusions.Length; i++)
-        {
-            this._Inclusions.Set(sInclusions[i], null);
-        }
-    }
+    //public void Load(string sFile)
+    //{
+    //    XML oRegSchema = new XML();
+    //    sFile = FileManager.GetPathRoot(FileManager.NormalizePath(sFile));
+    //    //
+    //    oRegSchema.Load(sFile);
+    //    //
+    //    Load(oRegSchema);
+    //}
+    ///// <summary>
+    ///// Carica i providers con le relative connessioni.
+    ///// </summary>
+    ///// <param name="oXMLManager">Manager del file di configurazione.</param>
+    //public void Load(XML oXMLManager)
+    //{
+    //    string[] sProvidersKey = oXMLManager.GetX("/registry/providers/provider/@name");
+    //    string[] sConnectionsKey = oXMLManager.GetX("/registry/connections/connection/@name");
+    //    string[] sInclusions = oXMLManager.GetX("/registry/inclusions/include/@filename");
+    //    //
+    //    // Providers inclusi nel file di configurazione.
+    //    for (int i = 0; sProvidersKey != null && i < sProvidersKey.Length; i++)
+    //    {
+    //        string[] sClassName = oXMLManager.GetX("/registry/providers/provider[@name='" + sProvidersKey[i] + "']/@classname");
+    //        string[] sAssembly = oXMLManager.GetX("/registry/providers/provider[@name='" + sProvidersKey[i] + "']/@assemblyname");
+    //        //
+    //        sAssembly[0] = FileManager.GetPathRoot(FileManager.NormalizePath(sAssembly[0]));
+    //        this.Providers.Add(sProvidersKey[i], sClassName[0], sAssembly[0]);
+    //    }
+    //    //
+    //    // Connessioni incluse nel file di configurazione.
+    //    for (int i = 0; sConnectionsKey != null && i < sConnectionsKey.Length; i++)
+    //    {
+    //        string[] sString = oXMLManager.GetX("/registry/connections/connection[@name='" + sConnectionsKey[i] + "']/@string");
+    //        string[] sType = oXMLManager.GetX("/registry/connections/connection[@name='" + sConnectionsKey[i] + "']/@type");
+    //        string[] sOpenType = oXMLManager.GetX("/registry/connections/connection[@name='" + sConnectionsKey[i] + "']/@opentype");
+    //        if (sString == null || sType == null)
+    //            throw (new Exception());
+    //        this.Connections.Add(sConnectionsKey[i], sType[0].ToLower(), sString[0]);
+    //    }
+    //    //
+    //    // Fine inclusi nel file di configurazione.
+    //    for (int i = 0; sInclusions != null && i < sInclusions.Length; i++)
+    //    {
+    //        this._Inclusions.Set(sInclusions[i], null);
+    //    }
+    //}
 }
