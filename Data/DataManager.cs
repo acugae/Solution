@@ -719,7 +719,7 @@ public class DataManager : MarshalByRefObject
             Command oCM = GetCM(oConnection, sNameStore);
             oCM.CommandType = commandType; // CommandType.StoredProcedure;
             Parameters oPS = new Parameters(oConnection, oCM);
-            for (int i = 0; i < oParams.Length; i++)
+            for (int i = 0; oParams is not null && i < oParams.Length; i++)
             {
                 Parameter oP = new Parameter(oConnection);
                 oP.DbType = oParams[i].DbType;
