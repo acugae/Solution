@@ -14,7 +14,7 @@ public class DataManager : MarshalByRefObject
     protected Transactions _oTrs = null;
     protected GCollection<string, string> _Inclusions = new GCollection<string, string>();
 
-    protected int _iTimeoutCommand = -1;
+    //protected int _iTimeoutCommand = -1;
 
     //public override object InitializeLifetimeService()
     //{
@@ -48,11 +48,11 @@ public class DataManager : MarshalByRefObject
     /// <summary>
     /// Imposta il timeout dei comandi.
     /// </summary>
-    public int TimeoutCommand
-    {
-        set { _iTimeoutCommand = value; }
-        get { return _iTimeoutCommand; }
-    }
+    //public int TimeoutCommand
+    //{
+    //    set { _iTimeoutCommand = value; }
+    //    get { return _iTimeoutCommand; }
+    //}
     /// <summary>
     /// Restituisce i providers.
     /// </summary>
@@ -111,13 +111,13 @@ public class DataManager : MarshalByRefObject
             return ExecuteReader(GetCO(sKeyConnection), strSQL, strParams);
         }
     }
-    public DataReader ExecuteReader(Connection oConnection, string strSQL, string strParams)
+    public DataReader ExecuteReader(Connection oConnection, string strSQL, string strParams, int? timeout = null)
     {
         lock (this)
         {
             try
             {
-                Command oCMD = GetCM(oConnection, strSQL, null, _iTimeoutCommand);
+                Command oCMD = GetCM(oConnection, strSQL, null, timeout);
                 oCMD.Parameters.AddParameterString(strParams);
                 return new DataReader(oCMD.ExecuteReader());
             }
@@ -140,13 +140,13 @@ public class DataManager : MarshalByRefObject
             return ExecuteScalar(GetCO(sKeyConnection), strSQL, strParams);
         }
     }
-    public object ExecuteScalar(Connection oConnection, string strSQL, string strParams)
+    public object ExecuteScalar(Connection oConnection, string strSQL, string strParams, int? timeout = null)
     {
         lock (this)
         {
             try
             {
-                Command oCMD = GetCM(oConnection, strSQL, null, _iTimeoutCommand);
+                Command oCMD = GetCM(oConnection, strSQL, null, timeout);
                 oCMD.Parameters.AddParameterString(strParams);
                 return oCMD.ExecuteScalar();
             }
@@ -169,11 +169,11 @@ public class DataManager : MarshalByRefObject
             return ExecuteNonQuery(GetCO(sKeyConnection), strSQL, strParams);
         }
     }
-    public int ExecuteNonQuery(Connection oConnection, string strSQL, string strParams)
+    public int ExecuteNonQuery(Connection oConnection, string strSQL, string strParams, int? timeout = null)
     {
         lock (this)
         {
-            Command oCMD = GetCM(oConnection, strSQL, null, _iTimeoutCommand);
+            Command oCMD = GetCM(oConnection, strSQL, null, timeout);
             oCMD.Parameters.AddParameterString(strParams);
             return oCMD.ExecuteNonQuery();
         }
@@ -348,13 +348,13 @@ public class DataManager : MarshalByRefObject
     /// </summary>
     /// <param name="sKeyConnection">Chiave di connessione</param>
     /// <param name="strSQL">stringa SQL</param>
-    public Provider.DataAdapter GetDA(string sKeyConnection, string strSQL)
+    public Provider.DataAdapter GetDA(string sKeyConnection, string strSQL, int? timeout = null)
     {
         lock (this)
         {
             try
             {
-                return new Provider.DataAdapter(GetCM(GetCO(sKeyConnection), strSQL));
+                return new Provider.DataAdapter(GetCM(GetCO(sKeyConnection), strSQL, null, timeout));
             }
             catch (Exception e)
             {
@@ -368,13 +368,13 @@ public class DataManager : MarshalByRefObject
     /// <param name="sKeyConnection"></param>
     /// <param name="strSQL"></param>
     /// <returns></returns>
-    public Provider.DataAdapter GetDA(Connection oConnection, string strSQL, Dictionary<string, object>? parameters = null)
+    public Provider.DataAdapter GetDA(Connection oConnection, string strSQL, Dictionary<string, object>? parameters = null, int? timeout = null)
     {
         lock (this)
         {
             try
             {
-                return new Provider.DataAdapter(GetCM(oConnection, strSQL, parameters, _iTimeoutCommand));
+                return new Provider.DataAdapter(GetCM(oConnection, strSQL, parameters, timeout));
             }
             catch (Exception e)
             {
@@ -712,11 +712,11 @@ public class DataManager : MarshalByRefObject
             return Invoke(oConnection, sNameStore, oParams, CommandType.StoredProcedure);
         }
     }
-    public DataTable? Invoke(Connection oConnection, string sNameStore, Parameter[]? oParams = null, CommandType commandType = CommandType.Text)
+    public DataTable? Invoke(Connection oConnection, string sNameStore, Parameter[]? oParams = null, CommandType commandType = CommandType.Text, int? timeout = null)
     {
         lock (this)
         {
-            Command oCM = GetCM(oConnection, sNameStore);
+            Command oCM = GetCM(oConnection, sNameStore, null, timeout);
             oCM.CommandType = commandType; // CommandType.StoredProcedure;
             Parameters oPS = new Parameters(oConnection, oCM);
             for (int i = 0; oParams is not null && i < oParams.Length; i++)
