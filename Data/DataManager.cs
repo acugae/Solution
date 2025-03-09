@@ -343,6 +343,35 @@ public class DataManager : MarshalByRefObject
             }
         }
     }
+
+    public async Task<Command> GetCMAsync(Connection connection, string cmdText, Dictionary<string, object>? parameters = null, int? timeout = null)
+    {
+        return await Task.Run(() =>
+        {
+            lock (this)
+            {
+                try
+                {
+                    Command oCMD = new Command(connection, cmdText);
+                    if (timeout is not null && timeout > 0)
+                        oCMD.CommandTimeout = (int)timeout; // _iTimeoutCommand;
+                    if (parameters != null)
+                    {
+                        foreach (var param in parameters)
+                        {
+                            oCMD.Parameters.Add(param.Key, param.Value ?? DBNull.Value);
+                        }
+                    }
+                    return oCMD;
+                }
+                catch (Exception e)
+                {
+                    //if (_oCns[sKeyConnection].State == ConnectionState.Open) _oCns[sKeyConnection].Close();
+                    throw (e);
+                }
+            }
+        });
+    }
     /// <summary>
     /// Viene utilizzata per creare un cDataAdapter sulla connessione specificata.
     /// </summary>

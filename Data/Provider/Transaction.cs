@@ -3,82 +3,52 @@ namespace Solution.Data.Provider;
 /// <summary>
 /// Classe per la gestione della transazione.
 /// </summary>
-public class Transaction : System.Data.IDbTransaction
+public class Transaction : DbTransaction
 {
-    private IDbTransaction _Transaction;
-    private Connection oCn;
+    private readonly DbTransaction _transaction;
+    private bool _isDisposed;
 
-    public System.Data.IDbConnection Connection
+    public Transaction(DbTransaction transaction)
     {
-        get { return oCn.IDbConnection; }
+        _transaction = transaction ?? throw new ArgumentNullException(nameof(transaction));
+        _isDisposed = false;
     }
 
-    public void Dispose()
+    public override IsolationLevel IsolationLevel => _transaction.IsolationLevel;
+
+    protected override DbConnection DbConnection => _transaction.Connection;
+
+    public override void Commit()
     {
+        ThrowIfDisposed();
+        _transaction.Commit();
     }
 
-    public Transaction(Connection oCn)
+    public override void Rollback()
     {
-        this.oCn = oCn;
-        _Transaction = oCn.BeginTransaction();
+        ThrowIfDisposed();
+        _transaction.Rollback();
     }
 
-    public Transaction(Connection oCn, System.Data.IsolationLevel il)
+    protected override void Dispose(bool disposing)
     {
-        this.oCn = oCn;
-        _Transaction = oCn.BeginTransaction(il);
+        if (!_isDisposed)
+        {
+            if (disposing)
+            {
+                _transaction.Dispose();
+            }
+
+            _isDisposed = true;
+            base.Dispose(disposing);
+        }
     }
 
-    public void Commit()
+    private void ThrowIfDisposed()
     {
-        _Transaction.Commit();
+        if (_isDisposed)
+        {
+            throw new ObjectDisposedException(nameof(Transaction));
+        }
     }
-
-    public void Rollback()
-    {
-        _Transaction.Rollback();
-    }
-
-    public System.Data.IDbTransaction IDbTransaction
-    {
-        get { return _Transaction; }
-    }
-
-    public System.Data.IsolationLevel IsolationLevel
-    {
-        get { return _Transaction.IsolationLevel; }
-    }
-
-    #region IDbTransaction Members
-
-    void IDbTransaction.Commit()
-    {
-        throw new NotImplementedException();
-    }
-
-    IDbConnection IDbTransaction.Connection
-    {
-        get { throw new NotImplementedException(); }
-    }
-
-    IsolationLevel IDbTransaction.IsolationLevel
-    {
-        get { throw new NotImplementedException(); }
-    }
-
-    void IDbTransaction.Rollback()
-    {
-        throw new NotImplementedException();
-    }
-
-    #endregion
-
-    #region IDisposable Members
-
-    void IDisposable.Dispose()
-    {
-        throw new NotImplementedException();
-    }
-
-    #endregion
 }

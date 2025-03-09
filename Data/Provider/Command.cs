@@ -3,15 +3,19 @@ namespace Solution.Data.Provider;
 /// <summary>
 /// Classe per la gestione del Command.
 /// </summary>
-public class Command //: System.Data.IDbCommand
+public class Command //: DbCommand
 {
     private Connection _Connection;
-    private IDbCommand _Command;
+    private DbCommand _Command;
     private Parameters oParas;
 
     public Connection Connection
     {
         get { return _Connection; }
+    }
+    public DbCommand DbCommand
+    {
+        get { return _Command; }
     }
     /// <summary>
     /// Inizializza l'istanza della classe.
@@ -46,13 +50,13 @@ public class Command //: System.Data.IDbCommand
     /// <param name="oConnection">Connessione su cui lavorare.</param>
     /// <param name="cmdText">Comando SQL.</param>
     /// <param name="oTransaction">Transazione su cui lavorare.</param>
-    public Command(Connection oConnection, string cmdText, Transaction oTransaction)
-    {
-        _Connection = oConnection;
-        _Command = oConnection.Provider.CreateCommand(cmdText, oConnection.IDbConnection, oTransaction.IDbTransaction);
-        _Command.CommandTimeout = oConnection.ConnectionTimeout;
-        oParas = new Parameters(this._Connection, _Command);
-    }
+    //public Command(Connection oConnection, string cmdText, Transaction oTransaction)
+    //{
+    //    _Connection = oConnection;
+    //    _Command = oConnection.Provider.CreateCommand(cmdText, oConnection.IDbConnection, oTransaction.DbTransaction);
+    //    _Command.CommandTimeout = oConnection.ConnectionTimeout;
+    //    oParas = new Parameters(this._Connection, _Command);
+    //}
     /// <summary>
     /// 
     /// </summary>
@@ -93,6 +97,10 @@ public class Command //: System.Data.IDbCommand
     public System.Data.IDataReader ExecuteReader()
     {
         return _Command.ExecuteReader();
+    }
+    public async Task<System.Data.IDataReader> ExecuteReaderAsync()
+    {
+        return await _Command.ExecuteReaderAsync();
     }
     /// <summary>
     /// 
@@ -150,7 +158,7 @@ public class Command //: System.Data.IDbCommand
     /// <summary>
     /// 
     /// </summary>
-    public System.Data.IDbTransaction Transaction
+    public DbTransaction Transaction
     {
         get { return _Command.Transaction; }
         set { _Command.Transaction = value; }

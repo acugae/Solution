@@ -3,16 +3,16 @@ namespace Solution.Data.Provider;
 /// <summary>
 /// Classe per la gestione della connessione.
 /// </summary>
-public class Connection : System.Data.IDbConnection
+public class Connection 
 {
     private Provider _Provider;
-    private System.Data.IDbConnection _Connection;
-    private System.Data.IDbTransaction _Transaction;
+    private DbConnection _Connection;
+    private DbTransaction _Transaction;
     private string _strKey;
     /// <summary>
     /// Ritona la transazione sulla connessione, altrimenti null.
     /// </summary>
-    public System.Data.IDbTransaction Transaction
+    public DbTransaction Transaction
     {
         get { return _Transaction; }
     }
@@ -77,7 +77,7 @@ public class Connection : System.Data.IDbConnection
     /// </summary>
     /// <param name="il"></param>
     /// <returns>Transazione risultante.</returns>
-    public System.Data.IDbTransaction BeginTransaction(System.Data.IsolationLevel il)
+    public DbTransaction BeginTransaction(System.Data.IsolationLevel il)
     {
         _Transaction = _Connection.BeginTransaction(il);
         return _Transaction;
@@ -86,7 +86,7 @@ public class Connection : System.Data.IDbConnection
     /// Inizia una transazione sull'istanza.
     /// </summary>
     /// <returns>Transazione risultante.</returns>
-    public System.Data.IDbTransaction BeginTransaction()
+    public DbTransaction BeginTransaction()
     {
         _Transaction = _Connection.BeginTransaction();
         return _Transaction;
@@ -112,7 +112,7 @@ public class Connection : System.Data.IDbConnection
     /// </summary>
     /// <returns></returns>
     //[WebMethod(true)]
-    public System.Data.IDbCommand CreateCommand()
+    public DbCommand CreateCommand()
     {
         return _Connection.CreateCommand();
     }
@@ -177,7 +177,7 @@ public class Connection : System.Data.IDbConnection
     /// <summary>
     /// 
     /// </summary>
-    public IDbConnection IDbConnection
+    public DbConnection IDbConnection
     {
         get { return _Connection; }
     }

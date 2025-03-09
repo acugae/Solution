@@ -33,7 +33,7 @@ public class DataAdapter : System.Data.IDbDataAdapter
     public DataAdapter(Command oCmd)
     {
         this.oCn = oCmd.Connection;
-        _DataAdapter = oCn.Provider.CreateDataAdapter(oCmd.IDbCommand);
+        _DataAdapter = oCn.Provider.CreateDataAdapter(oCmd.DbCommand);
     }
     /// <summary>
     /// 

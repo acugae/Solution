@@ -5,17 +5,12 @@ public class Provider
 {
     private string _strKey;
     private object _Instance;
-
     public string Key
     {
         get { return _strKey; }
         set { _strKey = value; }
     }
-
-#if (!MOBILE)
-
     public Provider() { }
-
     public Provider(string sKeyProvider, string sClassFactoryName, string sFilename)
     {
         try
@@ -24,7 +19,7 @@ public class Provider
             if (sFilename == null)
             {
                 if (sKeyProvider.ToLower().Equals("sqldb"))
-                    _Instance = SqlClientFactory.Instance;
+                    _Instance = Microsoft.Data.SqlClient.SqlClientFactory.Instance;
                 if (sKeyProvider.ToLower().Equals("mysdb"))
                     _Instance = MySql.Data.MySqlClient.MySqlClientFactory.Instance;
                 if (sKeyProvider.ToLower().Equals("pstdb"))
@@ -48,31 +43,13 @@ public class Provider
             throw new SystemException(e.InnerException.Message, e.InnerException);
         }
     }
-#else
-        int indexProvider = -1;
-        public cProvider(string sKeyProvider, string sClassFactoryName, string sFilename)
-        {
-            try
-            {
-                _strKey = sKeyProvider;
-                if (sKeyProvider.ToLower().Trim().Equals("sqlce"))
-                    indexProvider = 0;
-                else if (sKeyProvider.ToLower().Trim().Equals("sqldb"))
-                    indexProvider = 1;
-            }
-            catch (TargetInvocationException e)
-            {
-                throw new SystemException(e.InnerException.Message, e.InnerException);
-            }
-        }
-#endif
 
     #region IDbConnection methods
-    public IDbConnection CreateConnection()
+    public DbConnection? CreateConnection()
     {
         try
         {
-            return (IDbConnection)((DbProviderFactory)_Instance).CreateConnection();
+            return ((DbProviderFactory)_Instance).CreateConnection();
         }
         catch (TargetInvocationException e)
         {
@@ -82,11 +59,11 @@ public class Provider
     #endregion
 
     #region IDbCommand methods
-    public IDbCommand CreateCommand()
+    public DbCommand? CreateCommand()
     {
         try
         {
-            return (IDbCommand)((DbProviderFactory)_Instance).CreateCommand();
+            return ((DbProviderFactory)_Instance).CreateCommand();
         }
         catch (TargetInvocationException e)
         {
@@ -94,11 +71,11 @@ public class Provider
         }
     }
 
-    public IDbCommand CreateCommand(string cmdText)
+    public DbCommand CreateCommand(string cmdText)
     {
         try
         {
-            IDbCommand cmd = CreateCommand();
+            DbCommand cmd = CreateCommand();
             cmd.CommandText = cmdText;
             return cmd;
         }
@@ -108,11 +85,13 @@ public class Provider
         }
     }
     //
-    public IDbCommand CreateCommand(string cmdText, IDbConnection connection)
+    public DbCommand CreateCommand(string cmdText, DbConnection connection)
     {
         try
         {
-            IDbCommand cmd = CreateCommand();
+            DbCommand? cmd = CreateCommand();
+            if (cmd is null)
+                return null;
             cmd.CommandText = cmdText;
             cmd.Connection = connection;
             return cmd;
@@ -123,11 +102,13 @@ public class Provider
         }
     }
     //
-    public IDbCommand CreateCommand(string cmdText, IDbConnection connection, IDbTransaction transaction)
+    public DbCommand? CreateCommand(string cmdText, DbConnection connection, DbTransaction transaction)
     {
         try
         {
-            IDbCommand cmd = CreateCommand();
+            DbCommand? cmd = CreateCommand();
+            if (cmd is null)
+                return null;
             cmd.CommandText = cmdText;
             cmd.Connection = connection;
             cmd.Transaction = transaction;
@@ -141,11 +122,11 @@ public class Provider
     #endregion
 
     #region IDbDataAdapter methods
-    public IDbDataAdapter CreateDataAdapter()
+    public DbDataAdapter CreateDataAdapter()
     {
         try
         {
-            return (IDbDataAdapter)((DbProviderFactory)_Instance).CreateDataAdapter();
+            return (DbDataAdapter)((DbProviderFactory)_Instance).CreateDataAdapter();
         }
         catch (TargetInvocationException e)
         {
@@ -153,11 +134,11 @@ public class Provider
         }
     }
     //
-    public IDbDataAdapter CreateDataAdapter(IDbCommand selectCommand)
+    public DbDataAdapter CreateDataAdapter(DbCommand selectCommand)
     {
         try
         {
-            IDbDataAdapter da = CreateDataAdapter();
+            DbDataAdapter da = CreateDataAdapter();
             da.SelectCommand = selectCommand;
             return da;
         }
@@ -167,7 +148,7 @@ public class Provider
         }
     }
     //
-    public IDbDataAdapter CreateDataAdapter(string selectCommandText, IDbConnection selectConnection)
+    public DbDataAdapter CreateDataAdapter(string selectCommandText, DbConnection selectConnection)
     {
         try
         {
@@ -180,16 +161,12 @@ public class Provider
     }
     #endregion
 
-    #region IDbDataParameter methods
-    public IDbDataParameter CreateDataParameter()
+    #region DbParameter methods
+    public DbParameter CreateDataParameter()
     {
         try
         {
-#if (!MOBILE)
-            return (IDbDataParameter)((DbProviderFactory)_Instance).CreateParameter();
-#else
-                return (IDbDataParameter)Activator.CreateInstance(_dataParameterTypes[indexProvider]);
-#endif
+            return (DbParameter)((DbProviderFactory)_Instance).CreateParameter();
         }
         catch (TargetInvocationException e)
         {
@@ -197,11 +174,11 @@ public class Provider
         }
         return null;
     }
-    public IDbDataParameter CreateDataParameter(string parameterName, object value)
+    public DbParameter CreateDataParameter(string parameterName, object value)
     {
         try
         {
-            IDbDataParameter param = CreateDataParameter();
+            DbParameter param = CreateDataParameter();
             param.ParameterName = parameterName;
             param.Value = value;
             return param;
@@ -211,9 +188,9 @@ public class Provider
             throw new SystemException(e.InnerException.Message, e.InnerException);
         }
     }
-    public IDbDataParameter CreateDataParameter(string parameterName, DbType dataType)
+    public DbParameter CreateDataParameter(string parameterName, DbType dataType)
     {
-        IDbDataParameter param = CreateDataParameter();
+        DbParameter param = CreateDataParameter();
         if (param != null)
         {
             param.ParameterName = parameterName;
@@ -221,9 +198,9 @@ public class Provider
         }
         return param;
     }
-    public IDbDataParameter CreateDataParameter(string parameterName, DbType dataType, int size)
+    public DbParameter CreateDataParameter(string parameterName, DbType dataType, int size)
     {
-        IDbDataParameter param = CreateDataParameter();
+        DbParameter param = CreateDataParameter();
         if (param != null)
         {
             param.ParameterName = parameterName;
@@ -232,9 +209,9 @@ public class Provider
         }
         return param;
     }
-    public IDbDataParameter CreateDataParameter(string parameterName, DbType dataType, int size, string sourceColumn)
+    public DbParameter CreateDataParameter(string parameterName, DbType dataType, int size, string sourceColumn)
     {
-        IDbDataParameter param = CreateDataParameter();
+        DbParameter param = CreateDataParameter();
         if (param != null)
         {
             param.ParameterName = parameterName;
