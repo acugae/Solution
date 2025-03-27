@@ -1,10 +1,10 @@
 namespace Solution.Data.Provider;
 
 
-public class Provider
+public class  Provider
 {
     private string _strKey;
-    private object _Instance;
+    private DbProviderFactory? _Instance;
     public string Key
     {
         get { return _strKey; }
@@ -35,7 +35,7 @@ public class Provider
             else
             {
                 Assembly oAss = Assembly.LoadFile(sFilename);
-                Type oType = oAss.GetType(sClassFactoryName);
+                Type? oType = oAss.GetType(sClassFactoryName);
             }
         }
         catch (TargetInvocationException e)
@@ -49,7 +49,7 @@ public class Provider
     {
         try
         {
-            return ((DbProviderFactory)_Instance).CreateConnection();
+            return _Instance.CreateConnection();
         }
         catch (TargetInvocationException e)
         {
@@ -63,7 +63,7 @@ public class Provider
     {
         try
         {
-            return ((DbProviderFactory)_Instance).CreateCommand();
+            return _Instance.CreateCommand();
         }
         catch (TargetInvocationException e)
         {
@@ -122,11 +122,11 @@ public class Provider
     #endregion
 
     #region IDbDataAdapter methods
-    public DbDataAdapter CreateDataAdapter()
+    public DbDataAdapter? CreateDataAdapter()
     {
         try
         {
-            return (DbDataAdapter)((DbProviderFactory)_Instance).CreateDataAdapter();
+            return _Instance.CreateDataAdapter();
         }
         catch (TargetInvocationException e)
         {
@@ -134,11 +134,11 @@ public class Provider
         }
     }
     //
-    public DbDataAdapter CreateDataAdapter(DbCommand selectCommand)
+    public DbDataAdapter? CreateDataAdapter(DbCommand selectCommand)
     {
         try
         {
-            DbDataAdapter da = CreateDataAdapter();
+            DbDataAdapter? da = CreateDataAdapter();
             da.SelectCommand = selectCommand;
             return da;
         }
@@ -148,7 +148,7 @@ public class Provider
         }
     }
     //
-    public DbDataAdapter CreateDataAdapter(string selectCommandText, DbConnection selectConnection)
+    public DbDataAdapter? CreateDataAdapter(string selectCommandText, DbConnection selectConnection)
     {
         try
         {
@@ -162,11 +162,11 @@ public class Provider
     #endregion
 
     #region DbParameter methods
-    public DbParameter CreateDataParameter()
+    public DbParameter? CreateDataParameter()
     {
         try
         {
-            return (DbParameter)((DbProviderFactory)_Instance).CreateParameter();
+            return _Instance.CreateParameter();
         }
         catch (TargetInvocationException e)
         {
@@ -178,7 +178,7 @@ public class Provider
     {
         try
         {
-            DbParameter param = CreateDataParameter();
+            DbParameter? param = CreateDataParameter();
             param.ParameterName = parameterName;
             param.Value = value;
             return param;
@@ -188,9 +188,9 @@ public class Provider
             throw new SystemException(e.InnerException.Message, e.InnerException);
         }
     }
-    public DbParameter CreateDataParameter(string parameterName, DbType dataType)
+    public DbParameter? CreateDataParameter(string parameterName, DbType dataType)
     {
-        DbParameter param = CreateDataParameter();
+        DbParameter? param = CreateDataParameter();
         if (param != null)
         {
             param.ParameterName = parameterName;
@@ -198,9 +198,9 @@ public class Provider
         }
         return param;
     }
-    public DbParameter CreateDataParameter(string parameterName, DbType dataType, int size)
+    public DbParameter? CreateDataParameter(string parameterName, DbType dataType, int size)
     {
-        DbParameter param = CreateDataParameter();
+        DbParameter? param = CreateDataParameter();
         if (param != null)
         {
             param.ParameterName = parameterName;
@@ -209,9 +209,9 @@ public class Provider
         }
         return param;
     }
-    public DbParameter CreateDataParameter(string parameterName, DbType dataType, int size, string sourceColumn)
+    public DbParameter? CreateDataParameter(string parameterName, DbType dataType, int size, string sourceColumn)
     {
-        DbParameter param = CreateDataParameter();
+        DbParameter? param = CreateDataParameter();
         if (param != null)
         {
             param.ParameterName = parameterName;

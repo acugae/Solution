@@ -1,8 +1,5 @@
 namespace Solution.Data.Provider;
 
-/// <summary>
-/// Classe per la gestione della connessione.
-/// </summary>
 public class Connection 
 {
     private Provider _Provider;
@@ -82,31 +79,18 @@ public class Connection
         _Transaction = _Connection.BeginTransaction(il);
         return _Transaction;
     }
-    /// <summary>
-    /// Inizia una transazione sull'istanza.
-    /// </summary>
-    /// <returns>Transazione risultante.</returns>
     public DbTransaction BeginTransaction()
     {
         _Transaction = _Connection.BeginTransaction();
         return _Transaction;
     }
     /// <summary>
-    /// 
-    /// </summary>
-    /// <param name="databaseName"></param>
-    public void ChangeDatabase(System.String databaseName)
-    {
-        _Connection.ChangeDatabase(databaseName);
-    }
-    /// <summary>
-    /// 
-    /// </summary>
-    //[WebMethod(true)]
-    public void Close()
-    {
-        _Connection.Close();
-    }
+         /// 
+         /// </summary>
+         /// <param name="databaseName"></param>
+    public void ChangeDatabase(string databaseName) => _Connection.ChangeDatabase(databaseName);
+    public void Close() => _Connection.Close();
+    public async Task CloseAsync() => await _Connection.CloseAsync();
     /// <summary>
     /// Crea e ritorna un comando associato alla connessione.
     /// </summary>
@@ -136,14 +120,12 @@ public class Connection
     //[WebMethod(true)]
     public void Open()
     {
-        try
-        {
-            _Connection.Open();
-        }
-        catch (Exception ex)
-        {
-            throw (ex);
-        }
+        _Connection.Open();
+    }
+
+    public async Task OpenAsync(CancellationToken cancellationToken)
+    {
+        await _Connection.OpenAsync(cancellationToken);
     }
     /// <summary>
     /// Stringa di connessione.
@@ -182,3 +164,280 @@ public class Connection
         get { return _Connection; }
     }
 }
+
+
+/*
+using System;
+using System.Data;
+using System.Data.Common;
+using System.Threading;
+using System.Threading.Tasks;
+
+public class Connection : DbConnection
+{
+    private readonly DbConnection _innerConnection;
+    private bool _isDisposed;
+    private string _connectionString;
+    private ConnectionState _state;
+
+    // Constructors
+    public Connection(string connectionString)
+    {
+        _connectionString = connectionString ?? throw new ArgumentNullException(nameof(connectionString));
+        _state = ConnectionState.Closed;
+
+        // This is a placeholder - in a real implementation, you would need to
+        // initialize _innerConnection with a specific provider connection
+        // For example: _innerConnection = new SqlConnection(connectionString);
+        // For now, we'll throw an exception in methods that require _innerConnection
+    }
+
+    public Connection(DbConnection connection)
+    {
+        _innerConnection = connection ?? throw new ArgumentNullException(nameof(connection));
+        _connectionString = connection.ConnectionString;
+        _state = connection.State;
+    }
+
+    // DbConnection abstract properties implementation
+    public override string ConnectionString
+    {
+        get => _connectionString;
+        set
+        {
+            ThrowIfDisposed();
+            _connectionString = value;
+            if (_innerConnection != null)
+            {
+                _innerConnection.ConnectionString = value;
+            }
+        }
+    }
+
+    public override string Database
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return _innerConnection?.Database ?? string.Empty;
+        }
+    }
+
+    public override string DataSource
+    {
+        get
+        {
+            ThrowIfDisposed();
+            return _innerConnection?.DataSource ?? string.Empty;
+        }
+    }
+
+    public override string ServerVersion
+    {
+        get
+        {
+            ThrowIfDisposed();
+            EnsureConnectionIsOpen();
+            return _innerConnection?.ServerVersion ?? string.Empty;
+        }
+    }
+
+    public override ConnectionState State
+    {
+        get
+        {
+            if (_isDisposed)
+                return ConnectionState.Closed;
+
+            return _innerConnection?.State ?? _state;
+        }
+    }
+
+    // DbConnection abstract methods implementation
+    protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)
+    {
+        ThrowIfDisposed();
+        EnsureInnerConnectionExists();
+        EnsureConnectionIsOpen();
+        return new Transaction(_innerConnection.BeginTransaction(isolationLevel));
+    }
+
+    public override void ChangeDatabase(string databaseName)
+    {
+        ThrowIfDisposed();
+        EnsureInnerConnectionExists();
+        EnsureConnectionIsOpen();
+        _innerConnection.ChangeDatabase(databaseName);
+    }
+
+    public override void Close()
+    {
+        if (!_isDisposed)
+        {
+            if (_innerConnection != null)
+            {
+                _innerConnection.Close();
+            }
+            _state = ConnectionState.Closed;
+        }
+    }
+
+    public override void Open()
+    {
+        ThrowIfDisposed();
+        EnsureInnerConnectionExists();
+
+        if (State != ConnectionState.Open)
+        {
+            _innerConnection.Open();
+            _state = ConnectionState.Open;
+        }
+    }
+
+    public override async Task OpenAsync(CancellationToken cancellationToken)
+    {
+        ThrowIfDisposed();
+        EnsureInnerConnectionExists();
+
+        if (State != ConnectionState.Open)
+        {
+            await _innerConnection.OpenAsync(cancellationToken);
+            _state = ConnectionState.Open;
+        }
+    }
+
+    protected override DbCommand CreateDbCommand()
+    {
+        ThrowIfDisposed();
+        EnsureInnerConnectionExists();
+        return new Command(_innerConnection.CreateCommand());
+    }
+
+    // Convenience methods
+    public Command CreateCommand()
+    {
+        ThrowIfDisposed();
+        EnsureInnerConnectionExists();
+        return new Command(_innerConnection.CreateCommand());
+    }
+
+    public Command CreateCommand(string commandText)
+    {
+        ThrowIfDisposed();
+        EnsureInnerConnectionExists();
+        var cmd = _innerConnection.CreateCommand();
+        cmd.CommandText = commandText;
+        return new Command(cmd);
+    }
+
+    public async Task<DbDataReader> ExecuteReaderAsync(string sql)
+    {
+        ThrowIfDisposed();
+        EnsureInnerConnectionExists();
+        EnsureConnectionIsOpen();
+
+        using var command = CreateCommand(sql);
+        return await command.ExecuteReaderAsync();
+    }
+
+    public async Task<object> ExecuteScalarAsync(string sql)
+    {
+        ThrowIfDisposed();
+        EnsureInnerConnectionExists();
+        EnsureConnectionIsOpen();
+
+        using var command = CreateCommand(sql);
+        return await command.ExecuteScalarAsync();
+    }
+
+    public async Task<int> ExecuteNonQueryAsync(string sql)
+    {
+        ThrowIfDisposed();
+        EnsureInnerConnectionExists();
+        EnsureConnectionIsOpen();
+
+        using var command = CreateCommand(sql);
+        return await command.ExecuteNonQueryAsync();
+    }
+
+    public DbTransaction BeginTransaction()
+    {
+        ThrowIfDisposed();
+        EnsureInnerConnectionExists();
+        EnsureConnectionIsOpen();
+        return new Transaction(_innerConnection.BeginTransaction());
+    }
+
+    public DbTransaction BeginTransaction(IsolationLevel isolationLevel)
+    {
+        ThrowIfDisposed();
+        EnsureInnerConnectionExists();
+        EnsureConnectionIsOpen();
+        return new Transaction(_innerConnection.BeginTransaction(isolationLevel));
+    }
+
+    public async Task<DbTransaction> BeginTransactionAsync()
+    {
+        ThrowIfDisposed();
+        EnsureInnerConnectionExists();
+        EnsureConnectionIsOpen();
+
+        // Note: DbConnection doesn't have BeginTransactionAsync in all versions
+        // This is a workaround using Task.Run for demonstration purposes
+        return await Task.Run(() => BeginTransaction());
+    }
+
+    public async Task<DbTransaction> BeginTransactionAsync(IsolationLevel isolationLevel)
+    {
+        ThrowIfDisposed();
+        EnsureInnerConnectionExists();
+        EnsureConnectionIsOpen();
+
+        // Note: DbConnection doesn't have BeginTransactionAsync in all versions
+        // This is a workaround using Task.Run for demonstration purposes
+        return await Task.Run(() => BeginTransaction(isolationLevel));
+    }
+
+    // Helper methods
+    private void EnsureInnerConnectionExists()
+    {
+        if (_innerConnection == null)
+        {
+            throw new InvalidOperationException("Connection not properly initialized with a specific database provider.");
+        }
+    }
+
+    private void EnsureConnectionIsOpen()
+    {
+        if (State != ConnectionState.Open)
+        {
+            throw new InvalidOperationException("Connection is not open.");
+        }
+    }
+
+    // Dispose pattern
+    protected override void Dispose(bool disposing)
+    {
+        if (!_isDisposed)
+        {
+            if (disposing)
+            {
+                Close();
+                _innerConnection?.Dispose();
+            }
+
+            _isDisposed = true;
+            base.Dispose(disposing);
+        }
+    }
+
+    private void ThrowIfDisposed()
+    {
+        if (_isDisposed)
+        {
+            throw new ObjectDisposedException(nameof(Connection));
+        }
+    }
+}
+*/
+

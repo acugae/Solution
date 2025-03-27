@@ -3,9 +3,9 @@ namespace Solution.Data.Provider;
 /// <summary>
 /// Classe per la gestione del parametro in un command.
 /// </summary>
-public class Parameter : System.Data.IDataParameter
+public class Parameter 
 {
-    private System.Data.IDataParameter _Parameter;
+    private DbParameter _Parameter;
     private int _size;
     /// <summary>
     /// 
@@ -93,7 +93,7 @@ public class Parameter : System.Data.IDataParameter
     /// <summary>
     /// 
     /// </summary>
-    public IDataParameter IDataParameter
+    public DbParameter DbParameter
     {
         get { return _Parameter; }
         set { _Parameter = value; }

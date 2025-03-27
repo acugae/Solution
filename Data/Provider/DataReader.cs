@@ -3,9 +3,10 @@ namespace Solution.Data.Provider;
 /// <summary>
 /// Recupera un flusso di dati di sola lettura da un database.
 /// </summary>
-public class DataReader : System.Data.IDataReader
+public class DataReader //: System.Data.IDataReader
 {
-    private IDataReader _DataReader;
+    //private IDataReader _DataReader;
+    private DbDataReader _DataReader;
     /// <summary>
     /// 
     /// </summary>
@@ -17,14 +18,14 @@ public class DataReader : System.Data.IDataReader
     /// 
     /// </summary>
     /// <param name="IDReader"></param>
-    public DataReader(IDataReader IDReader)
+    public DataReader(DbDataReader IDReader)
     {
         _DataReader = IDReader;
     }
     /// <summary>
     /// 
     /// </summary>
-    public System.Data.IDataReader IDataReader
+    public DbDataReader IDataReader
     {
         get { return _DataReader; }
         set { _DataReader = value; }
@@ -139,7 +140,7 @@ public class DataReader : System.Data.IDataReader
     /// </summary>
     /// <param name="i"></param>
     /// <returns></returns>
-    public System.Data.IDataReader GetData(System.Int32 i)
+    public DbDataReader GetData(System.Int32 i)
     {
         return _DataReader.GetData(i);
     }

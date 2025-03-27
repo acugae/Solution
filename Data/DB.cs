@@ -113,9 +113,7 @@ public class DB
                     throw (exResult);
                 }
             }
-            DateTime before = DateTime.Now;
             oDT = oData.Invoke(oConn, sSQL, pParams);
-            TimeSpan tsDuration = DateTime.Now.Subtract(before);
         }
         catch (Exception ex)
         {
@@ -162,9 +160,7 @@ public class DB
                     throw (exResult);
                 }
             }
-            DateTime before = DateTime.Now;
             oDT = oData.InvokeStore(oConn, sSQL, pParams);
-            TimeSpan tsDuration = DateTime.Now.Subtract(before);
         }
         catch (Exception ex)
         {
@@ -211,9 +207,7 @@ public class DB
                     throw (exResult);
                 }
             }
-            DateTime before = DateTime.Now;
             oDT = oData.InvokeStore(oConn, sSQL);
-            TimeSpan tsDuration = DateTime.Now.Subtract(before);
         }
         catch (Exception ex)
         {
@@ -260,9 +254,7 @@ public class DB
                     throw (exResult);
                 }
             }
-            DateTime before = DateTime.Now;
             oDS = oData.GetDS(oConn, sSQL, parameters);
-            TimeSpan tsDuration = DateTime.Now.Subtract(before);
         }
         catch (Exception ex)
         {

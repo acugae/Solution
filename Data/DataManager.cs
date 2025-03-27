@@ -775,7 +775,7 @@ public class DataManager : MarshalByRefObject
             }
             //
             for (int i = 0; oCM.Parameters != null && i < oCM.Parameters.Count; i++)
-                oParams[i].IDataParameter = oCM.Parameters[i] as IDataParameter;
+                oParams[i].DbParameter = oCM.Parameters[i] as DbParameter;
             return _oDt;
         }
     }

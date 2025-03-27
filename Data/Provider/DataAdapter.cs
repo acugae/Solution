@@ -3,9 +3,9 @@ namespace Solution.Data.Provider;
 /// <summary>
 /// Rappresenta un gruppo di comandi SQL e una connessione a un database utilizzati per riempire la classe DataSet e aggiornare l'origine dati. 
 /// </summary>
-public class DataAdapter : System.Data.IDbDataAdapter
+public class DataAdapter
 {
-    private IDbDataAdapter _DataAdapter;
+    private readonly DbDataAdapter _DataAdapter;
     private Connection oCn;
     /// <summary>
     /// 
@@ -46,7 +46,7 @@ public class DataAdapter : System.Data.IDbDataAdapter
     /// <summary>
     /// 
     /// </summary>
-    public System.Data.IDbDataAdapter IDbDataAdapter
+    public DbDataAdapter IDbDataAdapter
     {
         get { return _DataAdapter; }
     }
@@ -55,7 +55,7 @@ public class DataAdapter : System.Data.IDbDataAdapter
     /// </summary>
     /// <param name="dataSet"></param>
     /// <returns></returns>
-    public System.Int32 Fill(System.Data.DataSet dataSet)
+    public System.Int32 Fill(DataSet dataSet)
     {
         return _DataAdapter.Fill(dataSet);
     }
@@ -65,13 +65,11 @@ public class DataAdapter : System.Data.IDbDataAdapter
     /// <param name="dataSet"></param>
     /// <param name="srcTable"></param>
     /// <returns></returns>
-    public System.Int32 Fill(System.Data.DataSet dataSet, string srcTable)
+    public System.Int32 Fill(DataSet dataSet, string srcTable)
     {
-        //
         DataSet oDS = new DataSet();
         int result = _DataAdapter.Fill(oDS);
         oDS.Tables[0].TableName = srcTable;
-        //
         if (!_DataAdapter.TableMappings.Contains(srcTable))
             _DataAdapter.TableMappings.Add(srcTable, srcTable);
         dataSet.Tables.Add(oDS.Tables[0].Copy());
@@ -158,7 +156,7 @@ public class DataAdapter : System.Data.IDbDataAdapter
     /// <summary>
     /// 
     /// </summary>
-    public System.Data.IDbCommand UpdateCommand
+    public DbCommand? UpdateCommand
     {
         get { return _DataAdapter.UpdateCommand; }
         set { _DataAdapter.UpdateCommand = value; }
@@ -166,7 +164,7 @@ public class DataAdapter : System.Data.IDbDataAdapter
     /// <summary>
     /// 
     /// </summary>
-    public System.Data.IDbCommand SelectCommand
+    public DbCommand? SelectCommand
     {
         get { return _DataAdapter.SelectCommand; }
         set { _DataAdapter.SelectCommand = value; }
@@ -174,7 +172,7 @@ public class DataAdapter : System.Data.IDbDataAdapter
     /// <summary>
     /// 
     /// </summary>
-    public System.Data.IDbCommand InsertCommand
+    public DbCommand? InsertCommand
     {
         get { return _DataAdapter.InsertCommand; }
         set { _DataAdapter.InsertCommand = value; }
@@ -182,7 +180,7 @@ public class DataAdapter : System.Data.IDbDataAdapter
     /// <summary>
     /// 
     /// </summary>
-    public System.Data.IDbCommand DeleteCommand
+    public DbCommand? DeleteCommand
     {
         get { return _DataAdapter.DeleteCommand; }
         set { _DataAdapter.DeleteCommand = value; }

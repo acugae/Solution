@@ -40,7 +40,7 @@ public class Parameters
         oP.ParameterName = name;
         oP.DbType = dbType;
         oP.Size = size;
-        _Command.Parameters.Add(oP.IDataParameter);
+        _Command.Parameters.Add(oP.DbParameter);
         return oP;
     }
     /// <summary>
@@ -58,7 +58,7 @@ public class Parameters
         oP.DbType = dbType;
         oP.Size = size;
         oP.SourceColumn = sourceColumn;
-        _Command.Parameters.Add(oP.IDataParameter);
+        _Command.Parameters.Add(oP.DbParameter);
         return oP;
     }
     /// <summary>
@@ -92,7 +92,7 @@ public class Parameters
             oP.Value = value;
             oP.Size = -1;
             oP.SourceColumn = "";
-            _Command.Parameters.Add(oP.IDataParameter);
+            _Command.Parameters.Add(oP.DbParameter);
             return oP;
         }
         catch (Exception e)
@@ -109,7 +109,7 @@ public class Parameters
     {
         try
         {
-            _Command.Parameters.Add(oParam.IDataParameter);
+            _Command.Parameters.Add(oParam.DbParameter);
             return oParam;
         }
         catch (Exception e)
@@ -141,7 +141,7 @@ public class Parameters
                     oP.Value = "";
                 else
                     oP.Value = strValuesFileds[j];
-                _Command.Parameters.Add(oP.IDataParameter);
+                _Command.Parameters.Add(oP.DbParameter);
             }
         }
         catch (Exception e)
