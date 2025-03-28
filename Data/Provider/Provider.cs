@@ -3,27 +3,22 @@ namespace Solution.Data.Provider;
 
 public class  Provider
 {
-    private string _strKey;
-    private DbProviderFactory? _Instance;
-    public string Key
-    {
-        get { return _strKey; }
-        set { _strKey = value; }
-    }
+    private DbProviderFactory? instance;
+    public string Key { get; }
     public Provider() { }
     public Provider(string sKeyProvider, string sClassFactoryName, string sFilename)
     {
         try
         {
-            _strKey = sKeyProvider;
+            Key = sKeyProvider;
             if (sFilename == null)
             {
                 if (sKeyProvider.ToLower().Equals("sqldb"))
-                    _Instance = Microsoft.Data.SqlClient.SqlClientFactory.Instance;
+                    instance = Microsoft.Data.SqlClient.SqlClientFactory.Instance;
                 if (sKeyProvider.ToLower().Equals("mysdb"))
-                    _Instance = MySql.Data.MySqlClient.MySqlClientFactory.Instance;
+                    instance = MySql.Data.MySqlClient.MySqlClientFactory.Instance;
                 if (sKeyProvider.ToLower().Equals("pstdb"))
-                    _Instance = Npgsql.NpgsqlFactory.Instance;
+                    instance = Npgsql.NpgsqlFactory.Instance;
                 //else if (sKeyProvider.ToLower().Equals("oledb"))
                 //    _Instance = OleDbFactory.Instance;
                 //else if (sKeyProvider.ToLower().Equals("odbdb"))
@@ -49,7 +44,7 @@ public class  Provider
     {
         try
         {
-            return _Instance.CreateConnection();
+            return instance.CreateConnection();
         }
         catch (TargetInvocationException e)
         {
@@ -63,7 +58,7 @@ public class  Provider
     {
         try
         {
-            return _Instance.CreateCommand();
+            return instance.CreateCommand();
         }
         catch (TargetInvocationException e)
         {
@@ -126,7 +121,7 @@ public class  Provider
     {
         try
         {
-            return _Instance.CreateDataAdapter();
+            return instance.CreateDataAdapter();
         }
         catch (TargetInvocationException e)
         {
@@ -166,7 +161,7 @@ public class  Provider
     {
         try
         {
-            return _Instance.CreateParameter();
+            return instance.CreateParameter();
         }
         catch (TargetInvocationException e)
         {

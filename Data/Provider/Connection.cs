@@ -2,16 +2,16 @@ namespace Solution.Data.Provider;
 
 public class Connection 
 {
-    private Provider _Provider;
-    private DbConnection _Connection;
-    private DbTransaction _Transaction;
+    private Provider provider;
+    private DbConnection connection;
+    private DbTransaction transaction;
     private string _strKey;
     /// <summary>
     /// Ritona la transazione sulla connessione, altrimenti null.
     /// </summary>
     public DbTransaction Transaction
     {
-        get { return _Transaction; }
+        get { return transaction; }
     }
     /// <summary>
     /// Chiave di connessione.
@@ -26,8 +26,8 @@ public class Connection
     /// </summary>
     public Provider Provider
     {
-        get { return _Provider; }
-        set { _Provider = value; }
+        get { return provider; }
+        set { provider = value; }
     }
     /// <summary>
     /// 
@@ -36,7 +36,7 @@ public class Connection
     public void Dispose()
     {
         _strKey = null;
-        _Connection = null;
+        connection = null;
         return;
     }
     /// <summary>
@@ -52,8 +52,8 @@ public class Connection
     /// <param name="sKey">Chiave di connessione.</param>
     public Connection(Provider oProvider, string sKey)
     {
-        _Provider = oProvider;
-        _Connection = oProvider.CreateConnection();
+        provider = oProvider;
+        connection = oProvider.CreateConnection();
         _strKey = sKey;
     }
     /// <summary>
@@ -64,10 +64,10 @@ public class Connection
     /// <param name="connectionString">Stringa di connessione.</param>
     public Connection(Provider oProvider, string sKey, string connectionString)
     {
-        _Provider = oProvider;
+        provider = oProvider;
         _strKey = sKey;
-        _Connection = oProvider.CreateConnection();
-        _Connection.ConnectionString = connectionString;
+        connection = oProvider.CreateConnection();
+        connection.ConnectionString = connectionString;
     }
     /// <summary>
     /// Inizia una transazione sull'istanza specificando l'IsolationLevel.
@@ -76,21 +76,21 @@ public class Connection
     /// <returns>Transazione risultante.</returns>
     public DbTransaction BeginTransaction(System.Data.IsolationLevel il)
     {
-        _Transaction = _Connection.BeginTransaction(il);
-        return _Transaction;
+        transaction = connection.BeginTransaction(il);
+        return transaction;
     }
     public DbTransaction BeginTransaction()
     {
-        _Transaction = _Connection.BeginTransaction();
-        return _Transaction;
+        transaction = connection.BeginTransaction();
+        return transaction;
     }
     /// <summary>
          /// 
          /// </summary>
          /// <param name="databaseName"></param>
-    public void ChangeDatabase(string databaseName) => _Connection.ChangeDatabase(databaseName);
-    public void Close() => _Connection.Close();
-    public async Task CloseAsync() => await _Connection.CloseAsync();
+    public void ChangeDatabase(string databaseName) => connection.ChangeDatabase(databaseName);
+    public void Close() => connection.Close();
+    public async Task CloseAsync() => await connection.CloseAsync();
     /// <summary>
     /// Crea e ritorna un comando associato alla connessione.
     /// </summary>
@@ -98,7 +98,7 @@ public class Connection
     //[WebMethod(true)]
     public DbCommand CreateCommand()
     {
-        return _Connection.CreateCommand();
+        return connection.CreateCommand();
     }
     /// <summary>
     /// Controlla se la connessione è aperta.
@@ -109,7 +109,7 @@ public class Connection
     {
         try
         {
-            return _Connection.State == System.Data.ConnectionState.Open;
+            return connection.State == System.Data.ConnectionState.Open;
         }
         catch { }
         return false;
@@ -120,48 +120,48 @@ public class Connection
     //[WebMethod(true)]
     public void Open()
     {
-        _Connection.Open();
+        connection.Open();
     }
 
     public async Task OpenAsync(CancellationToken cancellationToken)
     {
-        await _Connection.OpenAsync(cancellationToken);
+        await connection.OpenAsync(cancellationToken);
     }
     /// <summary>
     /// Stringa di connessione.
     /// </summary>
     public string ConnectionString
     {
-        get { return _Connection.ConnectionString; }
-        set { _Connection.ConnectionString = value; }
+        get { return connection.ConnectionString; }
+        set { connection.ConnectionString = value; }
     }
     /// <summary>
     /// Tempo massimo per l'apertura della connessione.
     /// </summary>
     public int ConnectionTimeout
     {
-        get { return _Connection.ConnectionTimeout; }
+        get { return connection.ConnectionTimeout; }
     }
     /// <summary>
     /// Database utilizzato dalla connessione.
     /// </summary>
     public string Database
     {
-        get { return _Connection.Database; }
+        get { return connection.Database; }
     }
     /// <summary>
     /// Stato della connessione.
     /// </summary>
     public System.Data.ConnectionState State
     {
-        get { return _Connection.State; }
+        get { return connection.State; }
     }
     /// <summary>
     /// 
     /// </summary>
-    public DbConnection IDbConnection
+    public DbConnection DbConnection
     {
-        get { return _Connection; }
+        get { return connection; }
     }
 }
 

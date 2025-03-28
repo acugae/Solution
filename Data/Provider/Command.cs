@@ -1,17 +1,17 @@
 namespace Solution.Data.Provider;
 public class Command
 {
-    private Connection _Connection;
-    private DbCommand _Command;
-    private Parameters oParas;
+    private Connection connection;
+    private DbCommand command;
+    private Parameters parameters;
 
     public Connection Connection
     {
-        get { return _Connection; }
+        get { return connection; }
     }
     public DbCommand DbCommand
     {
-        get { return _Command; }
+        get { return command; }
     }
     /// <summary>
     /// Inizializza l'istanza della classe.
@@ -19,13 +19,13 @@ public class Command
     /// <param name="oConnection">Connessione su cui lavorare.</param>
     public Command(Connection oConnection)
     {
-        _Connection = oConnection;
-        _Command = oConnection.Provider.CreateCommand();
-        _Command.CommandTimeout = oConnection.ConnectionTimeout;
+        connection = oConnection;
+        command = oConnection.Provider.CreateCommand();
+        command.CommandTimeout = oConnection.ConnectionTimeout;
         //_Command.Connection = (IDbConnection)this._Connection.Connection;
-        _Command.Connection = _Connection.IDbConnection;
-        _Command.Transaction = _Connection.Transaction;
-        oParas = new Parameters(_Connection, _Command);
+        command.Connection = connection.DbConnection;
+        command.Transaction = connection.Transaction;
+        parameters = new Parameters(connection, command);
     }
     /// <summary>
     /// Inizializza l'istanza della classe.
@@ -34,15 +34,15 @@ public class Command
     /// <param name="cmdText">Comando SQL.</param>
     public Command(Connection oConnection, string cmdText)
     {
-        _Connection = oConnection;
-        _Command = oConnection.Provider.CreateCommand(cmdText, oConnection.IDbConnection);
-        _Command.CommandTimeout = oConnection.ConnectionTimeout;
-        _Command.Transaction = this._Connection.Transaction;
-        oParas = new Parameters(this._Connection, _Command);
+        connection = oConnection;
+        command = oConnection.Provider.CreateCommand(cmdText, oConnection.DbConnection);
+        command.CommandTimeout = oConnection.ConnectionTimeout;
+        command.Transaction = this.connection.Transaction;
+        parameters = new Parameters(this.connection, command);
     }
     public void Cancel()
     {
-        _Command.Cancel();
+        command.Cancel();
     }
     /// <summary>
     /// 
@@ -50,7 +50,7 @@ public class Command
     /// <returns></returns>
     public DbParameter CreateParameter()
     {
-        return _Command.CreateParameter();
+        return command.CreateParameter();
     }
     /// <summary>
     /// 
@@ -58,16 +58,16 @@ public class Command
     /// <returns></returns>
     public int ExecuteNonQuery()
     {
-        try { return _Command.ExecuteNonQuery(); }
+        try { return command.ExecuteNonQuery(); }
         catch (Exception e) { throw (e); }
     }
     public async Task<int> ExecuteNonQueryAsync()
     {
-        return await _Command.ExecuteNonQueryAsync();
+        return await command.ExecuteNonQueryAsync();
     }
     public async Task<int> ExecuteNonQueryAsync(CancellationToken cancellationToken)
     {
-        return await _Command.ExecuteNonQueryAsync(cancellationToken);
+        return await command.ExecuteNonQueryAsync(cancellationToken);
     }
     /// <summary>
     /// 
@@ -76,15 +76,15 @@ public class Command
     /// <returns></returns>
     public DbDataReader ExecuteReader(System.Data.CommandBehavior behavior)
     {
-        return _Command.ExecuteReader(behavior);
+        return command.ExecuteReader(behavior);
     }
     public DbDataReader ExecuteReader()
     {
-        return _Command.ExecuteReader();
+        return command.ExecuteReader();
     }
     public async Task<DbDataReader> ExecuteReaderAsync()
     {
-        return await _Command.ExecuteReaderAsync();
+        return await command.ExecuteReaderAsync();
     }
     /// <summary>
     /// 
@@ -92,72 +92,72 @@ public class Command
     /// <returns></returns>
     public object? ExecuteScalar()
     {
-        return _Command.ExecuteScalar();
+        return command.ExecuteScalar();
     }
     public async Task<object?> ExecuteScalarAsync()
     {
-        return await _Command.ExecuteScalarAsync();
+        return await command.ExecuteScalarAsync();
     }
     /// <summary>
     /// 
     /// </summary>
     public void Prepare()
     {
-        _Command.Prepare();
+        command.Prepare();
     }
     /// <summary>
     /// 
     /// </summary>
     public string CommandText
     {
-        get { return _Command.CommandText; }
-        set { _Command.CommandText = value; }
+        get { return command.CommandText; }
+        set { command.CommandText = value; }
     }
     /// <summary>
     /// 
     /// </summary>
     public int CommandTimeout
     {
-        get { return _Command.CommandTimeout; }
-        set { _Command.CommandTimeout = value; }
+        get { return command.CommandTimeout; }
+        set { command.CommandTimeout = value; }
     }
     /// <summary>
     /// 
     /// </summary>
     public CommandType CommandType
     {
-        get { return _Command.CommandType; }
-        set { _Command.CommandType = value; }
+        get { return command.CommandType; }
+        set { command.CommandType = value; }
     }
     /// <summary>
     /// 
     /// </summary>
     public DbCommand IDbCommand
     {
-        get { return _Command; }
+        get { return command; }
     }
     /// <summary>
     /// 
     /// </summary>
     public Parameters Parameters
     {
-        get { return oParas; }
+        get { return parameters; }
     }
     /// <summary>
     /// 
     /// </summary>
     public DbTransaction? Transaction
     {
-        get { return _Command.Transaction; }
-        set { _Command.Transaction = value; }
+        get { return command.Transaction; }
+        set { command.Transaction = value; }
     }
     /// <summary>
     /// 
     /// </summary>
     public System.Data.UpdateRowSource UpdatedRowSource
     {
-        get { return _Command.UpdatedRowSource; }
-        set { _Command.UpdatedRowSource = value; }
+        get { return command.UpdatedRowSource; }
+        set { command.UpdatedRowSource = value; }
     }
 }
 
