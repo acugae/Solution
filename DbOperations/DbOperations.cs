@@ -11,6 +11,7 @@ using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text;
+using Microsoft.Data.SqlClient;
 using Solution.DbOperations.Infrastracture;
 using Solution.DbOperations.Models;
 using OptimaLibray.Db.Operations.Infrastracture;
@@ -34,7 +35,7 @@ namespace Solution.DbOperations
 
         public static IDatabase<TContext> CreateTable<TContext, TSource>(this IDatabase<TContext> context, Action<ICreateTableOptions<TSource>> options)
         {
-            var opts = new CreateTableOptions<TSource>(context.Connection);
+            var opts = new CreateTableOptions<TSource>((IDbConnection)context.Connection);
             options(opts);
 
             using (IDbConnection conn = opts.Connection)
@@ -142,7 +143,7 @@ namespace Solution.DbOperations
             var options = new DropTableOptions();
             action(options);
 
-            using (var conn = context.Connection)
+            using (var conn = (IDbConnection)context.Connection)
             {
                 options.Connection = conn;
                 DropTable(options);
@@ -306,7 +307,7 @@ namespace Solution.DbOperations
             action(opts);
 
 
-            using (IDbConnection conn = context.Connection)
+            using (IDbConnection conn = (IDbConnection)context.Connection)
             {
                 if (conn.State == ConnectionState.Closed) conn.Open();
                 IDbTransaction trans = conn.BeginTransaction();
@@ -321,7 +322,7 @@ namespace Solution.DbOperations
                     throw;
                 }
             }
-            return context.Connection;
+            return (IDbConnection)context.Connection;
         }
 
         public static void BulkInsert<TSource>(this IDbConnection conn, IEnumerable<TSource> data, Action<IBulkInsertOptions<TSource>> action)
@@ -528,7 +529,7 @@ namespace Solution.DbOperations
             var opts = new BulkUpdateOptions<TSource>();
             action(opts);
 
-            using (IDbConnection conn = context.Connection)
+            using (IDbConnection conn = (IDbConnection)context.Connection)
             {
                 if (conn.State == ConnectionState.Closed) conn.Open();
                 IDbTransaction trans = conn.BeginTransaction();
@@ -543,7 +544,7 @@ namespace Solution.DbOperations
                     throw;
                 }
             }
-            return context.Connection;
+            return (IDbConnection)context.Connection;
         }
 
         public static void BulkUpdate<TSource>(this IDbConnection conn, IEnumerable<TSource> data, Action<IBulkUpdateOptions<TSource>> action)
@@ -642,7 +643,7 @@ namespace Solution.DbOperations
 
 
             IEnumerable<TRes> result = new List<TRes>();
-            using (IDbConnection conn = context.Connection)
+            using (IDbConnection conn = (IDbConnection)context.Connection)
             {
                 if (conn.State == ConnectionState.Closed) conn.Open();
                 IDbTransaction trans = conn.BeginTransaction();
