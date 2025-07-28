@@ -19,7 +19,15 @@ public static class SolutionMapperConfiguration
     /// <param name="assembly">Assembly da cui caricare i profili di mapping</param>
     /// <returns>La collezione dei servizi aggiornata</returns>
     public static IServiceCollection AddSolutionMapper(
-        this IServiceCollection  services,
+        this IServiceCollection services,
+        Assembly assembly)
+    {
+        return AddSolutionMapper(services, null, assembly);
+    }
+
+    public static IServiceCollection AddSolutionMapper(
+        this IServiceCollection services,
+        Action<SolutionMapperConfigurationExpression> configure,
         Assembly assembly)
     {
         // Crea una nuova istanza di SolutionMapper e la relativa configurazione
@@ -52,6 +60,8 @@ public static class SolutionMapperConfiguration
         cfg.CreateMap<string, IList<long>>().ConvertUsing(new ConvertersBase.StringToListOfLong());
         cfg.CreateMap<IList<long>, string>().ConvertUsing(new ConvertersBase.ListOfLongToString());
         cfg.CreateMap<string, IList<string>>().ConvertUsing(new ConvertersBase.StringToListOfString());
+
+        configure?.Invoke(cfg);
 
         // Carica e registra tutti i profili di mapping definiti nell'assembly
         var profileTypes = assembly.GetTypes()
