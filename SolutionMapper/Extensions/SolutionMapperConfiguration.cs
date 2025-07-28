@@ -25,6 +25,13 @@ public static class SolutionMapperConfiguration
         return AddSolutionMapper(services, null, assembly);
     }
 
+    /// <summary>
+    /// Registra SolutionMapper come singleton nei servizi DI e configura i converter di base e i profili di mapping.
+    /// </summary>
+    /// <param name="services">Collezione dei servizi DI</param>
+    /// <param name="assembly">Assembly da cui caricare i profili di mapping</param>
+    /// <param name="configure">Funzione di configurazione per aggiungere ulteriori mappe o converter personalizzati</param>
+    /// <returns>La collezione dei servizi aggiornata</returns>
     public static IServiceCollection AddSolutionMapper(
         this IServiceCollection services,
         Action<SolutionMapperConfigurationExpression> configure,
