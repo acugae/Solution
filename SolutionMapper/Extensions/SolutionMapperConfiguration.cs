@@ -6,16 +6,27 @@ using Solution.SolutionMapper.Converters;
 
 namespace Solution.SolutionMapper.Extensions;
 
+/// <summary>
+/// Classe statica di estensione per configurare e registrare SolutionMapper nei servizi DI.
+/// Permette di aggiungere mapping e converter di base e di caricare i profili di mapping personalizzati.
+/// </summary>
 public static class SolutionMapperConfiguration
 {
+    /// <summary>
+    /// Registra SolutionMapper come singleton nei servizi DI e configura i converter di base e i profili di mapping.
+    /// </summary>
+    /// <param name="services">Collezione dei servizi DI</param>
+    /// <param name="assembly">Assembly da cui caricare i profili di mapping</param>
+    /// <returns>La collezione dei servizi aggiornata</returns>
     public static IServiceCollection AddSolutionMapper(
         this IServiceCollection  services,
         Assembly assembly)
     {
+        // Crea una nuova istanza di SolutionMapper e la relativa configurazione
         var mapper = new SolutionMapper();
         var cfg = new SolutionMapperConfigurationExpression(mapper);
 
-        // Converter base
+        // Registrazione dei converter di base per i tipi comuni
         cfg.CreateMap<long?, string>().ConvertUsing(new ConvertersBase.NullableLongToStringConverter());
         cfg.CreateMap<int?, string>().ConvertUsing(new ConvertersBase.NullableIntToStringConverter());
         cfg.CreateMap<int, string>().ConvertUsing(new ConvertersBase.IntToStringConverter());
@@ -42,16 +53,18 @@ public static class SolutionMapperConfiguration
         cfg.CreateMap<IList<long>, string>().ConvertUsing(new ConvertersBase.ListOfLongToString());
         cfg.CreateMap<string, IList<string>>().ConvertUsing(new ConvertersBase.StringToListOfString());
 
-        // Risolvi tutte le classi che estendono SolutionMapperProfile nell'assembly di classType
+        // Carica e registra tutti i profili di mapping definiti nell'assembly
         var profileTypes = assembly.GetTypes()
             .Where(t => typeof(SolutionMapperProfile).IsAssignableFrom(t) && !t.IsAbstract && t.IsClass);
 
         foreach (var type in profileTypes)
         {
+            // Istanzia il profilo passando il mapper e lo registra
             var profile = (SolutionMapperProfile)Activator.CreateInstance(type, mapper);
             mapper.AddProfile(profile);
         }
 
+        // Registra il mapper come singleton nei servizi DI
         services.AddSingleton(mapper);
         return services;
     }
