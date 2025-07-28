@@ -76,31 +76,10 @@ public class Transactions : System.Collections.Specialized.NameObjectCollectionB
         get { return (Transaction)(base.BaseGet(key)); }
         set { base.BaseSet(key, value); }
     }
-
-#if (!MOBILE)
-    /// <summary>
-    /// 
-    /// </summary>
     public object[] Values
     {
         get { return base.BaseGetAllValues(); }
     }
-#else
-		public object[] Values
-	    {
-            get
-            {
-                int iLen = base.BaseGetAllKeys().Length;
-                object[] obv = new object[iLen];
-                for (int i = 0; i < iLen; i++)
-                {
-                    obv[i] = base.Keys[i];
-                }
-                return obv;
-            }
-        }
-#endif
-
     /// <summary>
     ///	Viene utilizzata per creare una transazione sulla connessione spacificata.
     /// </summary>
@@ -111,7 +90,11 @@ public class Transactions : System.Collections.Specialized.NameObjectCollectionB
         {
             try
             {
-                this[sKeyConnection] = new Transaction(_oConnections[sKeyConnection]);
+                if (_oConnections is not null && _oConnections.Contains(sKeyConnection))
+                {
+                    var result = _oConnections[sKeyConnection].BeginTransaction();
+                    this[sKeyConnection] = (Transaction)result;
+                }
             }
             catch (Exception e)
             {

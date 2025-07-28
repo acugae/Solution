@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net9.0</TargetFramework>
 	<ImplicitUsings>enable</ImplicitUsings>
 	<Nullable>enable</Nullable>
 	<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
@@ -13,8 +13,8 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Authors>Gaetano Acunzo</Authors>
     <Product>Solution</Product>
-	<AssemblyVersion>1.0.6</AssemblyVersion>
-	<AssemblyFileVersion>1.0.6</AssemblyFileVersion>
+	<AssemblyVersion>1.0.15</AssemblyVersion>
+	<AssemblyFileVersion>1.0.15</AssemblyFileVersion>
 	<PackageProjectUrl>https://www.nuget.org/packages/Solution</PackageProjectUrl>
 	<RepositoryType>git</RepositoryType>
 	<PackageIcon>Logo.png</PackageIcon>
@@ -32,17 +32,18 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="iTextSharp.LGPLv2.Core" Version="3.4.20" />
-    <PackageReference Include="log4net" Version="2.0.17" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.6" />
-    <PackageReference Include="MySql.Data" Version="8.4.0" />
+    <PackageReference Include="iTextSharp.LGPLv2.Core" Version="3.7.4" />
+    <PackageReference Include="log4net" Version="3.1.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.7" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="6.0.2" />
+    <PackageReference Include="MySql.Data" Version="9.4.0" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
-    <PackageReference Include="Npgsql" Version="8.0.3" />
-    <PackageReference Include="NPOI" Version="2.7.0" />
-    <PackageReference Include="SSH.NET" Version="2024.0.0" />
-    <PackageReference Include="System.Data.SqlClient" Version="4.8.6" />
-    <PackageReference Include="System.DirectoryServices" Version="8.0.0" />
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.0" />
+    <PackageReference Include="Npgsql" Version="9.0.3" />
+    <PackageReference Include="NPOI" Version="2.7.4" />
+    <PackageReference Include="SSH.NET" Version="2025.0.0" />
+    <PackageReference Include="System.DirectoryServices" Version="9.0.7" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="9.0.7" />
+    <PackageReference Include="System.Text.Json" Version="9.0.7" />
   </ItemGroup>
 
   <ItemGroup>

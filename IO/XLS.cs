@@ -97,7 +97,15 @@ public class XLS
             throw;
         }
     }
-
+    public async Task<XSSFWorkbook> ReadFromStreamXLSXAsync(Stream stream)
+    {
+        using (var memoryStream = new MemoryStream())
+        {
+            await stream.CopyToAsync(memoryStream);
+            memoryStream.Position = 0;
+            return new XSSFWorkbook(memoryStream);
+        }
+    }
     public string GetValue(ICell oCell)
     {
         if (oCell == null)

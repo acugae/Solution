@@ -3,9 +3,9 @@ namespace Solution.Data.Provider;
 /// <summary>
 /// Rappresenta un gruppo di comandi SQL e una connessione a un database utilizzati per riempire la classe DataSet e aggiornare l'origine dati. 
 /// </summary>
-public class DataAdapter : System.Data.IDbDataAdapter
+public class DataAdapter
 {
-    private IDbDataAdapter _DataAdapter;
+    private readonly DbDataAdapter dataAdapter;
     private Connection oCn;
     /// <summary>
     /// 
@@ -14,7 +14,7 @@ public class DataAdapter : System.Data.IDbDataAdapter
     public DataAdapter(Connection oCn)
     {
         this.oCn = oCn;
-        _DataAdapter = oCn.Provider.CreateDataAdapter();
+        dataAdapter = oCn.Provider.CreateDataAdapter();
     }
     /// <summary>
     /// 
@@ -24,7 +24,7 @@ public class DataAdapter : System.Data.IDbDataAdapter
     public DataAdapter(Connection oCn, string strSQL)
     {
         this.oCn = oCn;
-        _DataAdapter = oCn.Provider.CreateDataAdapter(strSQL, oCn.IDbConnection);
+        dataAdapter = oCn.Provider.CreateDataAdapter(strSQL, oCn.DbConnection);
     }
     /// <summary>
     /// 
@@ -33,7 +33,7 @@ public class DataAdapter : System.Data.IDbDataAdapter
     public DataAdapter(Command oCmd)
     {
         this.oCn = oCmd.Connection;
-        _DataAdapter = oCn.Provider.CreateDataAdapter(oCmd.IDbCommand);
+        dataAdapter = oCn.Provider.CreateDataAdapter(oCmd.DbCommand);
     }
     /// <summary>
     /// 
@@ -46,18 +46,18 @@ public class DataAdapter : System.Data.IDbDataAdapter
     /// <summary>
     /// 
     /// </summary>
-    public System.Data.IDbDataAdapter IDbDataAdapter
+    public DbDataAdapter IDbDataAdapter
     {
-        get { return _DataAdapter; }
+        get { return dataAdapter; }
     }
     /// <summary>
     /// 
     /// </summary>
     /// <param name="dataSet"></param>
     /// <returns></returns>
-    public System.Int32 Fill(System.Data.DataSet dataSet)
+    public System.Int32 Fill(DataSet dataSet)
     {
-        return _DataAdapter.Fill(dataSet);
+        return dataAdapter.Fill(dataSet);
     }
     /// <summary>
     /// 
@@ -65,15 +65,13 @@ public class DataAdapter : System.Data.IDbDataAdapter
     /// <param name="dataSet"></param>
     /// <param name="srcTable"></param>
     /// <returns></returns>
-    public System.Int32 Fill(System.Data.DataSet dataSet, string srcTable)
+    public System.Int32 Fill(DataSet dataSet, string srcTable)
     {
-        //
         DataSet oDS = new DataSet();
-        int result = _DataAdapter.Fill(oDS);
+        int result = dataAdapter.Fill(oDS);
         oDS.Tables[0].TableName = srcTable;
-        //
-        if (!_DataAdapter.TableMappings.Contains(srcTable))
-            _DataAdapter.TableMappings.Add(srcTable, srcTable);
+        if (!dataAdapter.TableMappings.Contains(srcTable))
+            dataAdapter.TableMappings.Add(srcTable, srcTable);
         dataSet.Tables.Add(oDS.Tables[0].Copy());
         oDS.Tables.Clear();
         oDS.Clear();
@@ -88,7 +86,7 @@ public class DataAdapter : System.Data.IDbDataAdapter
     /// <returns></returns>
     public System.Data.DataTable[] FillSchema(System.Data.DataSet dataSet, System.Data.SchemaType schemaType)
     {
-        return _DataAdapter.FillSchema(dataSet, schemaType);
+        return dataAdapter.FillSchema(dataSet, schemaType);
     }
     /// <summary>
     /// 
@@ -99,9 +97,9 @@ public class DataAdapter : System.Data.IDbDataAdapter
     /// <returns></returns>
     public System.Data.DataTable[] FillSchema(System.Data.DataSet dataSet, System.Data.SchemaType schemaType, string srcTable)
     {
-        if (!_DataAdapter.TableMappings.Contains(srcTable))
-            _DataAdapter.TableMappings.Add(srcTable, srcTable + "DS");
-        return _DataAdapter.FillSchema(dataSet, schemaType);
+        if (!dataAdapter.TableMappings.Contains(srcTable))
+            dataAdapter.TableMappings.Add(srcTable, srcTable + "DS");
+        return dataAdapter.FillSchema(dataSet, schemaType);
     }
     /// <summary>
     /// 
@@ -109,7 +107,7 @@ public class DataAdapter : System.Data.IDbDataAdapter
     /// <returns></returns>
     public System.Data.IDataParameter[] GetFillParameters()
     {
-        return _DataAdapter.GetFillParameters();
+        return dataAdapter.GetFillParameters();
     }
     /// <summary>
     /// 
@@ -118,7 +116,7 @@ public class DataAdapter : System.Data.IDbDataAdapter
     /// <returns></returns>
     public System.Int32 Update(System.Data.DataSet dataSet)
     {
-        return _DataAdapter.Update(dataSet);
+        return dataAdapter.Update(dataSet);
     }
     /// <summary>
     /// 
@@ -128,63 +126,63 @@ public class DataAdapter : System.Data.IDbDataAdapter
     /// <returns></returns>
     public System.Int32 Update(System.Data.DataSet dataSet, string srcTable)
     {
-        if (!_DataAdapter.TableMappings.Contains(srcTable))
-            _DataAdapter.TableMappings.Add(srcTable, srcTable + "DS");
-        return _DataAdapter.Update(dataSet);
+        if (!dataAdapter.TableMappings.Contains(srcTable))
+            dataAdapter.TableMappings.Add(srcTable, srcTable + "DS");
+        return dataAdapter.Update(dataSet);
     }
     /// <summary>
     /// 
     /// </summary>
     public System.Data.ITableMappingCollection TableMappings
     {
-        get { return _DataAdapter.TableMappings; }
+        get { return dataAdapter.TableMappings; }
     }
     /// <summary>
     /// 
     /// </summary>
     public System.Data.MissingSchemaAction MissingSchemaAction
     {
-        get { return _DataAdapter.MissingSchemaAction; }
-        set { _DataAdapter.MissingSchemaAction = value; }
+        get { return dataAdapter.MissingSchemaAction; }
+        set { dataAdapter.MissingSchemaAction = value; }
     }
     /// <summary>
     /// 
     /// </summary>
     public System.Data.MissingMappingAction MissingMappingAction
     {
-        get { return _DataAdapter.MissingMappingAction; }
-        set { _DataAdapter.MissingMappingAction = value; }
+        get { return dataAdapter.MissingMappingAction; }
+        set { dataAdapter.MissingMappingAction = value; }
     }
     /// <summary>
     /// 
     /// </summary>
-    public System.Data.IDbCommand UpdateCommand
+    public DbCommand? UpdateCommand
     {
-        get { return _DataAdapter.UpdateCommand; }
-        set { _DataAdapter.UpdateCommand = value; }
+        get { return dataAdapter.UpdateCommand; }
+        set { dataAdapter.UpdateCommand = value; }
     }
     /// <summary>
     /// 
     /// </summary>
-    public System.Data.IDbCommand SelectCommand
+    public DbCommand? SelectCommand
     {
-        get { return _DataAdapter.SelectCommand; }
-        set { _DataAdapter.SelectCommand = value; }
+        get { return dataAdapter.SelectCommand; }
+        set { dataAdapter.SelectCommand = value; }
     }
     /// <summary>
     /// 
     /// </summary>
-    public System.Data.IDbCommand InsertCommand
+    public DbCommand? InsertCommand
     {
-        get { return _DataAdapter.InsertCommand; }
-        set { _DataAdapter.InsertCommand = value; }
+        get { return dataAdapter.InsertCommand; }
+        set { dataAdapter.InsertCommand = value; }
     }
     /// <summary>
     /// 
     /// </summary>
-    public System.Data.IDbCommand DeleteCommand
+    public DbCommand? DeleteCommand
     {
-        get { return _DataAdapter.DeleteCommand; }
-        set { _DataAdapter.DeleteCommand = value; }
+        get { return dataAdapter.DeleteCommand; }
+        set { dataAdapter.DeleteCommand = value; }
     }
 }
