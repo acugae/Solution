@@ -57,6 +57,12 @@ public class SolutionMapper
     public TDest Map<TSource, TDest>(TSource source, ResolutionContext context)
         where TDest : new()
     {
+        // Check if we're mapping collections - integrato all'inizio per gestire liste direttamente
+        if (IsListType(typeof(TSource)) && IsListType(typeof(TDest)))
+        {
+            return MapCollection<TSource, TDest>(source, context);
+        }
+
         // Cerca la regola di mapping appropriata
         var rule = _rules.OfType<SolutionMappingExpression<TSource, TDest>>().FirstOrDefault();
         if (rule == null)
@@ -105,10 +111,11 @@ public class SolutionMapper
                 }
                 else
                 {
-                    // Gestione di tipi complessi e conversioni generiche
+                    // Gestione di tipi complessi e conversioni generiche, inclusi liste
                     var srcType = value?.GetType();
                     var destType = destProp.PropertyType;
-                    if (srcType != null && IsComplexType(srcType) && IsComplexType(destType) &&
+                    if (srcType != null && (IsComplexType(srcType) || IsListType(srcType)) && 
+                        (IsComplexType(destType) || IsListType(destType)) &&
                         HasMappingRule(srcType, destType))
                     {
                         value = MapDynamic(value, destType);
@@ -157,10 +164,11 @@ public class SolutionMapper
                             $"Dettaglio: {ex.Message}", ex);
                     }
 
-                    // Mapping ricorsivo per tipi complessi
+                    // Mapping ricorsivo per tipi complessi o liste
                     var srcType = value?.GetType();
                     var destType = destProp.PropertyType;
-                    if (value != null && IsComplexType(srcType) && IsComplexType(destType) &&
+                    if (value != null && (IsComplexType(srcType) || IsListType(srcType)) && 
+                        (IsComplexType(destType) || IsListType(destType)) &&
                         HasMappingRule(srcType, destType))
                     {
                         value = MapDynamic(value, destType);
@@ -183,14 +191,15 @@ public class SolutionMapper
             {
                 if (rule != null && rule.IgnoredMembers.Contains(destProp.Name)) continue;
                 var srcProp = srcProps.FirstOrDefault(p => p.Name == destProp.Name);
-                if (srcProp != null && destProp.CanWrite)
+                if (srcProp != null && destProp.CanWrite && srcProp.CanRead)
                 {
                     var value = srcProp.GetValue(source);
 
-                    // Se il tipo è complesso e c'è una regola di mapping, usa Map ricorsivo
+                    // Se il tipo è complesso o lista e c'è una regola di mapping, usa Map ricorsivo
                     var srcType = value?.GetType();
                     var destType = destProp.PropertyType;
-                    if (value != null && IsComplexType(srcType) && IsComplexType(destType) &&
+                    if (value != null && (IsComplexType(srcType) || IsListType(srcType)) && 
+                        (IsComplexType(destType) || IsListType(destType)) &&
                         HasMappingRule(srcType, destType))
                     {
                         value = MapDynamic(value, destType);
@@ -210,6 +219,105 @@ public class SolutionMapper
         rule?.AfterMapActionWithContext?.Invoke(source, dest, context);
 
         return dest;
+    }
+
+    /// <summary>
+    /// Maps collections (List, IList, ICollection, IEnumerable) element by element.
+    /// </summary>
+    private TDest MapCollection<TSource, TDest>(TSource sourceCollection, ResolutionContext context)
+        where TDest : new()
+    {
+        if (sourceCollection == null)
+            return default(TDest);
+
+        var sourceType = typeof(TSource);
+        var destType = typeof(TDest);
+
+        // Get element types
+        var sourceElementType = GetElementType(sourceType);
+        var destElementType = GetElementType(destType);
+
+        if (sourceElementType == null || destElementType == null)
+            throw new InvalidOperationException($"Cannot determine element types for {sourceType.Name} → {destType.Name}");
+
+        // Check if we have a mapping rule for the element types
+        if (!HasMappingRule(sourceElementType, destElementType))
+            throw new InvalidOperationException($"No mapping rule found for element types {sourceElementType.Name} → {destElementType.Name}");
+
+        // Convert source to IEnumerable
+        var sourceEnumerable = sourceCollection as System.Collections.IEnumerable;
+        if (sourceEnumerable == null)
+            throw new InvalidOperationException($"Source collection {sourceType.Name} is not IEnumerable");
+
+        // Create destination list
+        var destListType = typeof(List<>).MakeGenericType(destElementType);
+        var destList = Activator.CreateInstance(destListType) as System.Collections.IList;
+
+        // Map each element
+        foreach (var sourceItem in sourceEnumerable)
+        {
+            if (sourceItem == null)
+            {
+                destList.Add(null);
+                continue;
+            }
+
+            var destItem = MapDynamic(sourceItem, destElementType);
+            destList.Add(destItem);
+        }
+
+        // If TDest is List<T>, return the list directly
+        if (destType.IsGenericType && destType.GetGenericTypeDefinition() == typeof(List<>))
+        {
+            return (TDest)destList;
+        }
+
+        // If TDest is another collection type, try to convert
+        if (destType.IsAssignableFrom(destListType))
+        {
+            return (TDest)destList;
+        }
+
+        // Try to create instance of TDest and populate it
+        var destInstance = new TDest();
+        if (destInstance is System.Collections.IList destInstanceList)
+        {
+            foreach (var item in destList)
+            {
+                destInstanceList.Add(item);
+            }
+            return destInstance;
+        }
+
+        throw new InvalidOperationException($"Cannot create or populate destination collection of type {destType.Name}");
+    }
+
+    /// <summary>
+    /// Checks if a type is a List or other collection type.
+    /// </summary>
+    private bool IsListType(Type type)
+    {
+        if (type == null) return false;
+        
+        return type.IsGenericType && 
+               (type.GetGenericTypeDefinition() == typeof(List<>) ||
+                type.GetGenericTypeDefinition() == typeof(IList<>) ||
+                type.GetGenericTypeDefinition() == typeof(ICollection<>) ||
+                type.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+    }
+
+    /// <summary>
+    /// Gets the element type of a collection type.
+    /// </summary>
+    private Type GetElementType(Type collectionType)
+    {
+        if (collectionType.IsGenericType)
+        {
+            var genericArgs = collectionType.GetGenericArguments();
+            if (genericArgs.Length == 1)
+                return genericArgs[0];
+        }
+        return null;
     }
 
     /// <summary>
@@ -246,14 +354,31 @@ public class SolutionMapper
     }
 
     /// <summary>
-    /// Verifica se esiste una regola di mapping tra i due tipi.
+    /// Verifica se esiste una regola di mapping tra i due tipi, includendo il supporto per le collezioni generiche.
     /// </summary>
     private bool HasMappingRule(Type srcType, Type destType)
     {
-        return _rules.Any(r =>
+        // Check direct mapping rule
+        var directRule = _rules.Any(r =>
             r.GetType().IsGenericType &&
             r.GetType().GetGenericArguments()[0] == srcType &&
             r.GetType().GetGenericArguments()[1] == destType);
+
+        if (directRule) return true;
+
+        // Check collection mapping rule - per le liste, controlla se esistono regole per gli elementi
+        if (IsListType(srcType) && IsListType(destType))
+        {
+            var srcElementType = GetElementType(srcType);
+            var destElementType = GetElementType(destType);
+            
+            if (srcElementType != null && destElementType != null)
+            {
+                return HasMappingRule(srcElementType, destElementType);
+            }
+        }
+
+        return false;
     }
 
     /// <summary>
