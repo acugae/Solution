@@ -3,38 +3,38 @@ namespace Solution.Data.Provider;
 /// <summary>
 /// Recupera un flusso di dati di sola lettura da un database.
 /// </summary>
-public class DataReader : System.Data.IDataReader
+public class DataReader
 {
-    private IDataReader _DataReader;
+    private DbDataReader dataReader;
     /// <summary>
     /// 
     /// </summary>
     public void Dispose()
     {
-        _DataReader = null;
+        dataReader = null;
     }
     /// <summary>
     /// 
     /// </summary>
     /// <param name="IDReader"></param>
-    public DataReader(IDataReader IDReader)
+    public DataReader(DbDataReader IDReader)
     {
-        _DataReader = IDReader;
+        dataReader = IDReader;
     }
     /// <summary>
     /// 
     /// </summary>
-    public System.Data.IDataReader IDataReader
+    public DbDataReader IDataReader
     {
-        get { return _DataReader; }
-        set { _DataReader = value; }
+        get { return dataReader; }
+        set { dataReader = value; }
     }
     /// <summary>
     /// 
     /// </summary>
     public void Close()
     {
-        _DataReader.Close();
+        dataReader.Close();
     }
     /// <summary>
     /// 
@@ -42,7 +42,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Data.DataTable GetSchemaTable()
     {
-        return _DataReader.GetSchemaTable();
+        return dataReader.GetSchemaTable();
     }
     /// <summary>
     /// 
@@ -50,7 +50,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Boolean NextResult()
     {
-        return _DataReader.NextResult();
+        return dataReader.NextResult();
     }
     /// <summary>
     /// 
@@ -58,28 +58,28 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Boolean Read()
     {
-        return _DataReader.Read();
+        return dataReader.Read();
     }
     /// <summary>
     /// 
     /// </summary>
     public int Depth
     {
-        get { return _DataReader.Depth; }
+        get { return dataReader.Depth; }
     }
     /// <summary>
     /// 
     /// </summary>
     public bool IsClosed
     {
-        get { return _DataReader.IsClosed; }
+        get { return dataReader.IsClosed; }
     }
     /// <summary>
     /// 
     /// </summary>
     public int RecordsAffected
     {
-        get { return _DataReader.RecordsAffected; }
+        get { return dataReader.RecordsAffected; }
     }
     /// <summary>
     /// 
@@ -88,7 +88,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Boolean GetBoolean(System.Int32 i)
     {
-        return _DataReader.GetBoolean(i);
+        return dataReader.GetBoolean(i);
     }
     /// <summary>
     /// 
@@ -97,7 +97,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Byte GetByte(System.Int32 i)
     {
-        return _DataReader.GetByte(i);
+        return dataReader.GetByte(i);
     }
     /// <summary>
     /// 
@@ -110,7 +110,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Int64 GetBytes(System.Int32 i, System.Int64 fieldOffset, byte[] buffer, System.Int32 bufferoffset, System.Int32 length)
     {
-        return _DataReader.GetBytes(i, fieldOffset, buffer, bufferoffset, length);
+        return dataReader.GetBytes(i, fieldOffset, buffer, bufferoffset, length);
     }
     /// <summary>
     /// 
@@ -119,7 +119,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Char GetChar(System.Int32 i)
     {
-        return _DataReader.GetChar(i);
+        return dataReader.GetChar(i);
     }
     /// <summary>
     /// 
@@ -132,16 +132,16 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Int64 GetChars(System.Int32 i, System.Int64 fieldoffset, char[] buffer, System.Int32 bufferoffset, System.Int32 length)
     {
-        return _DataReader.GetChars(i, fieldoffset, buffer, bufferoffset, length);
+        return dataReader.GetChars(i, fieldoffset, buffer, bufferoffset, length);
     }
     /// <summary>
     /// 
     /// </summary>
     /// <param name="i"></param>
     /// <returns></returns>
-    public System.Data.IDataReader GetData(System.Int32 i)
+    public DbDataReader GetData(System.Int32 i)
     {
-        return _DataReader.GetData(i);
+        return dataReader.GetData(i);
     }
     /// <summary>
     /// 
@@ -150,7 +150,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.String GetDataTypeName(System.Int32 i)
     {
-        return _DataReader.GetDataTypeName(i);
+        return dataReader.GetDataTypeName(i);
     }
     /// <summary>
     /// 
@@ -159,7 +159,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.DateTime GetDateTime(System.Int32 i)
     {
-        return _DataReader.GetDateTime(i);
+        return dataReader.GetDateTime(i);
     }
     /// <summary>
     /// 
@@ -168,7 +168,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Decimal GetDecimal(System.Int32 i)
     {
-        return _DataReader.GetDecimal(i);
+        return dataReader.GetDecimal(i);
     }
     /// <summary>
     /// 
@@ -177,7 +177,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Double GetDouble(System.Int32 i)
     {
-        return _DataReader.GetDouble(i);
+        return dataReader.GetDouble(i);
     }
     /// <summary>
     /// 
@@ -186,7 +186,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Type GetFieldType(System.Int32 i)
     {
-        return _DataReader.GetFieldType(i);
+        return dataReader.GetFieldType(i);
     }
     /// <summary>
     /// 
@@ -195,7 +195,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Single GetFloat(System.Int32 i)
     {
-        return _DataReader.GetFloat(i);
+        return dataReader.GetFloat(i);
     }
     /// <summary>
     /// 
@@ -204,7 +204,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Guid GetGuid(System.Int32 i)
     {
-        return _DataReader.GetGuid(i);
+        return dataReader.GetGuid(i);
     }
     /// <summary>
     /// 
@@ -213,7 +213,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Int16 GetInt16(System.Int32 i)
     {
-        return _DataReader.GetInt16(i);
+        return dataReader.GetInt16(i);
     }
     /// <summary>
     /// 
@@ -222,7 +222,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Int32 GetInt32(System.Int32 i)
     {
-        return _DataReader.GetInt32(i);
+        return dataReader.GetInt32(i);
     }
     /// <summary>
     /// 
@@ -231,7 +231,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Int64 GetInt64(System.Int32 i)
     {
-        return _DataReader.GetInt64(i);
+        return dataReader.GetInt64(i);
     }
     /// <summary>
     /// 
@@ -240,7 +240,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.String GetName(System.Int32 i)
     {
-        return _DataReader.GetName(i);
+        return dataReader.GetName(i);
     }
     /// <summary>
     /// 
@@ -249,7 +249,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Int32 GetOrdinal(System.String name)
     {
-        return _DataReader.GetOrdinal(name);
+        return dataReader.GetOrdinal(name);
     }
     /// <summary>
     /// 
@@ -258,7 +258,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.String GetString(System.Int32 i)
     {
-        return _DataReader.GetString(i);
+        return dataReader.GetString(i);
     }
     /// <summary>
     /// 
@@ -267,7 +267,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Object GetValue(System.Int32 i)
     {
-        return _DataReader.GetValue(i);
+        return dataReader.GetValue(i);
     }
     /// <summary>
     /// 
@@ -276,7 +276,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Int32 GetValues(object[] values)
     {
-        return _DataReader.GetValues(values);
+        return dataReader.GetValues(values);
     }
     /// <summary>
     /// 
@@ -285,14 +285,14 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public System.Boolean IsDBNull(System.Int32 i)
     {
-        return _DataReader.IsDBNull(i);
+        return dataReader.IsDBNull(i);
     }
     /// <summary>
     /// 
     /// </summary>
     public int FieldCount
     {
-        get { return _DataReader.FieldCount; }
+        get { return dataReader.FieldCount; }
     }
     /// <summary>
     /// 
@@ -301,7 +301,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public object this[string name]
     {
-        get { return _DataReader[name]; }
+        get { return dataReader[name]; }
     }
     /// <summary>
     /// 
@@ -310,7 +310,7 @@ public class DataReader : System.Data.IDataReader
     /// <returns></returns>
     public object this[int index]
     {
-        get { return _DataReader[index]; }
+        get { return dataReader[index]; }
     }
     /// <summary>
     /// 
@@ -323,7 +323,7 @@ public class DataReader : System.Data.IDataReader
         {
             // Create new data table
 
-            DataTable schemaTable = _DataReader.GetSchemaTable();
+            DataTable schemaTable = dataReader.GetSchemaTable();
             DataTable dataTable = new DataTable();
 
             if (schemaTable != null)
@@ -343,11 +343,11 @@ public class DataReader : System.Data.IDataReader
 
                 // Fill the data table we just created
 
-                while (_DataReader.Read())
+                while (dataReader.Read())
                 {
                     DataRow dataRow = dataTable.NewRow();
-                    for (int i = 0; i < _DataReader.FieldCount; i++)
-                        dataRow[i] = _DataReader.GetValue(i);
+                    for (int i = 0; i < dataReader.FieldCount; i++)
+                        dataRow[i] = dataReader.GetValue(i);
                     dataTable.Rows.Add(dataRow);
                 }
             }
@@ -358,11 +358,11 @@ public class DataReader : System.Data.IDataReader
                 dataTable.Columns.Add(column);
                 dataSet.Tables.Add(dataTable);
                 DataRow dataRow = dataTable.NewRow();
-                dataRow[0] = _DataReader.RecordsAffected;
+                dataRow[0] = dataReader.RecordsAffected;
                 dataTable.Rows.Add(dataRow);
             }
         }
-        while (_DataReader.NextResult());
+        while (dataReader.NextResult());
         this.Close();
         return dataSet;
     }

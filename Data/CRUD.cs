@@ -291,7 +291,7 @@ public class CRUD
         DataTable oDT = oDB.InvokeSQL(_sKey, oSql.ToString(), oParams.ToArray());
         if (oDT == null || oDT.Rows.Count == 0)
             return 0;
-        return Convert.ToInt32(oDT.Rows[0][0].ToString());
+        return System.Convert.ToInt32(oDT.Rows[0][0].ToString());
     }
 
     public long? InsertWithReturn(CRUDBase oItem)
@@ -321,7 +321,7 @@ public class CRUD
         DataTable oDT = oDB.InvokeSQL(_sKey, oSql.ToString(), oParams.ToArray());
         if (oDT == null || oDT.Rows.Count == 0)
             return null;
-        return Convert.ToInt64(oDT.Rows[0][0].ToString());
+        return System.Convert.ToInt64(oDT.Rows[0][0].ToString());
     }
 
     public int Update(CRUDUpdate oItem)
@@ -363,7 +363,7 @@ public class CRUD
         DataTable oDT = oDB.InvokeSQL(_sKey, oSql.ToString(), oParams.ToArray());
         if (oDT == null || oDT.Rows.Count == 0)
             return 0;
-        return Convert.ToInt32(oDT.Rows[0][0].ToString());
+        return System.Convert.ToInt32(oDT.Rows[0][0].ToString());
     }
 
     public int Delete(CRUDDelete oItem)
@@ -392,7 +392,7 @@ public class CRUD
         DataTable oDT = oDB.InvokeSQL(_sKey, oSql.ToString(), oParams.ToArray());
         if (oDT == null || oDT.Rows.Count == 0)
             return 0;
-        return Convert.ToInt32(oDT.Rows[0][0].ToString());
+        return System.Convert.ToInt32(oDT.Rows[0][0].ToString());
     }
 
     public DataTable Invoke(CRUDProcedure oItem)
@@ -413,6 +413,47 @@ public class CRUD
         }
         //
         return oDB.Invoke(_sKey, oItem.Name, oParams.ToArray());
+    }
+
+    public int Set(CRUDBase oItem, string[] svAttrubutesKey, out string sOperation)
+    {
+        CRUDFind oF = new CRUDFind(oItem.Name);
+        CRUDFilters oFs = new CRUDFilters();
+        //
+        for (int i = 0; svAttrubutesKey != null && i < svAttrubutesKey.Length; i++)
+            oFs.Add(new CRUDFilter(svAttrubutesKey[i], "=", oItem[svAttrubutesKey[i]]));
+        //
+        DataTable oDT = null;
+        if (oFs.Count > 0)
+        {
+            oF.Filters = oFs;
+            oDT = this.Find(oF);
+        }
+        if (oDT != null && oDT.Rows.Count > 0)
+        {
+            CRUDUpdate oU = new CRUDUpdate(oItem.Name);
+            oU.Filters = oFs;
+            oU.Attributes = oItem.Attributes;
+            sOperation = "UPDATE";
+            return this.Update(oU);
+        }
+        else
+        {
+            sOperation = "INSERT";
+            return this.Insert(oItem);
+        }
+    }
+
+    public int Merge(CRUDBase[] oItems, string sDestinationTableName, string[] svAttributesKey)
+    {
+        int iResult = 0;
+        string sOperation = "";
+        for (int i = 0; oItems != null && i < oItems.Length; i++)
+        {
+            oItems[i].Name = sDestinationTableName;
+            iResult += this.Set(oItems[i], svAttributesKey, out sOperation);
+        }
+        return iResult;
     }
 }
 

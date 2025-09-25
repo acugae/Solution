@@ -44,40 +44,46 @@ public class JSON
         return Deserialize<T>(sFileString);
     }
 
-    static public string SerializeDataTable(DataTable oDTDati)
-    {
-        StringBuilder sResult = new StringBuilder();
-        //
-        sResult.Append("[");
-        for (int i = 0; oDTDati != null && i < oDTDati.Rows.Count; i++)
-        {
-            sResult.Append((i > 0 ? "," : "") + "{");
-            for (int col = 0; col < oDTDati.Columns.Count; col++)
-            {
-                sResult.Append("\"" + oDTDati.Columns[col].ColumnName.Replace(" ", "_") + "\":" + GetValue(oDTDati.Rows[i][col])); // (oDTDati.Rows[i][col] == DBNull.Value ? "null" : JsonConvert.SerializeObject(oDTDati.Rows[i][col])));
-                                                                                                                                   //sResult.Append(oDTDati.Columns[col].ColumnName + ":" + JsonConvert.SerializeObject(oDTDati.Rows[i][col])); //GetValue(oDTDati.Rows[i][col]));
-                sResult.Append((col < (oDTDati.Columns.Count - 1)) ? "," : "");
-            }
-            sResult.Append("}");
-        }
-        sResult.Append("]");
-        return sResult.ToString();
-    }
+    //public static string SerializeDataTable(DataTable dataTable)
+    //{
+    //    string jsonResult = JsonConvert.SerializeObject(dataTable, Newtonsoft.Json.Formatting.Indented);
+    //    return jsonResult;
+    //}
 
-    static public string SerializeDataRow(DataRow oDRDati)
-    {
-        StringBuilder sResult = new StringBuilder();
+    //static public string SerializeDataTable(DataTable oDTDati)
+    //{
+    //    StringBuilder sResult = new StringBuilder();
+    //    //
+    //    sResult.Append("[");
+    //    for (int i = 0; oDTDati != null && i < oDTDati.Rows.Count; i++)
+    //    {
+    //        sResult.Append((i > 0 ? "," : "") + "{");
+    //        for (int col = 0; col < oDTDati.Columns.Count; col++)
+    //        {
+    //            sResult.Append("\"" + oDTDati.Columns[col].ColumnName.Replace(" ", "_") + "\":" + GetValue(oDTDati.Rows[i][col])); // (oDTDati.Rows[i][col] == DBNull.Value ? "null" : JsonConvert.SerializeObject(oDTDati.Rows[i][col])));
+    //                                                                                                                               //sResult.Append(oDTDati.Columns[col].ColumnName + ":" + JsonConvert.SerializeObject(oDTDati.Rows[i][col])); //GetValue(oDTDati.Rows[i][col]));
+    //            sResult.Append((col < (oDTDati.Columns.Count - 1)) ? "," : "");
+    //        }
+    //        sResult.Append("}");
+    //    }
+    //    sResult.Append("]");
+    //    return sResult.ToString();
+    //}
 
-        sResult.Append("{");
-        for (int col = 0; col < oDRDati.ItemArray.Length; col++)
-        {
-            sResult.Append("\"" + oDRDati.Table.Columns[col].ColumnName.Replace(" ", "_") + "\":" + JsonConvert.SerializeObject(oDRDati[col] == DBNull.Value ? "" : oDRDati[col])); //GetValue(oDTDati.Rows[i][col]));
-            sResult.Append((col < (oDRDati.Table.Columns.Count - 1)) ? "," : "");
-        }
-        sResult.Append("}");
+    //static public string SerializeDataRow(DataRow oDRDati)
+    //{
+    //    StringBuilder sResult = new StringBuilder();
 
-        return sResult.ToString();
-    }
+    //    sResult.Append("{");
+    //    for (int col = 0; col < oDRDati.ItemArray.Length; col++)
+    //    {
+    //        sResult.Append("\"" + oDRDati.Table.Columns[col].ColumnName.Replace(" ", "_") + "\":" + JsonConvert.SerializeObject(oDRDati[col] == DBNull.Value ? "" : oDRDati[col])); //GetValue(oDTDati.Rows[i][col]));
+    //        sResult.Append((col < (oDRDati.Table.Columns.Count - 1)) ? "," : "");
+    //    }
+    //    sResult.Append("}");
+
+    //    return sResult.ToString();
+    //}
 
     public static string SerializeJson<T>(T t)
     {

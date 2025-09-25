@@ -1,9 +1,12 @@
 ﻿using Newtonsoft.Json.Linq;
 using NPOI.XWPF.UserModel;
+using Solution.Data;
 using System.Dynamic;
+using System.Web;
 using static iTextSharp.text.pdf.AcroFields;
 
 namespace Solution;
+
 public static class HttpContextExtensions
 {
     public static async Task<string> GetBody(this HttpRequest oRequest)
@@ -50,11 +53,38 @@ public static class DataTableExtensions
             oResult.Add(row.ToExpando());
         return oResult;
     }
-    public static List<K> To<K>(this DataTable dt, OneMaps maps = null) where K : new()
+    public static List<K> To<K>(this DataTable dt, Maps maps = null) where K : new()
     {
         List<K> oResult = new List<K>();
         foreach (DataRow row in dt.Rows)
             oResult.Add(row.To<K>(maps));
+        return oResult;
+    }
+    public static CRUDBase[] ToCrud(this DataTable dataTable)
+    {
+        List<CRUDBase> oResult = new List<CRUDBase>();
+        for (int i = 0; dataTable != null && i < dataTable.Rows.Count; i++)
+        {
+            DataRow oDR = dataTable.Rows[i];
+            CRUDBase oCB = new CRUDBase(dataTable.TableName);
+            oCB.Attributes = dataTable.Columns.Cast<DataColumn>().ToDictionary(column => column.ColumnName, column => oDR[column]);
+            oResult.Add(oCB);
+        }
+        return oResult.ToArray();
+    }
+    public static Dictionary<string, object> ToKeyValueByColumns(this DataTable dt, string columnNameKey, string columnNameValue)
+    {
+        if (dt is null || !dt.Columns.Contains(columnNameKey) || !dt.Columns.Contains(columnNameValue))
+            throw new Exception("ToKeyValueByColumns, column name not found.");
+
+        Dictionary<string, object> oResult = new Dictionary<string, object>();
+        foreach (DataRow row in dt.Rows)
+        {
+            object value = row[columnNameValue];
+            if (row[columnNameValue] == DBNull.Value)
+                value = null;
+            oResult[row[columnNameKey].ToString()] = value;
+        }
         return oResult;
     }
 }
@@ -94,7 +124,7 @@ public static class DataRowExtensions
     /// <param name="row"></param>
     /// <param name="maps"></param>
     /// <returns></returns>
-    public static T To<T>(this DataRow row, OneMaps maps = null) where T : new()
+    public static T To<T>(this DataRow row, Maps maps = null) where T : new()
     {
         PropertyInfo[] Properties = typeof(T).GetProperties();
         T obj = new();
@@ -143,7 +173,6 @@ public static class DataRowExtensions
     }
 
 }
-
 public static class DictionaryStringObjectExtensions
 {
     public static dynamic ToDynamic(this Dictionary<string, object> dict)
@@ -167,6 +196,14 @@ public static class DictionaryStringObjectExtensions
         return response;
     }
 }
+public static class DictionaryExtensions
+{
+    public static Dictionary<TKey, TValue> Set<TKey, TValue>(this Dictionary<TKey, TValue> dict, TKey key, TValue value)
+    {
+        dict[key] = value;
+        return dict;
+    }
+}
 public static class RequestExtensions
 {
     public static async Task<string> ReadAsStringAsync(this Stream requestBody, bool leaveOpen = false)
@@ -179,6 +216,9 @@ public static class RequestExtensions
 
 public static class StringExtensions
 {
+    public static T Deserialize<T>(this string _string) { return JsonConvert.DeserializeObject<T>(_string); }
+    public static T Deserialize<T>(string sJson, JsonSerializerSettings oSetting) { return JsonConvert.DeserializeObject<T>(sJson, oSetting); }
+    public static T Deserialize<T>(string sJson, params JsonConverter[] converter) { return JsonConvert.DeserializeObject<T>(sJson, converter); }
     public static string[] GetIntoTag(this string _string, string sTagBegin, string sTagEnd)
     {
         List<string> vString = new List<string>();
@@ -207,5 +247,44 @@ public static class StringExtensions
         index = -1;
         return new Tuple<string,int>(_string, index);
     }
+    public static bool IsNumber(this string _string)
+    {
+        return int.TryParse(_string, out _);
+    }
+    public static Dictionary<string, string> ToDictionary(this string _string, string pairSeparator, string keyValueSeparator)
+    {
+        var result = new Dictionary<string, string>();
 
+        // Verifica che la stringa non sia nulla o vuota
+        if (string.IsNullOrEmpty(_string))
+            return result;
+
+        foreach (var pair in _string.Split(pairSeparator))
+        {
+            var keyValue = pair.Split(keyValueSeparator);
+            if (keyValue.Length == 2)
+            {
+                string key = keyValue[0].Trim();
+                string value = keyValue[1].Trim();
+                result[key] = value;
+            }
+        }
+
+        return result;
+    }
+    public static TEnum ParseEnum<TEnum>(this string value, TEnum defaultValue = default, bool ignoreCase = false) where TEnum : struct, Enum
+    {
+        // Parsing case insensitive con valore di default in caso di errore
+        return Enum.TryParse(value, ignoreCase, out TEnum parsedValue) && Enum.IsDefined(typeof(TEnum), parsedValue)
+            ? parsedValue
+            : defaultValue;
+    }
+}
+
+public static class ObjectExtensions
+{
+    public static string Serialize(this object obj, JsonSerializerSettings? oSetting = null)
+    {
+        return JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented, oSetting);
+    }
 }
