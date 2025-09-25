@@ -78,7 +78,6 @@ using Solution.Data;
 
 // Initialize database connection
 var db = new DB();
-db.connectionDefault = "your-connection-string";
 
 // Simple SELECT operation
 var users = db["UserDatabase"].Select("SELECT * FROM Users WHERE Active = 1");
@@ -151,7 +150,6 @@ The `Solution.Data` namespace provides comprehensive database functionality:
 
 ```csharp
 var db = new DB();
-db.connectionDefault = "Server=localhost;Database=MyApp;Integrated Security=true;";
 
 // Multiple connection support
 db.DataManager.Connections.Add("primary", "connection-string-1");
