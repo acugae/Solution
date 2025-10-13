@@ -26,7 +26,19 @@ public class Parameter
         this.Direction = oDirection;
         this.ParameterName = sName;
         this.Value = oValue;
+        this.IsNullable = isNullable;
     }
+
+    public Parameter(Connection oCn, System.Data.DbType oDbType, System.Data.ParameterDirection oDirection, string sName, object oValue, bool isNullable)
+    {
+        parameter = oCn.Provider.CreateDataParameter();
+        this.DbType = oDbType;
+        this.Direction = oDirection;
+        this.ParameterName = sName;
+        this.Value = oValue;
+        this.IsNullable = isNullable;
+    }
+
     /// <summary>
     /// 
     /// </summary>
