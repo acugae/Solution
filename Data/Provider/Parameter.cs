@@ -3,7 +3,7 @@ namespace Solution.Data.Provider;
 /// <summary>
 /// Classe per la gestione del parametro in un command.
 /// </summary>
-public class Parameter 
+public class Parameter
 {
     private DbParameter parameter;
     private int _size;
@@ -26,7 +26,6 @@ public class Parameter
         this.Direction = oDirection;
         this.ParameterName = sName;
         this.Value = oValue;
-        this.IsNullable = isNullable;
     }
 
     public Parameter(Connection oCn, System.Data.DbType oDbType, System.Data.ParameterDirection oDirection, string sName, object oValue, bool isNullable)
@@ -61,6 +60,7 @@ public class Parameter
     public bool IsNullable
     {
         get { return parameter.IsNullable; }
+        set { parameter.IsNullable = value; }
     }
     /// <summary>
     /// 
