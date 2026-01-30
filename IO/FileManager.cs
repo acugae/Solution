@@ -4,43 +4,69 @@
 /// </summary>
 public class FileManager
 {
+    // Directory base per validazione path (null = nessuna restrizione)
+    private static string? _allowedBasePath = null;
+    
+    /// <summary>
+    /// Imposta una directory base. Tutte le operazioni file saranno ristrette a questa directory.
+    /// </summary>
+    /// <param name="basePath">Directory base consentita, o null per rimuovere la restrizione</param>
+    public static void SetAllowedBasePath(string? basePath)
+    {
+        if (!string.IsNullOrEmpty(basePath))
+        {
+            _allowedBasePath = Path.GetFullPath(basePath);
+            if (!Directory.Exists(_allowedBasePath))
+                throw new DirectoryNotFoundException($"Base path does not exist: {_allowedBasePath}");
+        }
+        else
+        {
+            _allowedBasePath = null;
+        }
+    }
+    
+    /// <summary>
+    /// Valida e normalizza un path, prevenendo path traversal attacks.
+    /// </summary>
+    private static string ValidatePath(string path)
+    {
+        if (string.IsNullOrEmpty(path))
+            throw new ArgumentNullException(nameof(path));
+        
+        // Normalizza il path
+        string fullPath = Path.GetFullPath(path);
+        
+        // Se è impostata una base path, verifica che il path sia al suo interno
+        if (!string.IsNullOrEmpty(_allowedBasePath))
+        {
+            if (!fullPath.StartsWith(_allowedBasePath, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new UnauthorizedAccessException($"Access denied: path is outside allowed directory");
+            }
+        }
+        
+        return fullPath;
+    }
+    
     /// <summary>
     /// Restituisce una stringa contenente il file specificato.
     /// </summary>
     static public string GetFile(string sFileName)
     {
-        StreamReader reader = new StreamReader(sFileName, System.Text.Encoding.Default);
-        string input = "";
-        input = reader.ReadToEnd();
-        reader.Close();
-        return input;
+        string validPath = ValidatePath(sFileName);
+        using StreamReader reader = new StreamReader(validPath, System.Text.Encoding.Default);
+        return reader.ReadToEnd();
     }
     /// <summary>
     /// Restituisce ogni riga contenuta in un file di testo.
     /// </summary>
     static public string[] GetFileLines(string sFileName)
     {
-        string line = "";
-        ArrayList oText = new ArrayList();
-        if (File.Exists(sFileName))
-        {
-            StreamReader file = new StreamReader(sFileName);
-            try
-            {
-                while ((line = file.ReadLine()) != null)
-                {
-                    oText.Add(line);
-                }
-            }
-            finally
-            {
-                if (file != null)
-                    file.Close();
-            }
-        }
-        string[] ovString = new string[oText.Count];
-        Array.Copy(oText.ToArray(), ovString, oText.ToArray().Length);
-        return ovString;
+        string validPath = ValidatePath(sFileName);
+        if (!File.Exists(validPath))
+            return Array.Empty<string>();
+            
+        return File.ReadAllLines(validPath);
     }
 
     //
@@ -49,16 +75,9 @@ public class FileManager
     /// </summary>
     static public void SetFile(string sFileName, string sValue)
     {
-        try
-        {
-            StreamWriter sw = new StreamWriter(sFileName);
-            sw.Write(sValue);
-            sw.Close();
-        }
-        catch (Exception ex)
-        {
-            throw ex;
-        }
+        string validPath = ValidatePath(sFileName);
+        using StreamWriter sw = new StreamWriter(validPath);
+        sw.Write(sValue);
     }
     //
     /// <summary>
@@ -66,28 +85,16 @@ public class FileManager
     /// </summary>
     static public byte[] GetFileByte(string sFileName)
     {
-        FileStream fs = File.OpenRead(sFileName);
-        BinaryReader br = new BinaryReader(fs);
-        byte[] oResult = br.ReadBytes(Convert.ToInt32(fs.Length));
-        br.Close();
-        fs.Close();
-        return oResult;
+        string validPath = ValidatePath(sFileName);
+        return File.ReadAllBytes(validPath);
     }
     /// <summary>
     /// Scrive nel file l'array di byte specificato.(Nel caso in cui il file esiste verrà sovrascritto)
     /// </summary>
     static public void SetFileByte(string sFileName, byte[] oBuffer)
     {
-        try
-        {
-            FileStream fs = new FileStream(sFileName, FileMode.Create);
-            fs.Write(oBuffer, 0, oBuffer.Length);
-            fs.Close();
-        }
-        catch (Exception ex)
-        {
-            throw ex;
-        }
+        string validPath = ValidatePath(sFileName);
+        File.WriteAllBytes(validPath, oBuffer);
     }
     /// <summary>
     /// Converte il path in ingresso in un path valido per ambienti Linux.
