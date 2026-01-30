@@ -17,32 +17,245 @@ Or via Package Manager:
 Install-Package Solution
 ```
 
+## ⚡ Quick Start
+
+```csharp
+using Solution.Data;
+
+// 1. Setup connection
+var db = new DB()
+    .AddSqlServer("main", "Server=localhost;Database=mydb;Integrated Security=True;");
+
+// 2. CRUD operations with anonymous objects
+db["main"].Insert("Users", new { Name = "John", Email = "john@email.com" });
+db["main"].Update("Users", new { Name = "John Doe" }, new { Id = 1 });
+db["main"].Delete("Users", new { Id = 1 });
+
+// 3. Query with automatic mapping
+List<User> users = db["main"].Query<User>("Users", new { Active = true });
+User? user = db["main"].QueryFirst<User>("Users", new { Id = 1 });
+
+// 4. Transactions with automatic rollback
+using (var tx = db.BeginTransaction("main"))
+{
+    db["main"].Insert("Users", new { Name = "Jane" });
+    tx.Commit();
+}
+```
+
 ## 🚀 Features
 
 ### 📊 Data - Database Access
 
-Multi-database support (SQL Server, MySQL, PostgreSQL) with simplified CRUD operations.
+Multi-database support (SQL Server, MySQL, PostgreSQL) with simplified CRUD operations and fluent API.
+
+#### Connection Setup
 
 ```csharp
-// Connection setup
-var db = new DB();
-db.Connections.Add("main", new Connection("Server=localhost;Database=mydb;..."));
+// Fluent API with builder pattern
+var db = new DB()
+    .AddConnection("main", c => c
+        .UseSqlServer()
+        .WithConnectionString("Server=localhost;Database=mydb;Integrated Security=True;"))
+    .AddConnection("logs", c => c
+        .UsePostgreSQL()
+        .ForPostgreSQL("localhost", "logs", "user", "password"));
 
-// Simple query
-DataTable result = db["main"].Get("SELECT * FROM Users WHERE Id = @Id", new Parameters().Add("Id", 1));
+// Shorthand methods
+var db = new DB()
+    .AddSqlServer("main", "Server=localhost;Database=mydb;...")
+    .AddMySQL("secondary", "Server=localhost;Database=other;...");
 
-// CRUD operations
-db["main"].CRUD.Insert("Users", new { Name = "John", Email = "john@email.com" });
-db["main"].CRUD.Update("Users", new { Name = "John Doe" }, new { Id = 1 });
-db["main"].CRUD.Delete("Users", new { Id = 1 });
+// Available providers: UseSqlServer(), UseMySQL(), UsePostgreSQL()
+// Connection helpers: ForSqlServer(), ForMySQL(), ForPostgreSQL()
+```
 
-// Transactions
-db.Transactions.Begin("main");
-try {
-    db["main"].Execute("INSERT INTO ...");
-    db.Transactions.Commit("main");
-} catch {
-    db.Transactions.Rollback("main");
+#### CRUD Operations
+
+```csharp
+// Insert
+db["main"].Insert("Users", new { Name = "John", Email = "john@email.com" });
+long? id = db["main"].InsertWithReturn("Users", new { Name = "John" }); // Returns generated ID
+
+// Update
+db["main"].Update("Users", new { Name = "John Doe" }, new { Id = 1 });
+
+// Delete
+db["main"].Delete("Users", new { Id = 1 });
+
+// Upsert (Insert or Update based on key)
+db["main"].Upsert("Users", new { Id = 1, Name = "John", Email = "john@mail.com" }, "Id");
+```
+
+#### Query & Mapping
+
+```csharp
+// Query to DataTable
+DataTable dt = db.Query("main", "SELECT * FROM Users WHERE Active = @Active", new { Active = true });
+
+// Query with automatic mapping to typed objects
+List<User> users = db["main"].Query<User>("Users");
+List<User> activeUsers = db["main"].Query<User>("Users", new { Active = true });
+User? user = db["main"].QueryFirst<User>("Users", new { Id = 1 });
+
+// SQL queries with mapping
+var admins = db.Query<User>("main", "SELECT * FROM Users WHERE Role = @Role", new { Role = "Admin" });
+var user = db.QueryFirst<User>("main", "SELECT * FROM Users WHERE Id = @Id", new { Id = 1 });
+
+// Scalar values
+int count = db.Scalar<int>("main", "SELECT COUNT(*) FROM Users");
+string name = db.Scalar<string>("main", "SELECT Name FROM Users WHERE Id = @Id", new { Id = 1 });
+```
+
+#### Utility Methods
+
+```csharp
+// Check existence
+bool exists = db["main"].Exists("Users", new { Email = "john@email.com" });
+
+// Count records
+int total = db["main"].Count("Users");
+int active = db["main"].Count("Users", new { Active = true });
+```
+
+#### Transactions
+
+```csharp
+// Using pattern with automatic rollback
+using (var tx = db.BeginTransaction("main"))
+{
+    db["main"].Insert("Users", new { Name = "John" });
+    db["main"].Insert("Logs", new { Action = "UserCreated" });
+    tx.Commit(); // If not called, automatic rollback on dispose
+}
+
+// Helper method (auto-commit on success, rollback on exception)
+db.InTransaction("main", () => {
+    db["main"].Insert("Users", new { Name = "John" });
+    db["main"].Insert("Logs", new { Action = "UserCreated" });
+});
+
+// With return value
+long? userId = db.InTransaction("main", () => {
+    return db["main"].InsertWithReturn("Users", new { Name = "John" });
+});
+```
+
+#### Fluent Query Builder
+
+Build queries with a fluent, readable syntax:
+
+```csharp
+// Simple query with filtering and ordering
+var users = db["main"]
+    .From("Users")
+    .Where(new { Active = true, Role = "Admin" })
+    .OrderBy("Name")
+    .Take(10)
+    .Select<User>();
+
+// Advanced filtering
+var results = db["main"]
+    .From("Orders")
+    .Where("Total", ">", 100)
+    .Where("Status", "Pending")
+    .WhereBetween("CreatedAt", startDate, endDate)
+    .WhereIn("Category", "Electronics", "Books", "Clothing")
+    .OrderByDesc("CreatedAt")
+    .Select<Order>();
+
+// Pagination
+var page2 = db["main"]
+    .From("Products")
+    .Where(new { InStock = true })
+    .OrderBy("Name")
+    .Page(2, 20)  // Page 2, 20 items per page
+    .Select<Product>();
+
+// Utility methods
+int count = db["main"].From("Users").Where(new { Active = true }).Count();
+bool exists = db["main"].From("Users").Where(new { Email = "john@email.com" }).Exists();
+var first = db["main"].From("Users").Where(new { Id = 1 }).SelectFirst<User>();
+
+// Get generated SQL (for debugging)
+string sql = db["main"].From("Users").Where(new { Active = true }).ToSql();
+```
+
+#### Dependency Injection
+
+Register DB in your ASP.NET Core application:
+
+```csharp
+// In Program.cs or Startup.cs
+
+// Simple registration
+services.AddSolutionDB(db => db
+    .AddSqlServer("main", Configuration.GetConnectionString("Main")));
+
+// With multiple connections
+services.AddSolutionDB(db => db
+    .AddSqlServer("main", Configuration.GetConnectionString("Main"))
+    .AddPostgreSQL("analytics", Configuration.GetConnectionString("Analytics")));
+
+// Shorthand for single connection
+services.AddSolutionDB("main", connectionString, DatabaseProvider.SqlServer);
+
+// From appsettings.json section (recommended)
+services.AddSolutionDB(Configuration.GetSection("SolutionDB"));
+
+// From standard ConnectionStrings section
+services.AddSolutionDBFromConnectionString(Configuration, "Main");
+services.AddSolutionDBFromConnectionString(Configuration, "Logs", DatabaseProvider.PostgreSQL);
+
+// Multiple ConnectionStrings with provider mapping
+services.AddSolutionDBFromConnectionStrings(Configuration, 
+    new Dictionary<string, DatabaseProvider> {
+        { "Main", DatabaseProvider.SqlServer },
+        { "Logs", DatabaseProvider.PostgreSQL }
+    });
+```
+
+**appsettings.json examples:**
+
+```json
+// Option 1: SolutionDB section (full control)
+{
+  "SolutionDB": {
+    "Lifetime": "Scoped",
+    "Connections": [
+      {
+        "Name": "main",
+        "Provider": "SqlServer",
+        "ConnectionString": "Server=localhost;Database=mydb;Integrated Security=True;"
+      },
+      {
+        "Name": "logs",
+        "Provider": "PostgreSQL",
+        "ConnectionString": "Host=localhost;Database=logs;Username=user;Password=pass;"
+      }
+    ]
+  }
+}
+
+// Option 2: Standard ConnectionStrings (ASP.NET Core convention)
+{
+  "ConnectionStrings": {
+    "Main": "Server=localhost;Database=mydb;...",
+    "Logs": "Host=localhost;Database=logs;..."
+  }
+}
+```
+
+```csharp
+// Inject in your services
+public class UserService
+{
+    private readonly DB _db;
+    
+    public UserService(DB db) => _db = db;
+    
+    public List<User> GetActiveUsers() => 
+        _db["main"].Query<User>("Users", new { Active = true });
 }
 ```
 
