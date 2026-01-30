@@ -1,654 +1,409 @@
-# Solution - .NET Core Utility Library
+# Solution
 
 [![NuGet](https://img.shields.io/nuget/v/Solution.svg)](https://www.nuget.org/packages/Solution)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![.NET](https://img.shields.io/badge/.NET-9.0-blue.svg)](https://dotnet.microsoft.com/download/dotnet/9.0)
+[![.NET](https://img.shields.io/badge/.NET-10.0-blue.svg)](https://dotnet.microsoft.com/)
 
-**Solution** is a comprehensive .NET 9.0 utility library designed to accelerate application development by providing a rich set of tools and abstractions for common development tasks. From database operations to file management, security features to object mapping, Solution offers battle-tested solutions for enterprise-grade applications.
-
-## 📋 Table of Contents
-
-- [Features](#-features)
-- [Installation](#-installation)
-- [Quick Start](#-quick-start)
-- [Core Modules](#-core-modules)
-  - [Database Operations](#database-operations)
-  - [File Management](#file-management)
-  - [Security & JWT](#security--jwt)
-  - [Object Mapping](#object-mapping)
-  - [IO Operations](#io-operations)
-- [Advanced Usage](#-advanced-usage)
-- [Best Practices](#-best-practices)
-- [Contributing](#-contributing)
-- [License](#-license)
-
-## 🚀 Features
-
-### Core Data Access
-- **Multi-Database Support**: SQL Server, MySQL, PostgreSQL
-- **Advanced CRUD Operations**: Simplified database operations with fluent API
-- **Bulk Operations**: High-performance bulk insert/update operations
-- **Dynamic Table Creation**: Create database tables from .NET types
-- **Connection Management**: Intelligent connection pooling and management
-
-### File & Document Processing
-- **File Operations**: Read/write text and binary files with encoding support
-- **Excel Processing**: Create and manipulate Excel files (.xls/.xlsx) using NPOI
-- **PDF Generation**: Create and manipulate PDF documents with iTextSharp
-- **Archive Management**: ZIP file creation and extraction
-- **FTP/SFTP**: Secure file transfer protocols support
-
-### Security & Authentication
-- **JWT Token Management**: Create and validate JSON Web Tokens
-- **Encryption**: Symmetric and asymmetric cryptography utilities
-- **Secure Communication**: HTTPS, SSL/TLS support
-
-### Development Utilities
-- **Object Mapping**: High-performance object-to-object mapping
-- **Reflection Utilities**: Advanced reflection helpers and caching
-- **Extension Methods**: Rich set of extension methods for common types
-- **Logging**: Integrated logging with log4net
-- **Caching**: Memory and distributed caching abstractions
+A comprehensive .NET library providing utilities for database operations, I/O, security, reflection, object mapping, and much more.
 
 ## 📦 Installation
 
-Install the Solution package via NuGet Package Manager:
-
-### Package Manager Console
-```powershell
-Install-Package Solution
-```
-
-### .NET CLI
 ```bash
 dotnet add package Solution
 ```
 
-### PackageReference
-```xml
-<PackageReference Include="Solution" Version="1.0.16" />
+Or via Package Manager:
+```powershell
+Install-Package Solution
 ```
 
-## 🏃‍♂️ Quick Start
+## 🚀 Features
 
-### Basic Database Operations
+### 📊 Data - Database Access
+
+Multi-database support (SQL Server, MySQL, PostgreSQL) with simplified CRUD operations.
 
 ```csharp
-using Solution.Data;
-
-// Initialize database connection
+// Connection setup
 var db = new DB();
+db.Connections.Add("main", new Connection("Server=localhost;Database=mydb;..."));
 
-// Simple SELECT operation
-var users = db["UserDatabase"].Select("SELECT * FROM Users WHERE Active = 1");
+// Simple query
+DataTable result = db["main"].Get("SELECT * FROM Users WHERE Id = @Id", new Parameters().Add("Id", 1));
 
-// Insert operation with parameters
-var newUser = new CRUDInsert("Users");
-newUser["Name"] = "John Doe";
-newUser["Email"] = "john@example.com";
-newUser["CreatedAt"] = DateTime.Now;
+// CRUD operations
+db["main"].CRUD.Insert("Users", new { Name = "John", Email = "john@email.com" });
+db["main"].CRUD.Update("Users", new { Name = "John Doe" }, new { Id = 1 });
+db["main"].CRUD.Delete("Users", new { Id = 1 });
 
-db["UserDatabase"].Insert(newUser);
-```
-
-### File Management
-
-```csharp
-using Solution.IO;
-
-// Read/Write text files
-string content = FileManager.GetFile(@"C:\data\config.txt");
-FileManager.SetFile(@"C:\data\output.txt", "Hello World!");
-
-// Read/Write binary files
-byte[] binaryData = FileManager.GetFileByte(@"C:\data\image.jpg");
-FileManager.SetFileByte(@"C:\data\copy.jpg", binaryData);
-
-// Working with Excel files
-var excel = new XLS();
-excel.CreateWorkbook(@"C:\reports\data.xlsx");
-excel.AddSheet("Users");
-excel.SetCell(0, 0, "Name");
-excel.SetCell(0, 1, "Email");
-excel.SaveWorkbook();
-```
-
-### JWT Token Management
-
-```csharp
-using Solution.Security;
-
-// Create a JWT token
-var claims = new Claim[]
-{
-    new Claim("userId", "12345"),
-    new Claim("username", "john_doe"),
-    new Claim("role", "admin")
-};
-
-string token = JWT.Create("your-secret-key", 60, claims); // 60 minutes expiry
-
-// Validate and read JWT token
-try
-{
-    var tokenClaims = JWT.Read("your-secret-key", token);
-    var userId = tokenClaims.FirstOrDefault(c => c.Type == "userId")?.Value;
-}
-catch (SecurityTokenExpiredException)
-{
-    // Handle expired token
+// Transactions
+db.Transactions.Begin("main");
+try {
+    db["main"].Execute("INSERT INTO ...");
+    db.Transactions.Commit("main");
+} catch {
+    db.Transactions.Rollback("main");
 }
 ```
 
-## 🧩 Core Modules
+### 🗃️ DbOperations - Bulk Operations
 
-### Database Operations
-
-The `Solution.Data` namespace provides comprehensive database functionality:
-
-#### Connection Management
+Optimized bulk operations for large data volumes.
 
 ```csharp
-var db = new DB();
-
-// Multiple connection support
-db.DataManager.Connections.Add("primary", "connection-string-1");
-db.DataManager.Connections.Add("readonly", "connection-string-2");
-
-// Execute queries on specific connections
-var data = db["primary"].Select("SELECT * FROM Products");
-```
-
-#### CRUD Operations
-
-```csharp
-// CREATE
-var newProduct = new CRUDInsert("Products");
-newProduct["Name"] = "Laptop";
-newProduct["Price"] = 999.99;
-newProduct["CategoryId"] = 1;
-db[connectionKey].Insert(newProduct);
-
-// READ with filters
-var filters = new CRUDFilters();
-filters.Add("CategoryId", 1);
-filters.Add("Price", ">", 500);
-var products = db[connectionKey].Select("Products", filters);
-
-// UPDATE
-var updateProduct = new CRUDUpdate("Products");
-updateProduct["Price"] = 899.99;
-updateProduct.Filters.Add("Id", productId);
-db[connectionKey].Update(updateProduct);
-
-// DELETE
-var deleteProduct = new CRUDDelete("Products");
-deleteProduct.Filters.Add("Id", productId);
-db[connectionKey].Delete(deleteProduct);
-```
-
-#### Advanced Database Operations
-
-```csharp
-using Solution.DbOperations;
-
-// Create table from .NET type
-public class User
-{
-    [Key]
-    public int Id { get; set; }
-
-    [Required]
-    [MaxLength(100)]
-    public string Name { get; set; }
-
-    public DateTime CreatedAt { get; set; }
-}
-
-// Create table
-connection.CreateTable<User>(options =>
-{
-    options.TableName("Users");
-    options.DropIfExists(true);
+// Bulk Insert
+var users = new List<User> { ... };
+connection.BulkInsert(users, options => {
+    options.TableName = "Users";
+    options.PrimaryKey = x => x.Id;
 });
 
-// Bulk insert
-var users = new List<User>
-{
-    new User { Name = "John", CreatedAt = DateTime.Now },
-    new User { Name = "Jane", CreatedAt = DateTime.Now }
-};
+// Bulk Update
+connection.BulkUpdate(users, options => {
+    options.TableName = "Users";
+    options.JoinColumns = x => x.Id;
+});
 
-connection.BulkInsert<User>(users, options =>
-{
-    options.TableName("Users");
-    options.BatchSize(1000);
+// Create table from type
+connection.CreateTable<User>(options => {
+    options.TableName = "Users";
+    options.PrimaryKey = x => x.Id;
 });
 ```
 
-### File Management
+### 📁 IO - Input/Output
 
-The `Solution.IO` namespace handles various file operations:
-
-#### Excel Operations
-
+#### File Manager
 ```csharp
-using Solution.IO;
+// Read file
+string content = FileManager.Read("path/to/file.txt");
+byte[] bytes = FileManager.ReadByte("path/to/file.bin");
 
-var excel = new XLS();
-
-// Create new workbook
-excel.CreateWorkbook(@"C:\Reports\sales_report.xlsx");
-
-// Add multiple sheets
-excel.AddSheet("Q1 Sales");
-excel.AddSheet("Q2 Sales");
-
-// Set headers
-excel.SetCell(0, 0, "Product");
-excel.SetCell(0, 1, "Sales");
-excel.SetCell(0, 2, "Revenue");
-
-// Add data rows
-var salesData = GetSalesData();
-for (int i = 0; i < salesData.Count; i++)
-{
-    excel.SetCell(i + 1, 0, salesData[i].Product);
-    excel.SetCell(i + 1, 1, salesData[i].Units);
-    excel.SetCell(i + 1, 2, salesData[i].Revenue);
-}
-
-// Apply formatting
-excel.SetCellStyle(0, 0, 0, 2, bold: true); // Header row
-excel.AutoSizeColumns();
-
-excel.SaveWorkbook();
+// Write file
+FileManager.Write("path/to/file.txt", "content");
+FileManager.WriteByte("path/to/file.bin", byteArray);
 ```
 
-#### PDF Operations
-
+#### Excel (XLS/XLSX)
 ```csharp
-using Solution.IO;
+// Read Excel
+var xls = new XLS("file.xlsx");
+DataTable data = xls.GetDataTable("Sheet1");
 
-var pdf = new PDF();
+// Write Excel
+xls.SetDataTable(dataTable, "Sheet1");
+xls.Write("output.xlsx");
 
-// Create new PDF document
-pdf.CreateDocument(@"C:\Documents\report.pdf");
+// Export from DataTable
+dataTable.ToExcel("export.xlsx");
+```
 
-// Add content
-pdf.AddParagraph("Sales Report", fontSize: 18, bold: true);
-pdf.AddParagraph("Generated on: " + DateTime.Now.ToString("yyyy-MM-dd"));
+#### PDF
+```csharp
+var pdf = new PDF("template.pdf");
 
-// Add table
-var tableData = new string[,]
-{
-    {"Product", "Quantity", "Price"},
-    {"Laptop", "10", "$999.99"},
-    {"Mouse", "25", "$29.99"}
+// Fill form fields
+pdf.SetField("name", "John Doe");
+pdf.SetField("date", DateTime.Now.ToString());
+
+// Merge PDFs
+PDF.Merge(new[] { "doc1.pdf", "doc2.pdf" }, "merged.pdf");
+
+// Extract pages
+pdf.ExtractPages(1, 5, "extracted.pdf");
+```
+
+#### FTP / SFTP
+```csharp
+// FTP
+var ftp = new FTP("ftp://server.com", "user", "password");
+ftp.Upload("local.txt", "/remote/path/file.txt");
+ftp.Download("/remote/file.txt", "local.txt");
+
+// SFTP (with key or password)
+var sftp = new SFTP("server.com", "user", "password");
+sftp.Upload("local.txt", "/remote/path/");
+sftp.Download("/remote/file.txt", memoryStream);
+```
+
+#### ZIP
+```csharp
+// Compression
+var files = new Dictionary<string, byte[]> {
+    { "file1.txt", bytes1 },
+    { "file2.txt", bytes2 }
 };
+byte[] zipData = ZIP.Compress(files);
 
-pdf.AddTable(tableData);
-
-// Save document
-pdf.SaveDocument();
+// Decompression
+var extracted = ZIP.Decompress(zipData);
 ```
 
-#### FTP/SFTP Operations
-
+#### Named Pipes
 ```csharp
-using Solution.IO;
+// Server
+var server = new PipeServer("MyPipe");
+server.Write("Message to client");
 
-// FTP Operations
-var ftp = new FTP("ftp.example.com", "username", "password");
-ftp.Connect();
-
-// Upload file
-ftp.UploadFile(@"C:\local\file.txt", "/remote/path/file.txt");
-
-// Download file
-ftp.DownloadFile("/remote/path/data.xml", @"C:\local\data.xml");
-
-// List directory contents
-var files = ftp.ListDirectory("/remote/path");
-
-ftp.Disconnect();
-
-// SFTP Operations (more secure)
-var sftp = new SFTP("sftp.example.com", "username", "password", 22);
-sftp.Connect();
-
-sftp.UploadFile(@"C:\local\secure.dat", "/remote/secure/secure.dat");
-var fileExists = sftp.FileExists("/remote/secure/secure.dat");
-
-sftp.Disconnect();
+// Client
+var client = new PipeClient("MyPipe");
+client.OnMessage += (msg) => Console.WriteLine(msg);
+await client.ConnectAsync();
 ```
 
-### Security & JWT
-
-#### JWT Token Management
+### 📧 Communication - Email
 
 ```csharp
-using Solution.Security;
+var email = new Email("smtp.server.com");
 
-public class AuthService
-{
-    private const string JWT_SECRET = "your-super-secret-key-here";
+// Simple email
+email.SendMail(
+    from: "sender@email.com",
+    to: "recipient@email.com",
+    subject: "Subject",
+    body: "<h1>HTML Content</h1>",
+    isHtml: true
+);
 
-    public string GenerateToken(int userId, string username, string[] roles)
-    {
-        var claims = new List<Claim>
-        {
-            new Claim("userId", userId.ToString()),
-            new Claim("username", username),
-            new Claim("iat", DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString()),
-        };
-
-        // Add role claims
-        foreach (var role in roles)
-        {
-            claims.Add(new Claim("role", role));
-        }
-
-        return JWT.Create(JWT_SECRET, 120, claims.ToArray()); // 2 hours expiry
-    }
-
-    public ClaimsPrincipal ValidateToken(string token)
-    {
-        try
-        {
-            var claims = JWT.Read(JWT_SECRET, token);
-            var identity = new ClaimsIdentity(claims, "jwt");
-            return new ClaimsPrincipal(identity);
-        }
-        catch (SecurityTokenExpiredException)
-        {
-            throw new UnauthorizedAccessException("Token has expired");
-        }
-        catch (SecurityTokenInvalidSignatureException)
-        {
-            throw new UnauthorizedAccessException("Invalid token signature");
-        }
-    }
-}
+// With attachments
+email.SendMailAttach(
+    from: "sender@email.com",
+    to: "dest1@email.com;dest2@email.com",
+    cc: "cc@email.com",
+    subject: "Documents",
+    body: "Please find the documents attached",
+    attachments: new[] { "doc1.pdf", "doc2.xlsx" }
+);
 ```
 
-#### Encryption Utilities
+### 🔐 Security - Cryptography
 
+#### Symmetric Encryption
 ```csharp
-using Solution.Security;
+var aes = new SymmetricCryptAlgorithm(SymmetricAlgorithmType.AES, "secret-key");
 
-// Encrypt/Decrypt sensitive data
-var crypt = new Crypt();
-
-// Encrypt data
-string sensitiveData = "Credit Card: 1234-5678-9012-3456";
-string encrypted = crypt.Encrypt(sensitiveData, "encryption-key");
-
-// Decrypt data
-string decrypted = crypt.Decrypt(encrypted, "encryption-key");
-
-// Hash passwords
-string password = "user-password";
-string hashedPassword = crypt.HashPassword(password);
-bool isValid = crypt.VerifyPassword(password, hashedPassword);
+string encrypted = aes.Encrypt("text to encrypt");
+string decrypted = aes.Decrypt(encrypted);
 ```
 
-### Object Mapping
+#### Asymmetric Encryption
+```csharp
+var rsa = new AsymmetricCryptAlgorithm(AsymmetricAlgorithmType.RSA);
+CryptKeys keys = rsa.CreateKeys();
 
-The `SolutionMapper` provides powerful object-to-object mapping:
+string encrypted = rsa.Encrypt("message", keys.PublicKey);
+string decrypted = rsa.Decrypt(encrypted, keys.PrivateKey);
+```
+
+#### Hash
+```csharp
+string hash = HashAlgorithm.Generate("password", HashAlgorithmType.SHA256);
+string md5 = HashAlgorithm.Generate("data", HashAlgorithmType.MD5);
+```
+
+#### JWT
+```csharp
+// Create token
+string token = JWT.Create(
+    claims: new Dictionary<string, object> { 
+        { "userId", 123 }, 
+        { "role", "admin" } 
+    },
+    secretKey: "your-secret-key",
+    expirationMinutes: 60
+);
+
+// Validate and read
+var claims = JWT.Read(token, "your-secret-key");
+```
+
+### 🔄 SolutionMapper - Object Mapping
+
+A flexible object mapper similar to AutoMapper.
 
 ```csharp
-using Solution.SolutionMapper;
-
-// Define source and destination classes
-public class UserDto
-{
-    public int Id { get; set; }
-    public string FullName { get; set; }
-    public string Email { get; set; }
-    public DateTime RegisterDate { get; set; }
-}
-
-public class UserViewModel
-{
-    public int UserId { get; set; }
-    public string Name { get; set; }
-    public string EmailAddress { get; set; }
-    public string RegistrationDate { get; set; }
-}
-
-// Create mapping profile
-public class UserMappingProfile : SolutionMapperProfile
-{
-    public UserMappingProfile()
-    {
-        CreateMap<UserDto, UserViewModel>()
-            .ForMember(dest => dest.UserId, opt => opt.MapFrom(src => src.Id))
-            .ForMember(dest => dest.Name, opt => opt.MapFrom(src => src.FullName))
-            .ForMember(dest => dest.EmailAddress, opt => opt.MapFrom(src => src.Email))
-            .ForMember(dest => dest.RegistrationDate, opt => opt.MapFrom(src => src.RegisterDate.ToString("yyyy-MM-dd")));
-    }
-}
-
-// Configure and use mapper
+// Configuration
 var mapper = new SolutionMapper();
-mapper.AddProfile(new UserMappingProfile());
 
-var userDto = new UserDto
-{
-    Id = 1,
-    FullName = "John Doe",
-    Email = "john@example.com",
-    RegisterDate = DateTime.Now.AddDays(-30)
-};
+mapper.CreateMap<UserDto, User>()
+    .ForMember(dest => dest.FullName, opt => opt.MapFrom(src => $"{src.FirstName} {src.LastName}"))
+    .Ignore(dest => dest.Password);
 
-var userViewModel = mapper.Map<UserDto, UserViewModel>(userDto);
+// Mapping
+User user = mapper.Map<User>(userDto);
+
+// Collection mapping
+List<User> users = mapper.Map<List<User>>(userDtos);
+
+// Bidirectional mapping
+mapper.CreateMap<User, UserDto>().ReverseMap();
 ```
 
-### IO Operations
-
-#### ZIP Archive Management
-
+#### Mapping Profiles
 ```csharp
-using Solution.IO;
-
-var zip = new ZIP();
-
-// Create ZIP archive
-zip.CreateArchive(@"C:\Archives\backup.zip");
-
-// Add files to archive
-zip.AddFile(@"C:\Data\file1.txt", "data/file1.txt");
-zip.AddFile(@"C:\Data\file2.pdf", "documents/file2.pdf");
-
-// Add entire directory
-zip.AddDirectory(@"C:\Images", "images/");
-
-zip.CloseArchive();
-
-// Extract ZIP archive
-zip.ExtractArchive(@"C:\Archives\backup.zip", @"C:\Extracted");
-
-// List archive contents
-var files = zip.ListArchiveContents(@"C:\Archives\backup.zip");
-foreach (var file in files)
+public class UserProfile : SolutionMapperProfile
 {
-    Console.WriteLine($"File: {file.Name}, Size: {file.Size} bytes");
-}
-```
-
-## 🔧 Advanced Usage
-
-### Custom Database Providers
-
-```csharp
-using Solution.Data.Provider;
-
-// Create custom provider for specific database
-public class CustomDatabaseProvider : Provider
-{
-    public override IDbConnection CreateConnection(string connectionString)
+    public UserProfile()
     {
-        // Return custom connection implementation
-        return new CustomDbConnection(connectionString);
+        CreateMap<User, UserDto>()
+            .ForMember(d => d.FullName, o => o.MapFrom(s => s.Name))
+            .ReverseMap();
     }
-
-    public override IDbCommand CreateCommand()
-    {
-        return new CustomDbCommand();
-    }
-
-    // Override other methods as needed...
 }
 
-// Register custom provider
-var dataManager = new DataManager();
-dataManager.RegisterProvider("custom", new CustomDatabaseProvider());
+// Usage
+var mapper = new SolutionMapper();
+mapper.AddProfile<UserProfile>();
 ```
 
-### Advanced Reflection Utilities
+### 🪞 Reflection - Reflection Utilities
 
 ```csharp
-using Solution.Reflection;
+// Dynamic object creation
+object instance = ReflectionManager.GetObject("MyNamespace.MyClass", assembly);
 
-var reflectionManager = new ReflectionManager();
+// Dynamic method invocation
+object result = ReflectionManager.CallMethod(instance, "MethodName", param1, param2);
 
-// Get type information with caching
-var typeInfo = reflectionManager.GetTypeInfo<User>();
-var properties = typeInfo.Properties;
-var methods = typeInfo.Methods;
+// Get/Set properties
+ReflectionManager.CallPropertySet(instance, "PropertyName", value);
+object value = ReflectionManager.CallPropertyGet(instance, "PropertyName");
 
-// Dynamic property access
-var user = new User();
-reflectionManager.SetPropertyValue(user, "Name", "John Doe");
-var name = reflectionManager.GetPropertyValue<string>(user, "Name");
+// Copy properties between objects
+ReflectionManager.CopyPropertiesObject(source, destination);
 
-// Method invocation
-var result = reflectionManager.InvokeMethod(user, "GetFullName", "Mr.");
+// XML serialization
+string xml = ReflectionManager.XMLSerialize(myObject);
+MyClass obj = ReflectionManager.XMLDeserialize<MyClass>(xml);
 ```
 
-### Extension Methods Usage
+### 📚 Collections - Ordered Collections
 
 ```csharp
-using Solution;
+// Generic collection with insertion order
+var collection = new GCollection<string, User>();
+collection.Add("user1", new User { Name = "John" });
+collection.Add("user2", new User { Name = "Jane" });
+
+// Access by key or index
+User user = collection["user1"];
+User firstUser = collection[0];
+
+// Ordered iteration
+foreach (var key in collection.Keys) {
+    Console.WriteLine(collection[key].Name);
+}
+
+// Events
+collection.OnAdd += (key, value) => Console.WriteLine($"Added: {key}");
+```
+
+### 💾 Persistence - Data Persistence
+
+#### Commander - SQL Query Management
+```csharp
+var commander = new Commander("queries.xml");
+
+// Execute predefined query
+DataTable result = commander.Execute("GetUserById", new { Id = 1 });
+```
+
+#### Mapper - Simplified ORM
+```csharp
+var mapper = new Mapper("mapping.xml");
+
+// Retrieve objects
+List<User> users = mapper.Get<User>(new { Active = true });
+User user = mapper.GetFirst<User>(new { Id = 1 });
+
+// Persistence
+mapper.Set(user);
+mapper.Del(user);
+```
+
+### 📋 JSON / XML
+
+```csharp
+// JSON
+string json = JSON.Serialize(myObject);
+MyClass obj = JSON.Deserialize<MyClass>(json);
+
+// JSON navigation
+var data = JSON.Parse(jsonString);
+string value = JSON.GetValue(data, "path.to.property");
+
+// XML
+var xml = new XML("config.xml");
+string value = xml.GetValue("//setting[@name='key']");
+xml.SetValue("//setting[@name='key']", "newValue");
+xml.Save();
+```
+
+### 🗄️ Cache
+
+```csharp
+// Generic cache with expiration
+var cache = new Cache<User>();
+cache.Add("user:1", new User { Name = "John" }, TimeSpan.FromMinutes(30));
+
+// Retrieve with factory
+User user = cache.GetOrAdd("user:1", () => LoadUserFromDb(1));
+
+// Global Cache Manager
+CacheManager.Instance.Set("key", value, expiration);
+var cached = CacheManager.Instance.Get<User>("key");
+```
+
+### 📝 Logging
+
+```csharp
+// Simple logger
+Log.Info("Information message");
+Log.Error("Error", exception);
+Log.Debug("Debug message");
+
+// Diagnostic trace
+Trace.WriteLine("Trace message", "Category");
+```
+
+### 🔧 Useful Extensions
+
+```csharp
+// String extensions
+bool isNumber = "123".IsNumber();
+var dict = "key1=value1&key2=value2".ToDictionary();
+MyEnum value = "Value".ToEnum<MyEnum>();
 
 // DataTable extensions
-DataTable dataTable = GetDataFromDatabase();
+var list = dataTable.ToDynamic();
+var dict = dataTable.ToDictionary();
+List<User> users = dataTable.ToList<User>();
 
-// Convert to dynamic objects
-var dynamicList = dataTable.ToDynamic();
-foreach (dynamic item in dynamicList)
-{
-    Console.WriteLine($"{item.Name}: {item.Value}");
-}
-
-// Convert to key-value pairs
-var keyValueList = dataTable.ToKeyValue();
-foreach (var item in keyValueList)
-{
-    Console.WriteLine($"Row: {string.Join(", ", item.Select(kv => $"{kv.Key}={kv.Value}"))}");
-}
-
-// HttpRequest extensions (in ASP.NET Core)
-public async Task<IActionResult> ProcessRequest()
-{
-    string body = await Request.GetBody();
-    var data = JsonConvert.DeserializeObject(body);
-
-    // Process data...
-
-    return Ok();
-}
+// Object extensions
+string json = myObject.ToJson();
 ```
 
-## 🎯 Best Practices
+## 📋 Requirements
 
-### Database Operations
-- Always use parameterized queries to prevent SQL injection
-- Implement proper connection management and disposal
-- Use bulk operations for large data sets
-- Consider transaction boundaries for data consistency
-
-```csharp
-// Good practice
-using (var transaction = db.DataManager.BeginTransaction("primary"))
-{
-    try
-    {
-        db["primary"].Insert(newOrder);
-        db["primary"].Update(inventory);
-
-        transaction.Commit();
-    }
-    catch
-    {
-        transaction.Rollback();
-        throw;
-    }
-}
-```
-
-### Security
-- Never hardcode secrets in source code
-- Use environment variables or secure configuration
-- Implement proper token expiration and refresh logic
-- Always validate JWT tokens on protected endpoints
-
-```csharp
-// Configuration-based secrets
-public class JwtSettings
-{
-    public string SecretKey { get; set; }
-    public int ExpirationMinutes { get; set; }
-}
-
-// In Startup.cs or Program.cs
-services.Configure<JwtSettings>(configuration.GetSection("Jwt"));
-```
-
-### Performance
-- Use bulk operations for large data sets
-- Implement appropriate caching strategies
-- Consider async/await patterns for I/O operations
-- Profile and monitor application performance
-
-## 🤝 Contributing
-
-We welcome contributions to the Solution library! Please follow these guidelines:
-
-1. **Fork** the repository
-2. **Create** a feature branch (`git checkout -b feature/amazing-feature`)
-3. **Commit** your changes (`git commit -m 'Add some amazing feature'`)
-4. **Push** to the branch (`git push origin feature/amazing-feature`)
-5. **Open** a Pull Request
-
-### Development Setup
-
-```bash
-git clone https://github.com/acugae/Solution.git
-cd Solution
-dotnet restore
-dotnet build
-dotnet test
-```
-
-### Coding Standards
-- Follow C# naming conventions
-- Add XML documentation for public APIs
-- Include unit tests for new features
-- Ensure code passes all existing tests
+- .NET 10.0 or higher
 
 ## 📄 License
 
-This project is licensed under the MIT License - see the [LICENSE](https://choosealicense.com/licenses/mit/) page for details.
+This project is licensed under the [MIT](LICENSE) License.
 
-## 📞 Support & Contact
+## 👤 Author
 
-- **NuGet Package**: [https://www.nuget.org/packages/Solution](https://www.nuget.org/packages/Solution)
-- **GitHub Repository**: [https://github.com/acugae/Solution](https://github.com/acugae/Solution)
-- **Issues**: Report bugs and request features on GitHub Issues
-- **Author**: Gaetano Acunzo
+**Gaetano Acunzo**
 
----
+- GitHub: [@acugae](https://github.com/acugae)
+- NuGet: [Solution](https://www.nuget.org/packages/Solution)
 
-**Solution** - Accelerating .NET development with enterprise-grade utilities. 🚀
+## 🤝 Contributing
+
+Contributions are welcome! Feel free to open issues or pull requests.
+
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
