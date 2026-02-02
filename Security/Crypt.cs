@@ -1,8 +1,10 @@
+using System.Security.Cryptography;
+
 namespace Solution.Security;
 
 #region Symmetric cryptography class...
 
-/// <summary>Contiene i metodi e le propriet� per utilizzare algoritmi di crittografia simmetrica</summary>
+/// <summary>Contiene i metodi e le proprietà per utilizzare algoritmi di crittografia simmetrica</summary>
 /// <example>
 ///     <code>
 ///cSymmetricCryptAlgorithm oCrypt = new cSymmetricCryptAlgorithm(cSymmetricCryptAlgorithm.ServiceProviderEnum.TripleDES);
@@ -16,10 +18,17 @@ public class SymmetricCryptAlgorithm
     {
         // Supported service providers
         Aes,
+        [Obsolete("RC2 is cryptographically weak. Use Aes instead.")]
         RC2,
+        [Obsolete("DES is cryptographically broken. Use Aes instead.")]
         DES,
+        [Obsolete("TripleDES is deprecated. Use Aes instead.")]
         TripleDES
     }
+    
+    // Flag per abilitare modalità sicura (IV random prepended al ciphertext)
+    private bool _useSecureMode = false;
+    private const int PBKDF2_ITERATIONS = 100000;
 
     private ServiceProviderEnum mAlgorithm;
     private SymmetricAlgorithm mCryptoService;
@@ -275,6 +284,131 @@ public class SymmetricCryptAlgorithm
         }
     }
 
+    #region Secure Methods (Recommended)
+    
+    /// <summary>
+    /// Abilita la modalità sicura con IV random e derivazione chiave PBKDF2.
+    /// Chiamare prima di Encrypt/Decrypt per usare la versione sicura.
+    /// </summary>
+    public SymmetricCryptAlgorithm UseSecureMode()
+    {
+        _useSecureMode = true;
+        return this;
+    }
+    
+    /// <summary>
+    /// Crittografa in modalità sicura: IV random prepended al ciphertext, chiave derivata con PBKDF2.
+    /// </summary>
+    /// <param name="plainText">Testo da crittografare</param>
+    /// <param name="password">Password (verrà derivata con PBKDF2)</param>
+    /// <returns>Base64: salt(16) + iv(16) + ciphertext</returns>
+    public string EncryptSecure(string plainText, string password)
+    {
+        if (string.IsNullOrEmpty(plainText))
+            throw new ArgumentNullException(nameof(plainText));
+        if (string.IsNullOrEmpty(password))
+            throw new ArgumentNullException(nameof(password));
+            
+        byte[] plainBytes = Encoding.UTF8.GetBytes(plainText);
+        byte[] encrypted = EncryptSecure(plainBytes, password);
+        return Convert.ToBase64String(encrypted);
+    }
+    
+    /// <summary>
+    /// Crittografa in modalità sicura: IV random prepended al ciphertext, chiave derivata con PBKDF2.
+    /// </summary>
+    public byte[] EncryptSecure(byte[] plainBytes, string password)
+    {
+        if (plainBytes == null || plainBytes.Length == 0)
+            throw new ArgumentNullException(nameof(plainBytes));
+        if (string.IsNullOrEmpty(password))
+            throw new ArgumentNullException(nameof(password));
+        
+        // Generate random salt and IV
+        byte[] salt = new byte[16];
+        byte[] iv = new byte[mCryptoService.BlockSize / 8];
+        using (var rng = RandomNumberGenerator.Create())
+        {
+            rng.GetBytes(salt);
+            rng.GetBytes(iv);
+        }
+        
+        // Derive key using PBKDF2
+        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, PBKDF2_ITERATIONS, HashAlgorithmName.SHA256);
+        byte[] key = pbkdf2.GetBytes(mCryptoService.KeySize / 8);
+        
+        mCryptoService.Key = key;
+        mCryptoService.IV = iv;
+        
+        using var ms = new MemoryStream();
+        // Prepend salt and IV to output
+        ms.Write(salt, 0, salt.Length);
+        ms.Write(iv, 0, iv.Length);
+        
+        using (var cs = new CryptoStream(ms, mCryptoService.CreateEncryptor(), CryptoStreamMode.Write))
+        {
+            cs.Write(plainBytes, 0, plainBytes.Length);
+            cs.FlushFinalBlock();
+        }
+        
+        return ms.ToArray();
+    }
+    
+    /// <summary>
+    /// Decrittografa dati crittografati con EncryptSecure.
+    /// </summary>
+    /// <param name="cipherText">Base64: salt(16) + iv(16) + ciphertext</param>
+    /// <param name="password">Password usata per la crittografia</param>
+    /// <returns>Testo in chiaro</returns>
+    public string DecryptSecure(string cipherText, string password)
+    {
+        if (string.IsNullOrEmpty(cipherText))
+            throw new ArgumentNullException(nameof(cipherText));
+        if (string.IsNullOrEmpty(password))
+            throw new ArgumentNullException(nameof(password));
+            
+        byte[] cipherBytes = Convert.FromBase64String(cipherText);
+        byte[] decrypted = DecryptSecure(cipherBytes, password);
+        return Encoding.UTF8.GetString(decrypted);
+    }
+    
+    /// <summary>
+    /// Decrittografa dati crittografati con EncryptSecure.
+    /// </summary>
+    public byte[] DecryptSecure(byte[] cipherBytes, string password)
+    {
+        if (cipherBytes == null || cipherBytes.Length == 0)
+            throw new ArgumentNullException(nameof(cipherBytes));
+        if (string.IsNullOrEmpty(password))
+            throw new ArgumentNullException(nameof(password));
+        
+        int ivLength = mCryptoService.BlockSize / 8;
+        if (cipherBytes.Length < 16 + ivLength)
+            throw new ArgumentException("Invalid ciphertext length");
+        
+        // Extract salt and IV from ciphertext
+        byte[] salt = new byte[16];
+        byte[] iv = new byte[ivLength];
+        Array.Copy(cipherBytes, 0, salt, 0, 16);
+        Array.Copy(cipherBytes, 16, iv, 0, ivLength);
+        
+        // Derive key using PBKDF2
+        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, PBKDF2_ITERATIONS, HashAlgorithmName.SHA256);
+        byte[] key = pbkdf2.GetBytes(mCryptoService.KeySize / 8);
+        
+        mCryptoService.Key = key;
+        mCryptoService.IV = iv;
+        
+        int cipherDataLength = cipherBytes.Length - 16 - ivLength;
+        using var ms = new MemoryStream(cipherBytes, 16 + ivLength, cipherDataLength);
+        using var cs = new CryptoStream(ms, mCryptoService.CreateDecryptor(), CryptoStreamMode.Read);
+        using var output = new MemoryStream();
+        cs.CopyTo(output);
+        return output.ToArray();
+    }
+    
+    #endregion
+
 }
 #endregion
 
@@ -308,7 +442,7 @@ public class CryptKeys
 
 
 }
-/// <summary>Contiene i metodi e le propriet� per utilizzare algoritmi di crittografia asimmetrica.</summary>
+/// <summary>Contiene i metodi e le propriet� per utilizzare algoritmi di crittografia asimmetrica.</summary>
 public class AsymmetricCryptAlgorithm
 {
     /// <summary>
@@ -473,7 +607,7 @@ public class AsymmetricCryptAlgorithm
 
 #region Hash Class...
 
-/// <summary>Contiene i metodi e le propriet� per utilizzare algoritmi di hashing</summary>
+/// <summary>Contiene i metodi e le propriet� per utilizzare algoritmi di hashing</summary>
 public class HashAlgorithm
 {
     private System.Security.Cryptography.HashAlgorithm mCryptoService;

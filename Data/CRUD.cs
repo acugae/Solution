@@ -222,8 +222,27 @@ public class CRUDFilter
                     return "in (" + oValue.ToString() + ")";
                 }
             default:
-                return sOperator + " " + (bIsString ? "'" + oValue.ToString() + "'" : oValue.ToString());
+                // Escape single quotes to prevent SQL injection
+                string escapedValue = bIsString ? EscapeSqlString(oValue.ToString()) : oValue.ToString();
+                return sOperator + " " + (bIsString ? "'" + escapedValue + "'" : escapedValue);
         }
+    }
+    
+    /// <summary>
+    /// Escape caratteri speciali per prevenire SQL injection.
+    /// NOTA: Preferire sempre l'uso di query parametrizzate tramite getFilterParams().
+    /// </summary>
+    private static string EscapeSqlString(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return value;
+        
+        return value
+            .Replace("'", "''")      // Escape single quotes
+            .Replace("\\", "\\\\")   // Escape backslashes
+            .Replace("\0", "")       // Remove null bytes
+            .Replace("\n", "\\n")    // Escape newlines
+            .Replace("\r", "\\r");   // Escape carriage returns
     }
 }
 
