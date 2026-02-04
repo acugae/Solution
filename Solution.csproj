@@ -20,7 +20,9 @@
 	<PackageIcon>Logo.png</PackageIcon>
 	<Version>$(AssemblyVersion)</Version>
 	<RepositoryUrl>https://github.com/acugae/Solution</RepositoryUrl>
-	<PackageTags>Data, Database, Reflection, XLS, FTP, SFTP, PDF, Zip, Pipe, FileManeger, Security, Json, XML, CRUD</PackageTags>  
+	<PackageTags>Data, Database, Reflection, XLS, FTP, SFTP, PDF, Zip, Pipe, FileManeger, Security, Json, XML, CRUD</PackageTags>
+	<AssemblyName>Solution</AssemblyName>
+	<RootNamespace>Solution</RootNamespace>  
   </PropertyGroup>
   <ItemGroup>
     <None Remove=".gitattributes" />
