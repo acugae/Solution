@@ -16,7 +16,7 @@ public class  Provider
                 if (sKeyProvider.ToLower().Equals("sqldb"))
                     instance = Microsoft.Data.SqlClient.SqlClientFactory.Instance;
                 if (sKeyProvider.ToLower().Equals("mysdb"))
-                    instance = MySql.Data.MySqlClient.MySqlClientFactory.Instance;
+                    instance = MySqlConnector.MySqlConnectorFactory.Instance;
                 if (sKeyProvider.ToLower().Equals("pstdb"))
                     instance = Npgsql.NpgsqlFactory.Instance;
                 //else if (sKeyProvider.ToLower().Equals("oledb"))
