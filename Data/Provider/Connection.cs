@@ -1,11 +1,11 @@
 namespace Solution.Data.Provider;
 
-public class Connection 
+public class Connection : IDisposable, IAsyncDisposable
 {
     private Provider provider;
     private DbConnection connection;
     private DbTransaction transaction;
-    private string _strKey;
+    private string _strKey = string.Empty;
     /// <summary>
     /// Ritona la transazione sulla connessione, altrimenti null.
     /// </summary>
@@ -35,9 +35,31 @@ public class Connection
     //[WebMethod(true)]
     public void Dispose()
     {
-        _strKey = null;
+        transaction?.Dispose();
+        connection?.Dispose();
+        transaction = null;
         connection = null;
-        return;
+        _strKey = string.Empty;
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (connection?.State == System.Data.ConnectionState.Open)
+            await connection.CloseAsync();
+
+        if (transaction is IAsyncDisposable asyncTransaction)
+            await asyncTransaction.DisposeAsync();
+        else
+            transaction?.Dispose();
+
+        if (connection is IAsyncDisposable asyncConnection)
+            await asyncConnection.DisposeAsync();
+        else
+            connection?.Dispose();
+
+        transaction = null;
+        connection = null;
+        _strKey = string.Empty;
     }
     /// <summary>
     /// Costrutture di default.
