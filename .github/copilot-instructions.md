@@ -32,6 +32,10 @@ The central class is `DB`. It manages named database connections via `DataManage
 
 Database provider keys: `"sqldb"` = SQL Server, `"mysdb"` = MySQL, `"pstdb"` = PostgreSQL.
 
+### Connection Management
+
+- For asynchronous code, do not reuse shared open database connections. Use a connection for each operation, opening and closing it for each call.
+
 ### DI integration
 
 `ServiceCollectionExtensions.cs` provides `AddSolutionDB()` extension methods for ASP.NET Core. Supports fluent configuration, `IConfiguration` binding from `appsettings.json`, and standard `ConnectionStrings` section.
