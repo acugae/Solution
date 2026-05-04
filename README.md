@@ -118,6 +118,55 @@ int total = db["main"].Count("Users");
 int active = db["main"].Count("Users", new { Active = true });
 ```
 
+#### Async Methods
+
+`DB` also exposes asynchronous methods that use a dedicated cloned connection for each operation.
+
+```csharp
+// Raw SQL query
+DataTable? usersTable = await db.InvokeSQLAsync(
+    "main",
+    "SELECT * FROM Users WHERE Active = @Active",
+    cancellationToken,
+    db.CreateParameter("main", DbType.Boolean, ParameterDirection.Input, "@Active", true));
+
+// Stored procedure with parameters
+DataTable? profileTable = await db.InvokeAsync(
+    "main",
+    "sp_GetUserProfile",
+    cancellationToken,
+    db.CreateParameter("main", DbType.Int32, ParameterDirection.Input, "@Id", 1));
+
+// Stored procedure without parameters
+DataTable? dashboardTable = await db.InvokeAsync("main", "sp_GetDashboard", cancellationToken);
+
+// SQL query with dictionary parameters
+DataTable? filteredUsers = await db.GetAsync(
+    "main",
+    "SELECT * FROM Users WHERE Role = @Role",
+    new Dictionary<string, object> { ["@Role"] = "Admin" },
+    cancellationToken);
+
+// Non query command
+int affectedRows = await db.ExecuteAsync(
+    "main",
+    "UPDATE Users SET Active = 0 WHERE LastLogin < '2024-01-01'",
+    cancellationToken);
+```
+
+Available async overloads:
+
+- `InvokeSQLAsync(string sSQL, params Parameter[] pParams)`
+- `InvokeSQLAsync(string sKey, string sSQL, CancellationToken cancellationToken = default, params Parameter[] pParams)`
+- `InvokeAsync(string sSQL, params Parameter[] pParams)`
+- `InvokeAsync(string sKey, string sSQL, CancellationToken cancellationToken = default, params Parameter[] pParams)`
+- `InvokeAsync(string sSQL)`
+- `InvokeAsync(string sKey, string sSQL, CancellationToken cancellationToken = default)`
+- `GetAsync(string sSQL, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)`
+- `GetAsync(string sKey, string sSQL, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)`
+- `ExecuteAsync(string sSQL, CancellationToken cancellationToken = default)`
+- `ExecuteAsync(string sKey, string sSQL, CancellationToken cancellationToken = default)`
+
 #### Transactions
 
 ```csharp
