@@ -87,7 +87,9 @@ public static class DataTableExtensions
         }
         return oResult;
     }
+
 }
+
 
 public static class DataRowExtensions
 {
@@ -286,5 +288,26 @@ public static class ObjectExtensions
     public static string Serialize(this object obj, JsonSerializerSettings? oSetting = null)
     {
         return JsonConvert.SerializeObject(obj, Newtonsoft.Json.Formatting.Indented, oSetting);
+    }
+}
+
+public static class DbDataReaderExtensions
+{
+    public static async Task<DataTable> ToDataTableAsync(this DbDataReader reader, CancellationToken ct = default)
+    {
+        var dt = new DataTable();
+
+        for (int i = 0; i < reader.FieldCount; i++)
+            dt.Columns.Add(reader.GetName(i), reader.GetFieldType(i));
+
+        while (await reader.ReadAsync(ct))
+        {
+            var row = dt.NewRow();
+            for (int i = 0; i < reader.FieldCount; i++)
+                row[i] = reader.IsDBNull(i) ? DBNull.Value : reader.GetValue(i);
+            dt.Rows.Add(row);
+        }
+
+        return dt;
     }
 }

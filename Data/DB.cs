@@ -1,4 +1,6 @@
 ﻿//namespace Solution.Data;
+using Solution;
+
 public class DB
 {
     DataManager oData = new();
@@ -225,7 +227,7 @@ public class DB
     }
     public DataTable Get(string sSQL, Dictionary<string, object>? parameters = null)
     {
-        return Get(connectionDefault, sSQL);
+        return Get(connectionDefault, sSQL, parameters);
     }
     public DataTable Get(string sKey, string sSQL, Dictionary<string, object>? parameters = null)
     {
@@ -362,19 +364,26 @@ public class DB
 
     public async Task<DataTable?> InvokeSQLAsync(string sKey, string sSQL, CancellationToken cancellationToken = default, params Parameter[] pParams)
     {
-        await using Connection oConn = oData.Connections.Clone(sKey);
+        bool closeConnection = _ModeConnection == enModeConnectionOpen.Whenever;
+        Connection oConn = (closeConnection ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
 
-        if (oConn.State == ConnectionState.Closed)
-            await oConn.OpenAsync(cancellationToken);
+        try
+        {
+            if (oConn.State == ConnectionState.Closed)
+                await oConn.OpenAsync(cancellationToken);
 
-        Command oCMD = oData.GetCM(oConn, sSQL);
-        foreach (var p in pParams)
-            oCMD.Parameters.Add(p.ParameterName, p.Value ?? DBNull.Value);
+            Command oCMD = oData.GetCM(oConn, sSQL);
+            foreach (var p in pParams)
+                oCMD.Parameters.Add(p.ParameterName, p.Value ?? DBNull.Value);
 
-        await using DbDataReader reader = await oCMD.ExecuteReaderAsync();
-        DataTable oDT = new DataTable();
-        oDT.Load(reader);
-        return oDT;
+            await using DbDataReader reader = await oCMD.ExecuteReaderAsync();
+            return await reader.ToDataTableAsync(cancellationToken);
+        }
+        finally
+        {
+            if (closeConnection)
+                await oConn.CloseAsync();
+        }
     }
 
     public Task<DataTable?> InvokeAsync(string sSQL, params Parameter[] pParams)
@@ -382,23 +391,30 @@ public class DB
 
     public async Task<DataTable?> InvokeAsync(string sKey, string sSQL, CancellationToken cancellationToken = default, params Parameter[] pParams)
     {
-        await using Connection oConn = oData.Connections.Clone(sKey);
+        bool closeConnection = _ModeConnection == enModeConnectionOpen.Whenever;
+        Connection oConn = (closeConnection ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
 
-        if (oConn.State == ConnectionState.Closed)
-            await oConn.OpenAsync(cancellationToken);
-
-        Command oCMD = oData.GetCM(oConn, sSQL);
-        oCMD.CommandType = CommandType.StoredProcedure;
-        foreach (var p in pParams)
+        try
         {
-            Parameter oP = oData.CreateParameter(oConn, p.DbType, p.Direction, p.ParameterName, p.Value);
-            oCMD.Parameters.Add(oP.ParameterName, oP.Value ?? DBNull.Value);
-        }
+            if (oConn.State == ConnectionState.Closed)
+                await oConn.OpenAsync(cancellationToken);
 
-        await using DbDataReader reader = await oCMD.ExecuteReaderAsync();
-        DataTable oDT = new DataTable();
-        oDT.Load(reader);
-        return oDT;
+            Command oCMD = oData.GetCM(oConn, sSQL);
+            oCMD.CommandType = CommandType.StoredProcedure;
+            foreach (var p in pParams)
+            {
+                Parameter oP = oData.CreateParameter(oConn, p.DbType, p.Direction, p.ParameterName, p.Value);
+                oCMD.Parameters.Add(oP.ParameterName, oP.Value ?? DBNull.Value);
+            }
+
+            await using DbDataReader reader = await oCMD.ExecuteReaderAsync();
+            return await reader.ToDataTableAsync(cancellationToken);
+        }
+        finally
+        {
+            if (closeConnection)
+                await oConn.CloseAsync();
+        }
     }
 
     public Task<DataTable?> InvokeAsync(string sSQL)
@@ -406,18 +422,25 @@ public class DB
 
     public async Task<DataTable?> InvokeAsync(string sKey, string sSQL, CancellationToken cancellationToken = default)
     {
-        await using Connection oConn = oData.Connections.Clone(sKey);
+        bool closeConnection = _ModeConnection == enModeConnectionOpen.Whenever;
+        Connection oConn = (closeConnection ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
 
-        if (oConn.State == ConnectionState.Closed)
-            await oConn.OpenAsync(cancellationToken);
+        try
+        {
+            if (oConn.State == ConnectionState.Closed)
+                await oConn.OpenAsync(cancellationToken);
 
-        Command oCMD = oData.GetCM(oConn, sSQL);
-        oCMD.CommandType = CommandType.StoredProcedure;
+            Command oCMD = oData.GetCM(oConn, sSQL);
+            oCMD.CommandType = CommandType.StoredProcedure;
 
-        await using DbDataReader reader = await oCMD.ExecuteReaderAsync();
-        DataTable oDT = new DataTable();
-        oDT.Load(reader);
-        return oDT;
+            await using DbDataReader reader = await oCMD.ExecuteReaderAsync();
+            return await reader.ToDataTableAsync(cancellationToken);
+        }
+        finally
+        {
+            if (closeConnection)
+                await oConn.CloseAsync();
+        }
     }
 
     public Task<DataTable?> GetAsync(string sSQL, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
@@ -425,16 +448,23 @@ public class DB
 
     public async Task<DataTable?> GetAsync(string sKey, string sSQL, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
     {
-        await using Connection oConn = oData.Connections.Clone(sKey);
+        bool closeConnection = _ModeConnection == enModeConnectionOpen.Whenever;
+        Connection oConn = (closeConnection ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
 
-        if (oConn.State == ConnectionState.Closed)
-            await oConn.OpenAsync(cancellationToken);
+        try
+        {
+            if (oConn.State == ConnectionState.Closed)
+                await oConn.OpenAsync(cancellationToken);
 
-        Command oCMD = oData.GetCM(oConn, sSQL, parameters);
-        await using DbDataReader reader = await oCMD.ExecuteReaderAsync();
-        DataTable oDT = new DataTable();
-        oDT.Load(reader);
-        return oDT;
+            Command oCMD = oData.GetCM(oConn, sSQL, parameters);
+            await using DbDataReader reader = await oCMD.ExecuteReaderAsync();
+            return await reader.ToDataTableAsync(cancellationToken);
+        }
+        finally
+        {
+            if (closeConnection)
+                await oConn.CloseAsync();
+        }
     }
 
     public Task<int> ExecuteAsync(string sSQL, CancellationToken cancellationToken = default)
@@ -442,13 +472,22 @@ public class DB
 
     public async Task<int> ExecuteAsync(string sKey, string sSQL, CancellationToken cancellationToken = default)
     {
-        await using Connection oConn = oData.Connections.Clone(sKey);
+        bool closeConnection = _ModeConnection == enModeConnectionOpen.Whenever;
+        Connection oConn = (closeConnection ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
 
-        if (oConn.State == ConnectionState.Closed)
-            await oConn.OpenAsync(cancellationToken);
+        try
+        {
+            if (oConn.State == ConnectionState.Closed)
+                await oConn.OpenAsync(cancellationToken);
 
-        Command oCMD = oData.GetCM(oConn, sSQL);
-        return await oCMD.ExecuteNonQueryAsync(cancellationToken);
+            Command oCMD = oData.GetCM(oConn, sSQL);
+            return await oCMD.ExecuteNonQueryAsync(cancellationToken);
+        }
+        finally
+        {
+            if (closeConnection)
+                await oConn.CloseAsync();
+        }
     }
 }
 
