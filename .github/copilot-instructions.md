@@ -34,7 +34,8 @@ Database provider keys: `"sqldb"` = SQL Server, `"mysdb"` = MySQL, `"pstdb"` = P
 
 ### Connection Management
 
-- For asynchronous code, do not reuse shared open database connections. Use a connection for each operation, opening and closing it for each call.
+- For asynchronous code, **clone connections by default** to avoid concurrency issues caused by shared readers in a Blazor Server app. Each operation should open and close its own connection.
+- Do not reuse shared open database connections. Use a connection for each operation, opening and closing it for each call.
 
 ### DI integration
 
