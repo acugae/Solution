@@ -467,10 +467,10 @@ public class DB
         }
     }
 
-    public Task<int> ExecuteAsync(string sSQL, CancellationToken cancellationToken = default)
-        => ExecuteAsync(connectionDefault, sSQL, cancellationToken);
+    public Task<int> ExecuteAsync(string sSQL, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
+        => ExecuteAsync(connectionDefault, sSQL, parameters, cancellationToken);
 
-    public async Task<int> ExecuteAsync(string sKey, string sSQL, CancellationToken cancellationToken = default)
+    public async Task<int> ExecuteAsync(string sKey, string sSQL, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
     {
         bool closeConnection = _ModeConnection == enModeConnectionOpen.Whenever;
         Connection oConn = (closeConnection ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
@@ -480,7 +480,7 @@ public class DB
             if (oConn.State == ConnectionState.Closed)
                 await oConn.OpenAsync(cancellationToken);
 
-            Command oCMD = oData.GetCM(oConn, sSQL);
+            Command oCMD = oData.GetCM(oConn, sSQL, parameters);
             return await oCMD.ExecuteNonQueryAsync(cancellationToken);
         }
         finally
