@@ -4,7 +4,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![.NET](https://img.shields.io/badge/.NET-10.0-blue.svg)](https://dotnet.microsoft.com/)
 
-A comprehensive .NET library providing utilities for database operations, I/O, security, reflection, object mapping, and much more.
+A comprehensive .NET library providing utilities for database operations, I/O, security, reflection, object mapping, and much more, now with built-in SQLite provider support.
 
 ## 📦 Installation
 
@@ -47,7 +47,7 @@ using (var tx = db.BeginTransaction("main"))
 
 ### 📊 Data - Database Access
 
-Multi-database support (SQL Server, MySQL, PostgreSQL) with simplified CRUD operations and fluent API.
+Multi-database support (SQL Server, MySQL, PostgreSQL, SQLite) with simplified CRUD operations and fluent API.
 
 #### Connection Setup
 
@@ -61,13 +61,35 @@ var db = new DB()
         .UsePostgreSQL()
         .ForPostgreSQL("localhost", "logs", "user", "password"));
 
+// SQLite using the built-in provider key
+var sqliteDb = new DB()
+    .AddConnection("local", c => c
+        .UseProvider("litedb")
+        .WithConnectionString("Data Source=app.db;"));
+
 // Shorthand methods
 var db = new DB()
     .AddSqlServer("main", "Server=localhost;Database=mydb;...")
     .AddMySQL("secondary", "Server=localhost;Database=other;...");
 
-// Available providers: UseSqlServer(), UseMySQL(), UsePostgreSQL()
+// Built-in provider keys: sqldb, mysdb, pstdb, litedb
+// Fluent helpers: UseSqlServer(), UseMySQL(), UsePostgreSQL()
 // Connection helpers: ForSqlServer(), ForMySQL(), ForPostgreSQL()
+// For SQLite use: UseProvider("litedb").WithConnectionString("Data Source=app.db;")
+```
+
+#### SQLite
+
+SQLite support is available through the built-in `litedb` provider key.
+
+```csharp
+var db = new DB()
+    .AddConnection("local", c => c
+        .UseProvider("litedb")
+        .WithConnectionString("Data Source=app.db;"));
+
+db["local"].Insert("Users", new { Name = "John", Email = "john@email.com" });
+List<User> users = db["local"].Query<User>("Users");
 ```
 
 #### CRUD Operations
@@ -240,6 +262,12 @@ Register DB in your ASP.NET Core application:
 // Simple registration
 services.AddSolutionDB(db => db
     .AddSqlServer("main", Configuration.GetConnectionString("Main")));
+
+// SQLite registration through the custom provider key
+services.AddSolutionDB(db => db
+    .AddConnection("local", c => c
+        .UseProvider("litedb")
+        .WithConnectionString("Data Source=app.db;")));
 
 // With multiple connections
 services.AddSolutionDB(db => db
