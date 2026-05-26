@@ -30,7 +30,7 @@ This is a single-project solution (no test project exists). The project targets 
 
 The central class is `DB`. It manages named database connections via `DataManager` → `Connections` → `Connection` (wraps ADO.NET `DbConnection`). Access a connection by key: `db["main"]` returns a `CRUD` instance for that connection. The `CRUD` class builds parameterized SQL from `CRUDBase`/`CRUDUpdate`/`CRUDDelete`/`CRUDFind` objects. Extension methods in `CRUDExtensions.cs` provide the simplified anonymous-object API (`db["main"].Insert("Table", new { ... })`).
 
-Database provider keys: `"sqldb"` = SQL Server, `"mysdb"` = MySQL, `"pstdb"` = PostgreSQL.
+Database provider keys: `"sqldb"` = SQL Server, `"mysdb"` = MySQL, `"pstdb"` = PostgreSQL, `"litedb"` = SQLite.
 
 ### Connection Management
 

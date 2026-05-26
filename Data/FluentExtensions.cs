@@ -57,6 +57,15 @@ public class ConnectionBuilder
     }
 
     /// <summary>
+    /// Configura per SQLite.
+    /// </summary>
+    public ConnectionBuilder UseSQLite()
+    {
+        _providerKey = "litedb";
+        return this;
+    }
+
+    /// <summary>
     /// Configura un provider custom.
     /// </summary>
     /// <param name="providerKey">Chiave del provider (sqldb, mysdb, pstdb)</param>
@@ -121,6 +130,16 @@ public class ConnectionBuilder
     }
 
     /// <summary>
+    /// Costruisce la connessione con i parametri SQLite.
+    /// </summary>
+    public ConnectionBuilder ForSQLite(string filePath)
+    {
+        _providerKey = "litedb";
+        _connectionString = $"Data Source={filePath};";
+        return this;
+    }
+
+    /// <summary>
     /// Applica la configurazione e crea la connessione.
     /// </summary>
     internal void Build()
@@ -181,6 +200,15 @@ public static class DBConnectionExtensions
     public static DB AddPostgreSQL(this DB db, string connectionKey, string connectionString)
     {
         db.DataManager.Connections.Add(connectionKey, "pstdb", connectionString);
+        return db;
+    }
+
+    /// <summary>
+    /// Aggiunge una connessione SQLite.
+    /// </summary>
+    public static DB AddSQLite(this DB db, string connectionKey, string connectionString)
+    {
+        db.DataManager.Connections.Add(connectionKey, "litedb", connectionString);
         return db;
     }
 }

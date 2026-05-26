@@ -24,6 +24,7 @@ public class Providers : System.Collections.Specialized.NameObjectCollectionBase
         Add("sqldb", "System.Data.SqlClient.SqlClientFactory", null);
         Add("mysdb", "MySql.Data.MySqlClient.MySqlClientFactory", null);
         Add("pstdb", "Npgsql.NpgsqlFactory", null);
+        Add("litedb", "System.Data.SQLite.SQLiteFactory", null);
         //Add("odbdb", "System.Data.Odbc.OdbcFactory", null);
         //Add("oledb", "System.Data.OleDb.OleDbFactory", null);
     }
