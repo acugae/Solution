@@ -25,7 +25,15 @@ public class JWT
         var jwtToken = (JwtSecurityToken)validatedToken;
         return jwtToken.Claims.ToArray();
     }
-    
+
+    public static Claim[] Read(string Key, string sToken, TokenValidationParameters validationParameters)
+    {
+        var tokenHandler = new JwtSecurityTokenHandler();
+        tokenHandler.ValidateToken(sToken, validationParameters, out SecurityToken validatedToken);
+        var jwtToken = (JwtSecurityToken)validatedToken;
+        return jwtToken.Claims.ToArray();
+    }
+
     /// <summary>
     /// Legge e valida un token JWT con validazione completa (RACCOMANDATO).
     /// </summary>
