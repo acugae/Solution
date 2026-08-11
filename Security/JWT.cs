@@ -1,4 +1,5 @@
-﻿using Microsoft.IdentityModel.Tokens;
+﻿#if NET5_0_OR_GREATER
+using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 
 namespace Solution.Security;
@@ -137,3 +138,4 @@ public class JWT
         return new JwtSecurityTokenHandler().WriteToken(token);
     }
 }
+#endif

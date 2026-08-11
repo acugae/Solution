@@ -342,7 +342,7 @@ public class SolutionMapper
 	/// <summary>
 	/// Prova a convertire il valore usando un converter registrato, oppure usa la conversione di tipo standard.
 	/// </summary>
-	private object ConvertWithTypeConverter(object value, object destination, Type destType, ResolutionContext context)
+	private object? ConvertWithTypeConverter(object value, object destination, Type destType, ResolutionContext context)
 	{
 		if (value == null) return null;
 		var srcType = value.GetType();
@@ -352,7 +352,7 @@ public class SolutionMapper
 		if (_typeConverters.TryGetValue((srcType, destType), out var converterObj))
 		{
 			var method = converterObj.GetType().GetMethod("Convert");
-			return method.Invoke(converterObj, new[] { value, destination, context });
+			return method!.Invoke(converterObj, new[] { value, destination, context });
 		}
 		try
 		{
@@ -360,7 +360,7 @@ public class SolutionMapper
 		}
 		catch
 		{
-			return null;
+			return default;
 		}
 	}
 
@@ -414,7 +414,7 @@ public class SolutionMapper
 			{
 				var mappingType = typeof(SolutionMappingExpression<,>).MakeGenericType(srcType, destType);
 				var mapping = Activator.CreateInstance(mappingType);
-				_rules.Add(mapping);
+				if (mapping != null) _rules.Add(mapping);
 			}
 		}
 		var method = typeof(SolutionMapper)
@@ -424,6 +424,6 @@ public class SolutionMapper
 						&& m.GetParameters().Length == 1);
 
 		var genericMethod = method.MakeGenericMethod(srcType, destType);
-		return genericMethod.Invoke(this, new[] { source });
+		return genericMethod.Invoke(this, new[] { source })!;
 	}
 }

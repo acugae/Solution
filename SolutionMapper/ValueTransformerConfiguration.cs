@@ -10,5 +10,5 @@ public class ValueTransformerConfiguration
     /// Funzione di trasformazione da applicare al valore.
     /// Riceve un oggetto in ingresso e restituisce il valore trasformato.
     /// </summary>
-    public Func<object, object> Transformer { get; set; }
+    public Func<object, object> Transformer { get; set; } = null!;
 }

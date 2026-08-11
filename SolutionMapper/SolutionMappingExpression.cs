@@ -10,7 +10,7 @@ namespace Solution.SolutionMapper;
 public class SolutionMappingExpression<TSource, TDest> : ISolutionMappingExpression<TSource, TDest>
 {
     // Membri mappati esplicitamente: destinazione, funzione per ottenere il valore dal source, eventuale converter
-    internal List<(PropertyInfo destProp, Func<TSource, object> getter, object valueConverter)> Members { get; } = new();
+    internal List<(PropertyInfo destProp, Func<TSource, object?> getter, object? valueConverter)> Members { get; } = new();
 
     // Nomi delle proprietà da ignorare durante il mapping
     internal HashSet<string> IgnoredMembers { get; } = new();
@@ -22,25 +22,25 @@ public class SolutionMappingExpression<TSource, TDest> : ISolutionMappingExpress
     internal List<(string, Action<ICtorParamConfigurationExpression<TSource>>)> CtorParamConfigs { get; } = new();
 
     // Azioni da eseguire prima del mapping
-    internal Action<TSource, TDest> BeforeMapAction { get; private set; }
-    internal Action<TSource, TDest, ResolutionContext> BeforeMapActionWithContext { get; private set; }
+    internal Action<TSource, TDest>? BeforeMapAction { get; private set; }
+    internal Action<TSource, TDest, ResolutionContext>? BeforeMapActionWithContext { get; private set; }
 
     // Azioni da eseguire dopo il mapping
-    internal Action<TSource, TDest> AfterMapAction { get; private set; }
-    internal Action<TSource, TDest, ResolutionContext> AfterMapActionWithContext { get; private set; }
+    internal Action<TSource, TDest>? AfterMapAction { get; private set; }
+    internal Action<TSource, TDest, ResolutionContext>? AfterMapActionWithContext { get; private set; }
 
     // Converter personalizzato per la mappatura
-    internal ITypeConverter<TSource, TDest> TypeConverter { get; private set; }
+    internal ITypeConverter<TSource, TDest>? TypeConverter { get; private set; }
 
     // Funzione di mapping personalizzata
-    internal Func<TSource, TDest, ResolutionContext, TDest> CustomMappingFunction { get; private set; }
+    internal Func<TSource, TDest, ResolutionContext, TDest>? CustomMappingFunction { get; private set; }
 
     // Espressione di mapping personalizzata
-    internal Expression<Func<TSource, TDest>> CustomMappingExpression { get; private set; }
+    internal Expression<Func<TSource, TDest>>? CustomMappingExpression { get; private set; }
 
     // Costruttore personalizzato
-    internal Func<TSource, TDest> CustomCtor { get; private set; }
-    internal Func<TSource, ResolutionContext, TDest> CustomCtorWithContext { get; private set; }
+    internal Func<TSource, TDest>? CustomCtor { get; private set; }
+    internal Func<TSource, ResolutionContext, TDest>? CustomCtorWithContext { get; private set; }
 
     // Profondità massima per il mapping ricorsivo
     internal int? MaxDepthValue { get; private set; }
@@ -78,11 +78,11 @@ public class SolutionMappingExpression<TSource, TDest> : ISolutionMappingExpress
     public ISolutionMappingExpression<TSource, TDest> ForMember<TMember>(
         Expression<Func<TDest, TMember>> destSelector,
         Expression<Func<TSource, TMember>> srcSelector,
-        IValueConverter<TMember, TMember> converter = null)
+        IValueConverter<TMember, TMember>? converter = null)
     {
         var destProp = (PropertyInfo)((MemberExpression)destSelector.Body).Member;
         var getter = srcSelector.Compile();
-        Members.Add((destProp, src => getter(src), converter));
+        Members.Add((destProp, src => (object?)getter(src), converter));
         return this;
     }
 
@@ -324,13 +324,13 @@ public class SolutionMappingExpression<TSource, TDest> : ISolutionMappingExpress
             reverse.IgnoredMembers.Add(ignored);
 
         // Copia le altre configurazioni rilevanti
-        reverse.BeforeMapAction = null;
-        reverse.AfterMapAction = null;
-        reverse.TypeConverter = null;
-        reverse.CustomMappingFunction = null;
-        reverse.CustomMappingExpression = null;
-        reverse.CustomCtor = null;
-        reverse.CustomCtorWithContext = null;
+        reverse.BeforeMapAction = null!;
+        reverse.AfterMapAction = null!;
+        reverse.TypeConverter = null!;
+        reverse.CustomMappingFunction = null!;
+        reverse.CustomMappingExpression = null!;
+        reverse.CustomCtor = null!;
+        reverse.CustomCtorWithContext = null!;
         reverse.MaxDepthValue = MaxDepthValue;
         reverse.PreserveReferencesValue = PreserveReferencesValue;
         reverse.DisableCtorValidationValue = DisableCtorValidationValue;
@@ -367,13 +367,13 @@ public class SolutionMappingExpression<TSource, TDest> : ISolutionMappingExpress
             reverse.IgnoredMembers.Add(ignored);
 
         // Copia le altre configurazioni rilevanti
-        reverse.BeforeMapAction = null;
-        reverse.AfterMapAction = null;
-        reverse.TypeConverter = null;
-        reverse.CustomMappingFunction = null;
-        reverse.CustomMappingExpression = null;
-        reverse.CustomCtor = null;
-        reverse.CustomCtorWithContext = null;
+        reverse.BeforeMapAction = null!;
+        reverse.AfterMapAction = null!;
+        reverse.TypeConverter = null!;
+        reverse.CustomMappingFunction = null!;
+        reverse.CustomMappingExpression = null!;
+        reverse.CustomCtor = null!;
+        reverse.CustomCtorWithContext = null!;
         reverse.MaxDepthValue = MaxDepthValue;
         reverse.PreserveReferencesValue = PreserveReferencesValue;
         reverse.DisableCtorValidationValue = DisableCtorValidationValue;
