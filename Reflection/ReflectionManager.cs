@@ -1,4 +1,6 @@
+#if NET5_0_OR_GREATER
 using Microsoft.AspNetCore.Components;
+#endif
 
 namespace Solution.Reflection;
 /// <summary>
@@ -240,12 +242,14 @@ public class ReflectionManager
     /// <summary>
     /// Verifica se la proprietà è un parametro.
     /// </summary>
+    #if NET5_0_OR_GREATER
     public bool IsParameter(PropertyInfo property)
     {
         // Verifica se la proprietà ha l'attributo [Parameter] o [CascadingParameter]
         return property.GetCustomAttributes(typeof(ParameterAttribute), true).Any() ||
                property.GetCustomAttributes(typeof(CascadingParameterAttribute), true).Any();
     }
+#endif
     /// <summary>
     /// Ritorna gli eventi di un oggetto.
     /// </summary>

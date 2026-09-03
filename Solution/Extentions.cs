@@ -7,6 +7,7 @@ using static iTextSharp.text.pdf.AcroFields;
 
 namespace Solution;
 
+#if NET5_0_OR_GREATER
 public static class HttpContextExtensions
 {
     public static async Task<string> GetBody(this HttpRequest oRequest)
@@ -21,6 +22,7 @@ public static class HttpContextExtensions
         }
     }
 }
+#endif
 public static class ExpandoObjectMethods
 {
     public static T FirstOrDefault<T>(this ExpandoObject oExpandoObject, string key)
@@ -210,7 +212,11 @@ public static class RequestExtensions
 {
     public static async Task<string> ReadAsStringAsync(this Stream requestBody, bool leaveOpen = false)
     {
+#if NET5_0_OR_GREATER
         using StreamReader reader = new(requestBody, leaveOpen: leaveOpen);
+#else
+        using StreamReader reader = new(requestBody, Encoding.UTF8, true, -1, leaveOpen);
+#endif
         var bodyAsString = await reader.ReadToEndAsync();
         return bodyAsString;
     }

@@ -1,65 +1,154 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net10.0</TargetFramework>
+	<TargetFrameworks>netstandard2.1;net5.0;net6.0;net7.0;net8.0;net9.0;net10.0</TargetFrameworks>
 	<ImplicitUsings>enable</ImplicitUsings>
 	<Nullable>enable</Nullable>
-	<AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-	<AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+	<LangVersion>latest</LangVersion>
 	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>
 	<Title>Solution</Title>
 	<OutputPath>bin\</OutputPath>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Authors>Gaetano Acunzo</Authors>
-    <Product>Solution</Product>
-	<AssemblyVersion>1.0.30</AssemblyVersion>
-	<AssemblyFileVersion>1.0.30</AssemblyFileVersion>
+	<Product>Solution</Product>
+	<AssemblyVersion>1.0.31</AssemblyVersion>
+	<AssemblyFileVersion>1.0.31</AssemblyFileVersion>
 	<PackageProjectUrl>https://www.nuget.org/packages/Solution</PackageProjectUrl>
-	<RepositoryType>git</RepositoryType>
 	<PackageIcon>Logo.png</PackageIcon>
 	<Version>$(AssemblyVersion)</Version>
 	<RepositoryUrl>https://github.com/acugae/Solution</RepositoryUrl>
 	<PackageTags>Data, Database, Reflection, XLS, FTP, SFTP, PDF, Zip, Pipe, FileManeger, Security, Json, XML, CRUD</PackageTags>
 	<AssemblyName>Solution</AssemblyName>
-	<RootNamespace>Solution</RootNamespace>  
+	<RootNamespace>Solution</RootNamespace>
+	<!-- Audit solo su dipendenze dirette: le transitive vulnerabili
+		 (System.Security.Cryptography.Xml, System.Text.Json 7.x) non hanno
+		 versioni patchate compatibili con netstandard2.0 -->
+	<NuGetAuditMode>direct</NuGetAuditMode>
+	<!-- Sopprime i warning "package X non è stato testato con netY" per TFM più vecchi
+		 dei TFM target dichiarati dal pacchetto (es. DirectoryServices 9.x su net6/7) -->
+	<SuppressTfmSupportBuildWarnings>true</SuppressTfmSupportBuildWarnings>
+	<!-- Accetta la licenza OSMF richiesta da NPOI 2.8.0 -->
+	<AcceptNPOIOSMFLicense>true</AcceptNPOIOSMFLicense>
   </PropertyGroup>
   <ItemGroup>
     <None Remove=".gitattributes" />
     <None Remove=".gitignore" />
+    <None Remove="README.md" />
   </ItemGroup>
 
   <ItemGroup>
-	<FrameworkReference Include="Microsoft.AspNetCore.App" />
+	<FrameworkReference Include="Microsoft.AspNetCore.App" Condition="'$(TargetFramework)' != 'netstandard2.1'" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="iTextSharp.LGPLv2.Core" Version="3.8.5" />
-    <PackageReference Include="log4net" Version="3.4.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.11" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
-    <PackageReference Include="Microsoft.Data.Sqlite" Version="11.0.0-preview.5.26302.115" />
-    <PackageReference Include="MySqlConnector" Version="2.6.2" />
+    <None Include=".github\prompts\build-verify.prompt.md" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Pacchetti compatibili con tutti i TFM -->
+    <PackageReference Include="iTextSharp.LGPLv2.Core" Version="3.8.1" />
+    <PackageReference Include="log4net" Version="3.3.2" />
+    <PackageReference Include="MySqlConnector" Version="2.6.1" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
-    <PackageReference Include="Npgsql" Version="10.0.3" />
     <PackageReference Include="NPOI" Version="2.8.0" />
-    <PackageReference Include="SSH.NET" Version="2026.0.0" />
-    <PackageReference Include="System.DirectoryServices" Version="10.0.11" />
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.11" />
+    <PackageReference Include="SSH.NET" Version="2025.1.0" />
+  </ItemGroup>
+
+  <!-- Microsoft.Extensions: su netstandard2.1 non arrivano da FrameworkReference, servono espliciti -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1'">
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.1" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Binder" Version="8.0.2" />
+    <PackageReference Include="Microsoft.Extensions.Options" Version="8.0.2" />
+  </ItemGroup>
+
+  <!-- System.Text.Json: fix CVE GHSA-hh2w-p6rv-4g7w (7.0.0 vulnerabile via NPOI/altri su TFM bassi) -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1' Or '$(TargetFramework)' == 'net5.0' Or '$(TargetFramework)' == 'net6.0' Or '$(TargetFramework)' == 'net7.0'">
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+  </ItemGroup>
+
+  <!-- JwtBearer: richiede Microsoft.AspNetCore.App, disponibile solo su net5+ -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net5.0'">
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="5.0.17" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0'">
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="6.0.36" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net7.0'">
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="7.0.20" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.16" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.9" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
+  </ItemGroup>
+
+  <!-- Npgsql: 7.x per netstandard2.1/net5-7, 10.x per net8+ -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1' Or '$(TargetFramework)' == 'net5.0' Or '$(TargetFramework)' == 'net6.0' Or '$(TargetFramework)' == 'net7.0'">
+    <PackageReference Include="Npgsql" Version="7.0.9" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0' Or '$(TargetFramework)' == 'net9.0' Or '$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="Npgsql" Version="10.0.3" />
+  </ItemGroup>
+
+  <!-- Microsoft.Data.SqlClient: 5.x per netstandard2.1/net5-7, 7.x per net8+ -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1' Or '$(TargetFramework)' == 'net5.0' Or '$(TargetFramework)' == 'net6.0' Or '$(TargetFramework)' == 'net7.0'">
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0' Or '$(TargetFramework)' == 'net9.0' Or '$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
+  </ItemGroup>
+
+  <!-- Microsoft.Data.Sqlite: aggiunto in 1.0.30 -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0' Or '$(TargetFramework)' == 'net9.0'">
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="9.0.7" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="10.0.0" />
+  </ItemGroup>
+
+  <!-- System.DirectoryServices: versione per TFM -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1' Or '$(TargetFramework)' == 'net5.0'">
+    <PackageReference Include="System.DirectoryServices" Version="7.0.0" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net6.0' Or '$(TargetFramework)' == 'net7.0'">
+    <PackageReference Include="System.DirectoryServices" Version="9.0.0" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net8.0'">
+    <PackageReference Include="System.DirectoryServices" Version="8.0.0" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
+    <PackageReference Include="System.DirectoryServices" Version="9.0.9" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="System.DirectoryServices" Version="10.0.9" />
+  </ItemGroup>
+
+  <!-- System.Security.Cryptography.Pkcs: versione per TFM -->
+  <ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.1' Or '$(TargetFramework)' == 'net5.0' Or '$(TargetFramework)' == 'net6.0' Or '$(TargetFramework)' == 'net7.0' Or '$(TargetFramework)' == 'net8.0'">
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.1" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net9.0'">
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="9.0.13" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.9" />
   </ItemGroup>
 
   <ItemGroup>
     <Service Include="{508349b6-6b84-4df5-91f0-309beebad82d}" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="README.md" Pack="true" PackagePath="\">
-      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
-    </None>
-    <None Update="Logo.png">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
+  <!-- Logo.png e README.md: devono essere visibili durante l'outer build per il pack multi-targeting -->
+  <ItemGroup Condition="'$(TargetFramework)' == ''">
+    <None Include="Logo.png" Pack="True" PackagePath="\" />
+    <None Include="README.md" Pack="True" PackagePath="\" />
   </ItemGroup>
 
 </Project>

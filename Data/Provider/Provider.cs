@@ -19,8 +19,10 @@ public class  Provider
                     instance = MySqlConnector.MySqlConnectorFactory.Instance;
                 if (sKeyProvider.ToLower().Equals("pstdb"))
                     instance = Npgsql.NpgsqlFactory.Instance;
+#if NET8_0_OR_GREATER
                 if (sKeyProvider.ToLower().Equals("litedb"))
                     instance = Microsoft.Data.Sqlite.SqliteFactory.Instance;
+#endif
                 //else if (sKeyProvider.ToLower().Equals("oledb"))
                 //    _Instance = OleDbFactory.Instance;
                 //else if (sKeyProvider.ToLower().Equals("odbdb"))

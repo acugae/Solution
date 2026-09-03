@@ -29,7 +29,9 @@ global using Solution.Reflection;
 global using ICSharpCode.SharpZipLib.Zip;
 global using iTextSharp.text;
 global using iTextSharp.text.pdf;
+#if NET5_0_OR_GREATER
 global using Microsoft.AspNetCore.Http;
+#endif
 global using Newtonsoft.Json;
 global using Newtonsoft.Json.Linq;
 global using NPOI.HSSF.UserModel;
