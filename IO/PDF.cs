@@ -75,17 +75,25 @@ public class PDF
     public void CopyPage(string sFileInput, int pageNumber, string sFileOutput)
     {
         PdfReader reader = new PdfReader(sFileInput);
-        iTextSharp.text.Rectangle size = reader.GetPageSizeWithRotation(pageNumber);
-        Document document = new Document(size);
-        PdfWriter writer = PdfWriter.GetInstance(document, new FileStream(sFileOutput, FileMode.Create, FileAccess.Write));
-        document.AddTitle("Cedolino");
-        document.AddSubject("Generatore Automatico");
-        document.Open();
-        PdfContentByte cb = writer.DirectContent;
-        document.NewPage();
-        PdfImportedPage page = writer.GetImportedPage(reader, pageNumber);
-        cb.AddTemplate(page, 0, 0);
-        document.Close();
+        try
+        {
+            iTextSharp.text.Rectangle size = reader.GetPageSizeWithRotation(pageNumber);
+            Document document = new Document(size);
+            using FileStream output = new FileStream(sFileOutput, FileMode.Create, FileAccess.Write);
+            PdfWriter writer = PdfWriter.GetInstance(document, output);
+            document.AddTitle("Cedolino");
+            document.AddSubject("Generatore Automatico");
+            document.Open();
+            PdfContentByte cb = writer.DirectContent;
+            document.NewPage();
+            PdfImportedPage page = writer.GetImportedPage(reader, pageNumber);
+            cb.AddTemplate(page, 0, 0);
+            document.Close();
+        }
+        finally
+        {
+            reader.Close();
+        }
     }
 
     /// <summary>

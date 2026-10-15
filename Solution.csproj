@@ -13,8 +13,8 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Authors>Gaetano Acunzo</Authors>
     <Product>Solution</Product>
-	<AssemblyVersion>1.0.30</AssemblyVersion>
-	<AssemblyFileVersion>1.0.30</AssemblyFileVersion>
+	<AssemblyVersion>1.0.34</AssemblyVersion>
+	<AssemblyFileVersion>1.0.34</AssemblyFileVersion>
 	<PackageProjectUrl>https://www.nuget.org/packages/Solution</PackageProjectUrl>
 	<RepositoryType>git</RepositoryType>
 	<PackageIcon>Logo.png</PackageIcon>
@@ -27,6 +27,7 @@
   <ItemGroup>
     <None Remove=".gitattributes" />
     <None Remove=".gitignore" />
+    <Compile Remove="Solution.Tests\**\*.cs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -34,18 +35,22 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="iTextSharp.LGPLv2.Core" Version="3.8.1" />
-    <PackageReference Include="log4net" Version="3.3.2" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.9" />
-    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.0.2" />
+    <None Include="Solution.Tests\Solution.Tests.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="iTextSharp.LGPLv2.Core" Version="3.8.6" />
+    <PackageReference Include="log4net" Version="3.5.0" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" />
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.1" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="11.0.0-preview.5.26302.115" />
-    <PackageReference Include="MySqlConnector" Version="2.6.1" />
+    <PackageReference Include="MySqlConnector" Version="2.6.2" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
     <PackageReference Include="Npgsql" Version="10.0.3" />
-    <PackageReference Include="NPOI" Version="2.8.0" />
-    <PackageReference Include="SSH.NET" Version="2025.1.0" />
-    <PackageReference Include="System.DirectoryServices" Version="10.0.9" />
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.9" />
+    <PackageReference Include="NPOI" Version="2.8.1" />
+    <PackageReference Include="SSH.NET" Version="2026.0.0" />
+    <PackageReference Include="System.DirectoryServices" Version="10.0.13" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
   </ItemGroup>
 
   <ItemGroup>
