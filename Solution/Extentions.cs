@@ -93,6 +93,41 @@ public static class DataTableExtensions
 
 public static class DataRowExtensions
 {
+    // Overload 1: Se non passi un fallback, usa la colonna se disponibile, altrimenti default(T)
+    public static T GetValueOrDefault<T>(this DataRow row, string columnName)
+    {
+        if (!row.IsNull(columnName))
+        {
+            return ConvertValue<T>(row[columnName]);
+        }
+
+        var column = row.Table.Columns[columnName];
+        if (column != null && column.DefaultValue != DBNull.Value)
+        {
+            return ConvertValue<T>(column.DefaultValue);
+        }
+
+        return default;
+    }
+
+    // Overload 2: Se passi un fallback esplicito, questo ha la priorità sul default di colonna
+    public static T GetValueOrDefault<T>(this DataRow row, string columnName, T fallbackValue)
+    {
+        if (!row.IsNull(columnName))
+        {
+            return ConvertValue<T>(row[columnName]);
+        }
+
+        return fallbackValue;
+    }
+
+    private static T ConvertValue<T>(object value)
+    {
+        Type targetType = typeof(T);
+        Type underlyingType = Nullable.GetUnderlyingType(targetType) ?? targetType;
+        return (T)Convert.ChangeType(value, underlyingType);
+    }
+
     public static Dictionary<string, object> ToDictionary(this DataRow dr)
     {
         if (dr == null)

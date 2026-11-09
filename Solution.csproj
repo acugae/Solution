@@ -13,8 +13,8 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <Authors>Gaetano Acunzo</Authors>
     <Product>Solution</Product>
-	<AssemblyVersion>1.0.34</AssemblyVersion>
-	<AssemblyFileVersion>1.0.34</AssemblyFileVersion>
+	<AssemblyVersion>1.0.35</AssemblyVersion>
+	<AssemblyFileVersion>1.0.35</AssemblyFileVersion>
 	<PackageProjectUrl>https://www.nuget.org/packages/Solution</PackageProjectUrl>
 	<RepositoryType>git</RepositoryType>
 	<PackageIcon>Logo.png</PackageIcon>
@@ -39,9 +39,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="iTextSharp.LGPLv2.Core" Version="3.8.6" />
+    <PackageReference Include="iTextSharp.LGPLv2.Core" Version="3.8.7" />
     <PackageReference Include="log4net" Version="3.5.0" />
-    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.13" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.14" />
     <PackageReference Include="Microsoft.Data.SqlClient" Version="7.1.1" />
     <PackageReference Include="Microsoft.Data.Sqlite" Version="11.0.0-preview.5.26302.115" />
     <PackageReference Include="MySqlConnector" Version="2.6.2" />
@@ -49,8 +49,8 @@
     <PackageReference Include="Npgsql" Version="10.0.3" />
     <PackageReference Include="NPOI" Version="2.8.1" />
     <PackageReference Include="SSH.NET" Version="2026.0.0" />
-    <PackageReference Include="System.DirectoryServices" Version="10.0.13" />
-    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.13" />
+    <PackageReference Include="System.DirectoryServices" Version="10.0.14" />
+    <PackageReference Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
   </ItemGroup>
 
   <ItemGroup>
