@@ -86,7 +86,8 @@ public class ZIP
                 
                 // Protezione Path Traversal: verifica nome file
                 string entryName = currentEntry.Name;
-                if (entryName.Contains("..") || Path.IsPathRooted(entryName))
+                // ".." è vietato come segmento del percorso (un nome come "a..b.txt" è valido)
+                if (Array.IndexOf(entryName.Split('/', '\\'), "..") >= 0 || Path.IsPathRooted(entryName))
                     throw new InvalidOperationException($"Zip entry contains invalid path: {entryName}");
                 
                 // Legge l'intero contenuto (una sola Read può restituire meno byte del richiesto)

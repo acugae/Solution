@@ -33,6 +33,11 @@ public class Connection : IDisposable, IAsyncDisposable
     /// 
     /// </summary>
     //[WebMethod(true)]
+    /// <summary>Dimentica la transazione corrente (dopo Commit o Rollback).</summary>
+    internal void ClearTransaction()
+    {
+        transaction = null;
+    }
     public void Dispose()
     {
         transaction?.Dispose();

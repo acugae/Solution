@@ -66,6 +66,8 @@ namespace Solution.DbOperations
             {
                 throw new ArgumentNullException(nameof(options.tableName));
             }
+            // Il nome della tabella finisce nel testo SQL: deve essere un nome valido.
+            Solution.Data.SqlIdentifier.Quote(options.tableName);
 
             if (options.Connection.State == ConnectionState.Closed) options.Connection.Open();
             bool internalTransaction = false;
@@ -172,6 +174,8 @@ namespace Solution.DbOperations
             {
                 throw new ArgumentNullException(nameof(options.tableName));
             }
+            // Il nome della tabella finisce nel testo SQL: deve essere un nome valido.
+            Solution.Data.SqlIdentifier.Quote(options.tableName);
 
             string command = (options.useIfExist ? $"IF OBJECT_ID(N'{options.tableName}', N'U') IS NOT NULL" : "") +
                              $" DROP TABLE [{options.tableName}];";
@@ -358,6 +362,8 @@ namespace Solution.DbOperations
             {
                 throw new ArgumentNullException(nameof(options.tableName));
             }
+            // Il nome della tabella finisce nel testo SQL: deve essere un nome valido.
+            Solution.Data.SqlIdentifier.Quote(options.tableName);
 
             var fieldsCreate = GetProperties<TSource>(options.primaryKeys, options.includeColumns, options.excludeColumns);
 
@@ -397,7 +403,7 @@ namespace Solution.DbOperations
                 });
             }
 
-            using (SqlBulkCopy bulkCopy = new SqlBulkCopy(options.Connection as SqlConnection, SqlBulkCopyOptions.KeepNulls & SqlBulkCopyOptions.KeepIdentity, options.Transaction as SqlTransaction))
+            using (SqlBulkCopy bulkCopy = new SqlBulkCopy(options.Connection as SqlConnection, SqlBulkCopyOptions.KeepNulls | SqlBulkCopyOptions.KeepIdentity, options.Transaction as SqlTransaction))
             {
                 bulkCopy.DestinationTableName = $"{options.tableName}";
                 bulkCopy.BulkCopyTimeout = options.ConnectionTimeout;
@@ -449,9 +455,11 @@ namespace Solution.DbOperations
             {
                 throw new ArgumentNullException(nameof(options.tableName));
             }
+            // Il nome della tabella finisce nel testo SQL: deve essere un nome valido.
+            Solution.Data.SqlIdentifier.Quote(options.tableName);
 
             //Bulk in Temp Table
-            string tempTable = $"{options.tableName}_{DateTime.Now:yyyyMMddHHmmss}";
+            string tempTable = $"{options.tableName}_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid():N}";
 
             BulkInsert(data, new BulkInsertOptions<TSource>()
             {
@@ -574,13 +582,15 @@ namespace Solution.DbOperations
         }
         public static void BulkUpdate<TSource>(IEnumerable<TSource> data, IBulkUpdateOptions<TSource> options)
         {
-            string tempTable = $"{options.tableName}_{DateTime.Now:yyyyMMddHHmmss}";
+            string tempTable = $"{options.tableName}_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid():N}";
             string joinParams = "";
 
             if (string.IsNullOrEmpty(options.tableName))
             {
                 throw new ArgumentNullException(nameof(options.tableName));
             }
+            // Il nome della tabella finisce nel testo SQL: deve essere un nome valido.
+            Solution.Data.SqlIdentifier.Quote(options.tableName);
 
             if (options.joinColumns == null)
             {
@@ -691,13 +701,15 @@ namespace Solution.DbOperations
         }
         public static IEnumerable<TRes> BulkUpdateWithResult<TSource, TRes>(IEnumerable<TSource> data, IBulkUpdateOptions<TSource> options) where TSource : class, new() where TRes : class, new()
         {
-            string tempTable = $"{options.tableName}_{DateTime.Now:yyyyMMddHHmmss}";
+            string tempTable = $"{options.tableName}_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid():N}";
             string joinParams = "";
 
             if (string.IsNullOrEmpty(options.tableName))
             {
                 throw new ArgumentNullException(nameof(options.tableName));
             }
+            // Il nome della tabella finisce nel testo SQL: deve essere un nome valido.
+            Solution.Data.SqlIdentifier.Quote(options.tableName);
 
             if (options.joinColumns == null)
             {

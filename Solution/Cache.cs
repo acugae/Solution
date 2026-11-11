@@ -144,9 +144,8 @@ public class CacheKey
     private static string GetHash(string inputString)
     {
         // step 1, calculate MD5 hash from input
-        MD5 md5 = MD5.Create();
-        byte[] inputBytes = Encoding.ASCII.GetBytes(inputString);
-        byte[] hash = md5.ComputeHash(inputBytes);
+        byte[] inputBytes = Encoding.UTF8.GetBytes(inputString);
+        byte[] hash = SHA256.HashData(inputBytes);
         string str = BitConverter.ToString(hash);
         return str;
     }

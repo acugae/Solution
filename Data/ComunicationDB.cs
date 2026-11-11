@@ -250,14 +250,14 @@ public class SQLDBRead : IReader
         sSQL += "FROM sysobjects ";
         sSQL += "JOIN syscolumns ON sysobjects.id = syscolumns.id ";
         sSQL += "JOIN systypes ON systypes.xtype = syscolumns.xtype ";
-        sSQL += "WHERE sysobjects.name = '" + strTable + "' AND systypes.status = 0 ORDER BY colorder";
+        sSQL += "WHERE sysobjects.name = '" + SqlIdentifier.Safe(strTable) + "' AND systypes.status = 0 ORDER BY colorder";
         ds = _oBUS.GetDS(strConn, sSQL, "Fields");
         //
         string sSQLKey = "SELECT syscolumns.name ";
         sSQLKey += "FROM sysobjects ";
         sSQLKey += "JOIN syscolumns ON sysobjects.id = syscolumns.id ";
         sSQLKey += "JOIN sysindexkeys ON sysindexkeys.id = syscolumns.id ";
-        sSQLKey += "WHERE sysobjects.name = '" + strTable + "' AND sysindexkeys.indid = 1 AND sysindexkeys.colid = syscolumns.colid";
+        sSQLKey += "WHERE sysobjects.name = '" + SqlIdentifier.Safe(strTable) + "' AND sysindexkeys.indid = 1 AND sysindexkeys.colid = syscolumns.colid";
         ds = _oBUS.GetDS(strConn, sSQLKey, "FieldsKey", ds);
         //
         GCollection<string, DBField> oCC = new GCollection<string, DBField>();
@@ -338,8 +338,8 @@ public class SQLDBRead : IReader
     {
         string collation;
         DataSet ds;
-        ds = _oBUS.GetDS(strConn, "SELECT id From sysobjects Where name = '" + strTable + "'", "Tables");
-        ds = _oBUS.GetDS(strConn, "SELECT collation FROM syscolumns WHERE id = " + ds.Tables["Tables"].DefaultView[0][0] + " and name ='" + strField + "'", "Collat", ds);
+        ds = _oBUS.GetDS(strConn, "SELECT id From sysobjects Where name = '" + SqlIdentifier.Safe(strTable) + "'", "Tables");
+        ds = _oBUS.GetDS(strConn, "SELECT collation FROM syscolumns WHERE id = " + ds.Tables["Tables"].DefaultView[0][0] + " and name ='" + SqlIdentifier.Safe(strField) + "'", "Collat", ds);
         collation = (string)ds.Tables["Collat"].DefaultView[0]["collation"];
         return collation;
     }
@@ -360,7 +360,7 @@ public class SQLDBRead : IReader
     public string getFieldDefaultValue(string strTable, string strField)
     {
         DataSet ds;
-        ds = _oBUS.GetDS(strConn, "Select id From sysobjects Where name = 'DF_" + strTable + "_" + strField + "'", "Tables");
+        ds = _oBUS.GetDS(strConn, "Select id From sysobjects Where name = 'DF_" + SqlIdentifier.Safe(strTable) + "_" + SqlIdentifier.Safe(strField) + "'", "Tables");
         if (ds.Tables["Tables"].Rows.Count > 0)
         {
             ds = _oBUS.GetDS(strConn, "Select text From syscomments Where id = " + ds.Tables["Tables"].DefaultView[0][0].ToString(), "Fields", ds);
@@ -483,7 +483,7 @@ public class SQLDBWrite
 
     public bool CreateTable(string strTable, GCollection<string, DBField> oFields)
     {
-        string mySQL = "CREATE TABLE " + strTable;
+        string mySQL = "CREATE TABLE " + SqlIdentifier.Safe(strTable);
         bool virgola = false;
         mySQL += " ( ";
         //
@@ -507,7 +507,7 @@ public class SQLDBWrite
         }
         catch (Exception e)
         {
-            Console.WriteLine(e.Message);
+            System.Diagnostics.Trace.WriteLine(e.Message);
             return false;
         }
         return true;
@@ -536,7 +536,7 @@ public class SQLDBWrite
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                System.Diagnostics.Trace.WriteLine(e.Message);
                 return false;
             }
         }
@@ -553,7 +553,7 @@ public class SQLDBWrite
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.Message);
+                System.Diagnostics.Trace.WriteLine(e.Message);
                 return false;
             }
         }
@@ -562,23 +562,23 @@ public class SQLDBWrite
     //
     public bool delColumnTable(string strTable, string strColumn)
     {
-        string mySQL = "ALTER TABLE " + strTable + " ";
+        string mySQL = "ALTER TABLE " + SqlIdentifier.Safe(strTable) + " ";
         try
         {
-            mySQL += "DROP COLUMN " + strColumn;
+            mySQL += "DROP COLUMN " + SqlIdentifier.Safe(strColumn);
             _oBUS.ExecuteNonQuery(strConn, mySQL, null);
             return true;
         }
         catch (Exception e)
         {
-            Console.WriteLine(e.Message);
+            System.Diagnostics.Trace.WriteLine(e.Message);
             return false;
         }
     }
 
     public bool CreateColumnTable(string strTable, DBField oField)
     {
-        string mySQL = "ALTER TABLE " + strTable + " ";
+        string mySQL = "ALTER TABLE " + SqlIdentifier.Safe(strTable) + " ";
         try
         {
             mySQL += "ADD " + oField.Name + " " + oField.GetStringColumn();
@@ -587,14 +587,14 @@ public class SQLDBWrite
         }
         catch (Exception e)
         {
-            Console.WriteLine(e.Message);
+            System.Diagnostics.Trace.WriteLine(e.Message);
             return false;
         }
     }
 
     public bool AlterColumnTable(string strTable, DBField oField)
     {
-        string mySQL = "ALTER TABLE " + strTable + " ";
+        string mySQL = "ALTER TABLE " + SqlIdentifier.Safe(strTable) + " ";
         try
         {
             mySQL += "ALTER COLUMN " + oField.Name + " " + oField.GetStringColumn();
@@ -603,7 +603,7 @@ public class SQLDBWrite
         }
         catch (Exception e)
         {
-            Console.WriteLine(e.Message);
+            System.Diagnostics.Trace.WriteLine(e.Message);
             return false;
         }
     }
@@ -612,7 +612,7 @@ public class SQLDBWrite
     {
         try
         {
-            _oBUS.ExecuteNonQuery(this.strConn, "DROP TABLE " + strTable, null);
+            _oBUS.ExecuteNonQuery(this.strConn, "DROP TABLE " + SqlIdentifier.Safe(strTable), null);
             return true;
         }
         catch
@@ -632,7 +632,7 @@ public class SQLDBWrite
         {
             foreach (string strKey in ostrDir.Keys)
             {
-                string mySQL = "DROP PROCEDURE " + strKey;
+                string mySQL = "DROP PROCEDURE " + SqlIdentifier.Safe(strKey);
                 try
                 {
                     _oBUS.ExecuteNonQuery(strConn, mySQL, null);
@@ -644,7 +644,7 @@ public class SQLDBWrite
         }
         catch (Exception e)
         {
-            Console.WriteLine(e.Message);
+            System.Diagnostics.Trace.WriteLine(e.Message);
             return false;
         }
         return true;
@@ -652,7 +652,7 @@ public class SQLDBWrite
 
     public bool delStoredProcedure(string strStoreProcedure)
     {
-        string mySQL = "DROP PROCEDURE " + strStoreProcedure;
+        string mySQL = "DROP PROCEDURE " + SqlIdentifier.Safe(strStoreProcedure);
         try
         {
             _oBUS.ExecuteNonQuery(strConn, mySQL, null);
@@ -693,7 +693,7 @@ public class SQLDBWrite
         }
         catch (Exception ex)
         {
-            System.Console.WriteLine(ex.Message);
+            System.Diagnostics.Trace.WriteLine(ex.Message);
             return false;
         }
         return true;
@@ -704,8 +704,8 @@ public class SQLDBWrite
         string mySQL = "";
         bool virgola = false;
         //
-        mySQL += "ALTER TABLE " + strTable + " WITH NOCHECK ADD ";
-        mySQL += "CONSTRAINT [PK_" + strTable + "] PRIMARY KEY CLUSTERED ";
+        mySQL += "ALTER TABLE " + SqlIdentifier.Safe(strTable) + " WITH NOCHECK ADD ";
+        mySQL += "CONSTRAINT [PK_" + SqlIdentifier.Safe(strTable) + "] PRIMARY KEY CLUSTERED ";
         mySQL += " ( ";
         for (int i = 0; i < ColumsKey.Length; i++)
         {
@@ -722,7 +722,7 @@ public class SQLDBWrite
         }
         catch (Exception e)
         {
-            Console.WriteLine(e.Message);
+            System.Diagnostics.Trace.WriteLine(e.Message);
             return false;
         }
         return true;
@@ -736,8 +736,8 @@ public class SQLDBWrite
         if (ColumsKey == null)
             return false;
         //
-        mySQL += "ALTER TABLE " + strTable + " WITH NOCHECK ADD ";
-        mySQL += "CONSTRAINT [PK_" + strTable + "] PRIMARY KEY CLUSTERED ";
+        mySQL += "ALTER TABLE " + SqlIdentifier.Safe(strTable) + " WITH NOCHECK ADD ";
+        mySQL += "CONSTRAINT [PK_" + SqlIdentifier.Safe(strTable) + "] PRIMARY KEY CLUSTERED ";
         mySQL += " ( ";
         for (int i = 0; i < ColumsKey.Count; i++)
         {
@@ -755,7 +755,7 @@ public class SQLDBWrite
         }
         catch (Exception e)
         {
-            Console.WriteLine(e.Message);
+            System.Diagnostics.Trace.WriteLine(e.Message);
             return false;
         }
         return true;
@@ -763,7 +763,7 @@ public class SQLDBWrite
 
     public bool delPrimaryKey(string strTable)
     {
-        string mySQLDrop = "ALTER TABLE " + strTable + " DROP PK_" + strTable;
+        string mySQLDrop = "ALTER TABLE " + SqlIdentifier.Safe(strTable) + " DROP PK_" + SqlIdentifier.Safe(strTable);
         //
         try
         {
@@ -771,7 +771,7 @@ public class SQLDBWrite
         }
         catch (Exception e)
         {
-            Console.WriteLine(e.Message);
+            System.Diagnostics.Trace.WriteLine(e.Message);
             return false;
         }
         return true;
@@ -788,7 +788,7 @@ public class SQLDBWrite
         {
             try
             {
-                mySQLDrop = "ALTER TABLE " + ostrColl[i] + " DROP PK_" + ostrColl[i];
+                mySQLDrop = "ALTER TABLE " + SqlIdentifier.Safe(ostrColl[i]) + " DROP PK_" + SqlIdentifier.Safe(ostrColl[i]);
                 _oBUS.ExecuteNonQuery(strConn, mySQLDrop, null);
             }
             catch
@@ -809,7 +809,7 @@ public class SQLDBWrite
             delDefaultValue(strTable, ((DBField)strcFields.GetValue(i)).Name);
         }
         //
-        mySQL += "ALTER TABLE " + strTable + " WITH NOCHECK ADD ";
+        mySQL += "ALTER TABLE " + SqlIdentifier.Safe(strTable) + " WITH NOCHECK ADD ";
         //
         try
         {
@@ -818,7 +818,7 @@ public class SQLDBWrite
             {
                 if (virgola)
                     mySQL += ", ";
-                mySQL += "CONSTRAINT [DF_" + strTable + "_" + mykey + "] DEFAULT " + Colums[mykey] + " FOR [" + mykey + "]";
+                mySQL += "CONSTRAINT [DF_" + SqlIdentifier.Safe(strTable) + "_" + mykey + "] DEFAULT " + Colums[mykey] + " FOR [" + mykey + "]";
                 //
                 virgola = true;
             }
@@ -827,7 +827,7 @@ public class SQLDBWrite
         }
         catch (Exception e)
         {
-            Console.WriteLine(e.Message);
+            System.Diagnostics.Trace.WriteLine(e.Message);
             return false;
         }
         return true;
@@ -844,14 +844,14 @@ public class SQLDBWrite
 
     public bool delDefaultValue(string strTable, string strField)
     {
-        string mySQLDrop = "ALTER TABLE " + strTable + " ALTER COLUMN " + strField + " DROP DEFAULT ";
+        string mySQLDrop = "ALTER TABLE " + SqlIdentifier.Safe(strTable) + " ALTER COLUMN " + SqlIdentifier.Safe(strField) + " DROP DEFAULT ";
         try
         {
             _oBUS.ExecuteNonQuery(strConn, mySQLDrop, null);
         }
         catch (Exception err)
         {
-            Console.WriteLine(err.Message);
+            System.Diagnostics.Trace.WriteLine(err.Message);
             return false;
         }
         return true;

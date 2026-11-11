@@ -63,6 +63,18 @@ public class Log
     }
     public static bool IsConsole { get; set; } = true;
     public static bool IsFile { get; set; } = false;
+
+    private static readonly object _oFileLock = new object();
+
+    // Un thread alla volta; la cartella "log" viene creata se manca.
+    private static void AppendToFile(string sText)
+    {
+        lock (_oFileLock)
+        {
+            Directory.CreateDirectory("log");
+            File.AppendAllText(Path.Combine("log", "log_" + DateTime.Now.ToString("yyyyMMdd") + ".log"), sText);
+        }
+    }
     public static string Format { get; set; } = "HH:mm:ss.fff";
 
     static public void WriteLine(params string[] sMessages)
@@ -73,9 +85,7 @@ public class Log
                 Console.WriteLine(sMessages[i]);
             if (IsFile)
             {
-                StreamWriter stream = new StreamWriter("log/log_" + DateTime.Now.ToString("yyyyMMdd") + ".log", true);
-                stream.WriteLine(sMessages[i]);
-                stream.Close();
+                AppendToFile(sMessages[i] + Environment.NewLine);
             }
         }
     }
@@ -96,9 +106,7 @@ public class Log
                 Console.Write(sMessages[i]);
             if (IsFile)
             {
-                StreamWriter stream = new StreamWriter("log/log_" + DateTime.Now.ToString("yyyyMMdd") + ".log", true);
-                stream.Write(sMessages[i]);
-                stream.Close();
+                AppendToFile(sMessages[i]);
             }
         }
     }

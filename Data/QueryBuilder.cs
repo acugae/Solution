@@ -314,12 +314,12 @@ public class QueryBuilder
         // SELECT
         sb.Append("SELECT ");
         if (_columns.Count > 0)
-            sb.Append(string.Join(", ", _columns.Select(c => $"[{c}]")));
+            sb.Append(string.Join(", ", _columns.Select(c => SqlIdentifier.QuoteField(c))));
         else
             sb.Append("*");
 
         // FROM
-        sb.Append($" FROM [{_tableName}]");
+        sb.Append($" FROM {SqlIdentifier.Quote(_tableName)}");
 
         // WHERE
         if (_filters.Count > 0)
@@ -357,7 +357,7 @@ public class QueryBuilder
             throw new InvalidOperationException("Table name not specified. Use From() method.");
 
         var sb = new StringBuilder();
-        sb.Append($"SELECT COUNT(*) FROM [{_tableName}]");
+        sb.Append($"SELECT COUNT(*) FROM {SqlIdentifier.Quote(_tableName)}");
 
         if (_filters.Count > 0)
         {
@@ -388,27 +388,33 @@ internal class QueryFilter
 
     public string ToSql(Dictionary<string, object>? parameters = null)
     {
-        switch (Operator)
+        // Nome di colonna e operatore vengono validati: tutto ciò che non è riconosciuto è rifiutato.
+        string column = SqlIdentifier.Quote(Column);
+        string op = SqlIdentifier.Operator(Operator);
+        switch (op)
         {
             case "IS":
-                return $"[{Column}] IS NULL";
+                return $"{column} IS NULL";
             case "IS NOT":
-                return $"[{Column}] IS NOT NULL";
+                return $"{column} IS NOT NULL";
             case "IN":
+            case "NOT IN":
                 if (Value is object[] values)
                 {
+                    if (values.Length == 0)
+                        return op == "IN" ? "1 = 0" : "1 = 1";
                     var formatted = values.Select(v => FormatValue(v, parameters)).ToList();
-                    return $"[{Column}] IN ({string.Join(", ", formatted)})";
+                    return $"{column} {op} ({string.Join(", ", formatted)})";
                 }
-                return $"[{Column}] IN ({FormatValue(Value, parameters)})";
+                return $"{column} {op} ({FormatValue(Value, parameters)})";
             case "BETWEEN":
                 if (Value is object[] range && range.Length == 2)
                 {
-                    return $"[{Column}] BETWEEN {FormatValue(range[0], parameters)} AND {FormatValue(range[1], parameters)}";
+                    return $"{column} BETWEEN {FormatValue(range[0], parameters)} AND {FormatValue(range[1], parameters)}";
                 }
                 throw new InvalidOperationException("BETWEEN requires two values");
             default:
-                return $"[{Column}] {Operator} {FormatValue(Value, parameters)}";
+                return $"{column} {op} {FormatValue(Value, parameters)}";
         }
     }
 
@@ -447,12 +453,8 @@ internal class QueryFilter
 
     private static string EscapeSql(string value)
     {
-        return value
-            .Replace("'", "''")
-            .Replace("\\", "\\\\")
-            .Replace("\0", "")
-            .Replace("\n", "\\n")
-            .Replace("\r", "\\r");
+        // Usato solo da ToSql() (testo di diagnostica): in SQL Server basta raddoppiare l'apice.
+        return value.Replace("'", "''");
     }
 }
 
@@ -467,7 +469,7 @@ internal class QueryOrder
         Direction = direction;
     }
 
-    public string ToSql() => $"[{Column}] {Direction}";
+    public string ToSql() => $"{SqlIdentifier.Quote(Column)} {SqlIdentifier.Direction(Direction)}";
 }
 
 #endregion

@@ -225,52 +225,68 @@ public class CRUDFilter
     }
 
     /// <summary>
-    /// Restituisce il filtro usando parametri al posto del valore concatenato.
-    /// Unica eccezione, per compatibilità: operatore "in" con una stringa già formattata
-    /// (es. "1,2,3"), che resta concatenata come in passato. Passando una lista di valori
-    /// all'operatore "in" viene creato un parametro per ogni elemento.
+    /// Restituisce il filtro con nome di colonna e operatore validati e i valori passati come parametri.
+    /// Operatori ammessi: = &lt;&gt; != &lt; &gt; &lt;= &gt;= LIKE, NOT LIKE, IN, NOT IN, IS, IS NOT, BETWEEN.
+    /// IN / NOT IN accettano una lista oppure un testo come "1,2,3" o "'a','b'";
+    /// IS / IS NOT si usano solo per il confronto con NULL; BETWEEN richiede due valori.
     /// </summary>
     internal string getFilterParams(Connection oConnection, List<Parameter> oParams)
     {
-        // Come in passato, un valore nullo non è ammesso (prima generava NullReferenceException).
-        if (Value == null)
-            throw new ArgumentNullException(nameof(Value), "CRUDFilter: valore nullo per il filtro '" + Name + "'.");
+        string sColumn = SqlIdentifier.Quote(Name);
+        string sOperator = SqlIdentifier.Operator(Operator);
+        object? oValue = SqlValue.Normalize(Value);
 
-        object oValue = SqlValue.Normalize(Value)!;
-
-        if (Operator.ToLower() == "in")
+        if (sOperator == "IS" || sOperator == "IS NOT")
         {
-            // Stringa già formattata: comportamento storico invariato.
-            if (oValue is string)
-                return Name + " " + getValue(Operator, oValue);
-
-            List<string> ovNames = new List<string>();
-            if (oValue is IEnumerable oValues)
-            {
-                foreach (object? oItem in oValues)
-                    ovNames.Add(AddParameter(oConnection, oParams, oItem));
-            }
-            else
-            {
-                ovNames.Add(AddParameter(oConnection, oParams, oValue));
-            }
-            if (ovNames.Count == 0)
-                return "1 = 0";
-            return Name + " in (" + string.Join(", ", ovNames) + ")";
+            bool bIsNull = oValue == null || oValue is DBNull || (oValue is string sNull && sNull.Trim().Equals("null", StringComparison.OrdinalIgnoreCase));
+            if (!bIsNull)
+                throw new ArgumentException("CRUDFilter: l'operatore " + sOperator + " è ammesso solo con valore null (filtro '" + Name + "').");
+            return sColumn + " " + sOperator + " NULL";
         }
 
-        return Name + " " + Operator + " " + AddParameter(oConnection, oParams, oValue);
+        // Un valore nullo con gli altri operatori non troverebbe mai righe: meglio un errore esplicito.
+        if (oValue == null)
+            throw new ArgumentNullException(nameof(Value), "CRUDFilter: valore nullo per il filtro '" + Name + "'. Per cercare i NULL usare l'operatore IS.");
+
+        if (sOperator == "IN" || sOperator == "NOT IN" || sOperator == "BETWEEN")
+        {
+            IEnumerable oValues;
+            if (oValue is string sList)
+                oValues = SqlValue.SplitList(sList);
+            else if (oValue is IEnumerable oEnumerable)
+                oValues = oEnumerable;
+            else
+                oValues = new object[] { oValue };
+
+            List<string> ovNames = new List<string>();
+            foreach (object? oItem in oValues)
+                ovNames.Add(AddParameter(oConnection, oParams, oItem));
+
+            if (sOperator == "BETWEEN")
+            {
+                if (ovNames.Count != 2)
+                    throw new ArgumentException("CRUDFilter: BETWEEN richiede due valori (filtro '" + Name + "').");
+                return sColumn + " BETWEEN " + ovNames[0] + " AND " + ovNames[1];
+            }
+            if (ovNames.Count == 0)
+                return sOperator == "IN" ? "1 = 0" : "1 = 1";
+            return sColumn + " " + sOperator + " (" + string.Join(", ", ovNames) + ")";
+        }
+
+        return sColumn + " " + sOperator + " " + AddParameter(oConnection, oParams, oValue);
     }
 
     private static string AddParameter(Connection oConnection, List<Parameter> oParams, object? oValue)
     {
-        string sName = "@find" + oParams.Count;
+        string sName = "@__p" + oParams.Count;
         Parameter oParam = new Parameter(oConnection);
         oParam.ParameterName = sName;
         oParam.Value = SqlValue.Normalize(oValue) ?? DBNull.Value;
         oParams.Add(oParam);
         return sName;
     }
+
+    [Obsolete("Non valida nome di colonna e operatore. Update e Delete costruiscono ora i filtri internamente.")]
     public string getFilterParams(string sPrefix)
     {
         return "[" + Name + "] " + Operator + " @" + sPrefix + Name;
@@ -311,11 +327,155 @@ public class CRUDFilter
 }
 
 /// <summary>
+/// Validazione di nomi (tabelle, colonne), operatori e direzioni di ordinamento
+/// prima di inserirli in una stringa SQL. Tutto ciò che non è riconosciuto viene rifiutato.
+/// </summary>
+internal static class SqlIdentifier
+{
+    private static readonly System.Text.RegularExpressions.Regex _oPart =
+        new System.Text.RegularExpressions.Regex(@"^[^\[\]'""`;\p{Cc}]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    private static readonly System.Text.RegularExpressions.Regex _oSafe =
+        new System.Text.RegularExpressions.Regex(@"^[\p{L}\p{N}_@#$\[\]\. ]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
+
+    /// <summary>
+    /// Per i punti in cui il nome viene scritto nella stringa SQL senza parentesi quadre (DDL):
+    /// restituisce il nome invariato se contiene solo lettere, cifre, spazio e _ @ # $ . [ ], altrimenti eccezione.
+    /// </summary>
+    public static string Safe(string? sName)
+    {
+        if (string.IsNullOrWhiteSpace(sName) || !_oSafe.IsMatch(sName))
+            throw new ArgumentException("Nome SQL non valido: '" + sName + "'.");
+        return sName;
+    }
+
+    private static readonly HashSet<string> _oOperators = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+    {
+        "=", "<>", "!=", "<", ">", "<=", ">=", "LIKE", "NOT LIKE", "IN", "NOT IN", "IS", "IS NOT", "BETWEEN"
+    };
+
+    /// <summary>Restituisce il nome tra parentesi quadre ([schema].[tabella]); eccezione se non è un nome valido.</summary>
+    public static string Quote(string? sName)
+    {
+        if (string.IsNullOrWhiteSpace(sName))
+            throw new ArgumentException("Nome SQL non valido: vuoto.");
+        string[] ovParts = sName.Trim().Split('.');
+        for (int i = 0; i < ovParts.Length; i++)
+        {
+            string sPart = ovParts[i].Trim();
+            if (sPart.Length >= 2 && sPart[0] == '[' && sPart[sPart.Length - 1] == ']')
+                sPart = sPart.Substring(1, sPart.Length - 2);
+            if (!_oPart.IsMatch(sPart))
+                throw new ArgumentException("Nome SQL non valido: '" + sName + "'. Non sono ammessi [ ] ' \" ` ; e caratteri di controllo.");
+            ovParts[i] = "[" + sPart + "]";
+        }
+        return string.Join(".", ovParts);
+    }
+
+    /// <summary>Come Quote, ma accetta anche *, 1 e COUNT(*) nell'elenco dei campi.</summary>
+    public static string QuoteField(string? sName)
+    {
+        string sTrim = (sName ?? "").Trim();
+        if (sTrim == "*" || sTrim == "1")
+            return sTrim;
+        if (sTrim.Replace(" ", "").Equals("COUNT(*)", StringComparison.OrdinalIgnoreCase))
+            return "COUNT(*)";
+        return Quote(sName);
+    }
+
+    public static string QuoteFields(IEnumerable<string>? oFields)
+    {
+        if (oFields == null)
+            return "*";
+        List<string> ovFields = new List<string>();
+        foreach (string sField in oFields)
+            ovFields.Add(QuoteField(sField));
+        return ovFields.Count == 0 ? "*" : string.Join(",", ovFields);
+    }
+
+    public static string QuoteOrders(IEnumerable<KeyValuePair<string, string>>? oOrders)
+    {
+        List<string> ovOrders = new List<string>();
+        if (oOrders != null)
+        {
+            foreach (KeyValuePair<string, string> oOrder in oOrders)
+                ovOrders.Add(Quote(oOrder.Key) + " " + Direction(oOrder.Value));
+        }
+        return ovOrders.Count == 0 ? "1" : string.Join(",", ovOrders);
+    }
+
+    /// <summary>Restituisce l'operatore in maiuscolo; eccezione se non è tra quelli ammessi.</summary>
+    public static string Operator(string? sOperator)
+    {
+        string sNormalized = string.Join(" ", (sOperator ?? "").Split(' ', StringSplitOptions.RemoveEmptyEntries)).ToUpperInvariant();
+        if (!_oOperators.Contains(sNormalized))
+            throw new ArgumentException("Operatore SQL non ammesso: '" + sOperator + "'.");
+        return sNormalized;
+    }
+
+    public static string Direction(string? sDirection)
+    {
+        string sNormalized = (sDirection ?? "").Trim().ToUpperInvariant();
+        if (sNormalized == "" || sNormalized == "ASC")
+            return "ASC";
+        if (sNormalized == "DESC")
+            return "DESC";
+        throw new ArgumentException("Direzione di ordinamento non ammessa: '" + sDirection + "'.");
+    }
+}
+
+/// <summary>
 /// Converte i valori provenienti da JSON (System.Text.Json / Newtonsoft) nei tipi .NET
 /// corrispondenti, così da poterli passare come parametri di una query.
 /// </summary>
 internal static class SqlValue
 {
+    /// <summary>
+    /// Scompone un elenco scritto come testo ("1,2,3" oppure "'a','b'") nei singoli valori,
+    /// così da poterli passare come parametri all'operatore IN.
+    /// </summary>
+    public static List<object> SplitList(string sList)
+    {
+        List<object> oResult = new List<object>();
+        StringBuilder oCurrent = new StringBuilder();
+        bool bInQuotes = false;
+        bool bQuoted = false;
+        for (int i = 0; i <= sList.Length; i++)
+        {
+            bool bEnd = i == sList.Length;
+            char c = bEnd ? ',' : sList[i];
+            if (bInQuotes && !bEnd)
+            {
+                if (c != '\'')
+                    oCurrent.Append(c);
+                else if (i + 1 < sList.Length && sList[i + 1] == '\'')
+                {
+                    oCurrent.Append('\'');
+                    i++;
+                }
+                else
+                    bInQuotes = false;
+            }
+            else if (c == '\'' && !bEnd)
+            {
+                // inizio di un valore tra apici: si scarta quanto letto prima (spazi, prefisso N)
+                oCurrent.Clear();
+                bInQuotes = true;
+                bQuoted = true;
+            }
+            else if (c == ',')
+            {
+                string sItem = bQuoted ? oCurrent.ToString() : oCurrent.ToString().Trim();
+                if (bQuoted || sItem.Length > 0)
+                    oResult.Add(sItem);
+                oCurrent.Clear();
+                bQuoted = false;
+            }
+            else if (!bQuoted)
+                oCurrent.Append(c);
+        }
+        return oResult;
+    }
     public static object? Normalize(object? oValue)
     {
         if (oValue is System.Text.Json.JsonElement oElement)
@@ -361,11 +521,11 @@ public class CRUD
     public DataTable Find(CRUDFind oFind)
     {
         List<Parameter> oParams = new List<Parameter>();
-        string sSQL = "SELECT " + oFind.getFields() + " FROM [" + oFind.Name + "] ";
+        string sSQL = "SELECT " + SqlIdentifier.QuoteFields(oFind.Fields) + " FROM " + SqlIdentifier.Quote(oFind.Name) + " ";
         string sSQLWhere = oFind.Filters.getFiltersParams(oDB.DataManager.Connections[_sKey], oParams);
         if (!string.IsNullOrEmpty(sSQLWhere))
             sSQL += " WHERE " + sSQLWhere;
-        sSQL += " ORDER BY " + oFind.Orders.getOrders();
+        sSQL += " ORDER BY " + SqlIdentifier.QuoteOrders(oFind.Orders);
         sSQL += " " + oFind.Pagination.getPagination();
         return oDB.InvokeSQL(_sKey, sSQL, oParams.ToArray());
     }
@@ -392,29 +552,10 @@ public class CRUD
 
     public int Insert(CRUDBase oItem)
     {
-        StringBuilder oSql = new StringBuilder();
-        StringBuilder oSqlName = new StringBuilder();
-        StringBuilder oSqlValue = new StringBuilder();
         List<Parameter> oParams = new List<Parameter>();
+        string sSQL = BuildInsert(oItem, oParams) + ";SELECT @@ROWCOUNT;";
         //
-        foreach (KeyValuePair<string, object> oField in oItem.Attributes)
-        {
-            if (oSqlName.Length > 0)
-                oSqlName.Append(", ");
-            oSqlName.Append(oField.Key);
-            if (oSqlValue.Length > 0)
-                oSqlValue.Append(", ");
-            oSqlValue.Append("@" + oField.Key);
-            //
-            Parameter oParam = new Parameter(oDB.DataManager.Connections[_sKey]);
-            oParam.ParameterName = "@" + oField.Key;
-            oParam.Value = (oField.Value == null ? DBNull.Value : oField.Value);
-            oParams.Add(oParam);
-        }
-        //
-        oSql.Append("INSERT INTO [" + oItem.Name + "] ( " + oSqlName + " ) VALUES ( " + oSqlValue + ");SELECT @@ROWCOUNT;");
-        //
-        DataTable oDT = oDB.InvokeSQL(_sKey, oSql.ToString(), oParams.ToArray());
+        DataTable oDT = oDB.InvokeSQL(_sKey, sSQL, oParams.ToArray());
         if (oDT == null || oDT.Rows.Count == 0)
             return 0;
         return System.Convert.ToInt32(oDT.Rows[0][0].ToString());
@@ -422,71 +563,53 @@ public class CRUD
 
     public long? InsertWithReturn(CRUDBase oItem)
     {
-        StringBuilder oSql = new StringBuilder();
-        StringBuilder oSqlName = new StringBuilder();
-        StringBuilder oSqlValue = new StringBuilder();
         List<Parameter> oParams = new List<Parameter>();
+        string sSQL = BuildInsert(oItem, oParams) + "; SELECT SCOPE_IDENTITY();";
         //
-        foreach (KeyValuePair<string, object> oField in oItem.Attributes)
-        {
-            if (oSqlName.Length > 0)
-                oSqlName.Append(", ");
-            oSqlName.Append(oField.Key);
-            if (oSqlValue.Length > 0)
-                oSqlValue.Append(", ");
-            oSqlValue.Append("@" + oField.Key);
-            //
-            Parameter oParam = new Parameter(oDB.DataManager.Connections[_sKey]);
-            oParam.ParameterName = "@" + oField.Key;
-            oParam.Value = (oField.Value == null ? DBNull.Value : oField.Value);
-            oParams.Add(oParam);
-        }
-        //
-        oSql.Append("INSERT INTO [" + oItem.Name + "] ( " + oSqlName + " ) VALUES ( " + oSqlValue + "); SELECT SCOPE_IDENTITY();");
-        //
-        DataTable oDT = oDB.InvokeSQL(_sKey, oSql.ToString(), oParams.ToArray());
+        DataTable oDT = oDB.InvokeSQL(_sKey, sSQL, oParams.ToArray());
         if (oDT == null || oDT.Rows.Count == 0)
             return null;
         return System.Convert.ToInt64(oDT.Rows[0][0].ToString());
     }
 
+    // Nomi di tabella e colonna validati e racchiusi tra parentesi quadre, valori sempre come parametri.
+    private string BuildInsert(CRUDBase oItem, List<Parameter> oParams)
+    {
+        List<string> ovNames = new List<string>();
+        List<string> ovValues = new List<string>();
+        foreach (KeyValuePair<string, object> oField in oItem.Attributes)
+        {
+            ovNames.Add(SqlIdentifier.Quote(oField.Key));
+            ovValues.Add(AddValue(oParams, oField.Value));
+        }
+        return "INSERT INTO " + SqlIdentifier.Quote(oItem.Name) + " ( " + string.Join(", ", ovNames) + " ) VALUES ( " + string.Join(", ", ovValues) + ")";
+    }
+
+    private string AddValue(List<Parameter> oParams, object? oValue)
+    {
+        string sName = "@__v" + oParams.Count;
+        Parameter oParam = new Parameter(oDB.DataManager.Connections[_sKey]);
+        oParam.ParameterName = sName;
+        oParam.Value = SqlValue.Normalize(oValue) ?? DBNull.Value;
+        oParams.Add(oParam);
+        return sName;
+    }
+
     public int Update(CRUDUpdate oItem)
     {
-        StringBuilder oSql = new StringBuilder();
-        StringBuilder oSqlValue = new StringBuilder();
-        StringBuilder oSqlFilter = new StringBuilder();
         List<Parameter> oParams = new List<Parameter>();
         //
         if (oItem.Filters == null || oItem.Filters.Count == 0)
             throw new Exception("UPDATE: condizione di Where non presente.");
         //
+        List<string> ovSet = new List<string>();
         foreach (KeyValuePair<string, object> oField in oItem.Attributes)
-        {
-            if (oSqlValue.Length > 0)
-                oSqlValue.Append(", ");
-            oSqlValue.Append(" [" + oField.Key + "] = @" + oField.Key);
-
-            Parameter oParam = new Parameter(oDB.DataManager.Connections[_sKey]);
-            oParam.ParameterName = "@" + oField.Key;
-            oParam.Value = (oField.Value == null ? DBNull.Value : oField.Value);
-            oParams.Add(oParam);
-        }
-
-        foreach (CRUDFilter oFilter in oItem.Filters)
-        {
-            if (oSqlFilter.Length > 0)
-                oSqlFilter.Append(" AND ");
-            oSqlFilter.Append(oFilter.getFilterParams("filter"));
-            //
-            Parameter oParam = new Parameter(oDB.DataManager.Connections[_sKey]);
-            oParam.ParameterName = "@filter" + oFilter.Name;
-            oParam.Value = (oFilter.Value == null ? DBNull.Value : oFilter.Value);
-            oParams.Add(oParam);
-        }
+            ovSet.Add(SqlIdentifier.Quote(oField.Key) + " = " + AddValue(oParams, oField.Value));
+        string sFilter = oItem.Filters.getFiltersParams(oDB.DataManager.Connections[_sKey], oParams);
         //
-        oSql.Append("UPDATE [" + oItem.Name + "] SET " + oSqlValue + " WHERE " + oSqlFilter + ";SELECT @@ROWCOUNT;");
+        string sSQL = "UPDATE " + SqlIdentifier.Quote(oItem.Name) + " SET " + string.Join(", ", ovSet) + " WHERE " + sFilter + ";SELECT @@ROWCOUNT;";
         //
-        DataTable oDT = oDB.InvokeSQL(_sKey, oSql.ToString(), oParams.ToArray());
+        DataTable oDT = oDB.InvokeSQL(_sKey, sSQL, oParams.ToArray());
         if (oDT == null || oDT.Rows.Count == 0)
             return 0;
         return System.Convert.ToInt32(oDT.Rows[0][0].ToString());
@@ -494,28 +617,15 @@ public class CRUD
 
     public int Delete(CRUDDelete oItem)
     {
-        StringBuilder oSql = new StringBuilder();
-        StringBuilder oSqlFilter = new StringBuilder();
         List<Parameter> oParams = new List<Parameter>();
         //
         if (oItem.Filters == null || oItem.Filters.Count == 0)
             throw new Exception("DELETE: condizione di Where non presente.");
-
-        foreach (CRUDFilter oFilter in oItem.Filters)
-        {
-            if (oSqlFilter.Length > 0)
-                oSqlFilter.Append(" AND ");
-            oSqlFilter.Append(oFilter.getFilterParams("filter"));
-            //
-            Parameter oParam = new Parameter(oDB.DataManager.Connections[_sKey]);
-            oParam.ParameterName = "@filter" + oFilter.Name;
-            oParam.Value = (oFilter.Value == null ? DBNull.Value : oFilter.Value);
-            oParams.Add(oParam);
-        }
         //
-        oSql.Append("DELETE FROM [" + oItem.Name + "] WHERE " + oSqlFilter + ";SELECT @@ROWCOUNT;");
+        string sFilter = oItem.Filters.getFiltersParams(oDB.DataManager.Connections[_sKey], oParams);
+        string sSQL = "DELETE FROM " + SqlIdentifier.Quote(oItem.Name) + " WHERE " + sFilter + ";SELECT @@ROWCOUNT;";
         //
-        DataTable oDT = oDB.InvokeSQL(_sKey, oSql.ToString(), oParams.ToArray());
+        DataTable oDT = oDB.InvokeSQL(_sKey, sSQL, oParams.ToArray());
         if (oDT == null || oDT.Rows.Count == 0)
             return 0;
         return System.Convert.ToInt32(oDT.Rows[0][0].ToString());

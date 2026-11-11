@@ -133,12 +133,73 @@ public class Commander : GCollection<string, string>
         return oDS.Tables[0];
     }
     /// <summary>
+    /// Esegue la query sostituendo i segnaposto #nome# con parametri (nessun valore finisce nel testo SQL).
+    /// Segnaposto ammessi: #nome# oppure '#nome#'. Dentro un testo (es. '%#nome#%') la query
+    /// va riscritta come '%' + #nome# + '%'.
+    /// </summary>
+    public DataTable ExecuteSafe(string sKey, string sSQLName, Dictionary<string, object> oParams)
+    {
+        return ExecuteSafe(this._oData.GetCO(sKey), sSQLName, oParams);
+    }
+
+    public DataTable ExecuteSafe(Connection oConn, string sSQLName, Dictionary<string, object> oParams)
+    {
+        if (!ContainsKey(sSQLName))
+            throw (new Exception("SQL name not exsist"));
+        //
+        string sSQL = (string)this[sSQLName];
+        Dictionary<string, object> oSqlParams = new Dictionary<string, object>();
+        foreach (KeyValuePair<string, object> oParam in oParams)
+        {
+            string sToken = "#" + oParam.Key.Trim('#') + "#";
+            string sName = "@__c" + oSqlParams.Count;
+            bool bUsed = false;
+            int iPos;
+            while ((iPos = sSQL.IndexOf(sToken, StringComparison.Ordinal)) >= 0)
+            {
+                int iEnd = iPos + sToken.Length;
+                int iQuotes = 0;
+                for (int j = 0; j < iPos; j++)
+                {
+                    if (sSQL[j] == '\'')
+                        iQuotes++;
+                }
+                if (iQuotes % 2 == 0)
+                {
+                    // segnaposto fuori da un testo tra apici
+                    sSQL = sSQL.Substring(0, iPos) + sName + sSQL.Substring(iEnd);
+                }
+                else if (sSQL[iPos - 1] == '\'' && iEnd < sSQL.Length && sSQL[iEnd] == '\'')
+                {
+                    // '#nome#': gli apici fanno parte del segnaposto
+                    sSQL = sSQL.Substring(0, iPos - 1) + sName + sSQL.Substring(iEnd + 1);
+                }
+                else
+                {
+                    throw new NotSupportedException("Commander.ExecuteSafe: il segnaposto " + sToken + " si trova dentro un testo tra apici. Riscrivere la query concatenando il parametro (es. '%' + " + sToken + " + '%').");
+                }
+                bUsed = true;
+            }
+            if (bUsed)
+                oSqlParams[sName] = oParam.Value ?? DBNull.Value;
+        }
+        //
+        DataSet oDS = this._oData.GetDS(oConn, sSQL, oSqlParams);
+        if (oDS == null)
+            return null;
+        if (oDS.Tables.Count == 0)
+            return null;
+        return oDS.Tables[0];
+    }
+
+    /// <summary>
     /// 
     /// </summary>
     /// <param name="sKey"></param>
     /// <param name="sSQLName"></param>
     /// <param name="oParams"></param>
     /// <returns></returns>
+    [Obsolete("Sostituisce i segnaposto direttamente nel testo SQL (rischio SQL injection). Usare ExecuteSafe.")]
     public DataTable Execute(string sKey, string sSQLName, GCollection<string, string> oParams)
     {
         if (!ContainsKey(sSQLName))
@@ -159,6 +220,7 @@ public class Commander : GCollection<string, string>
         return oDS.Tables[0];
     }
 
+    [Obsolete("Sostituisce i segnaposto direttamente nel testo SQL (rischio SQL injection). Usare ExecuteSafe.")]
     public DataTable Execute(Connection oConn, string sSQLName, GCollection<string, string> oParams)
     {
         if (!ContainsKey(sSQLName))
@@ -185,6 +247,7 @@ public class Commander : GCollection<string, string>
     /// <param name="sSQLName"></param>
     /// <param name="oParams"></param>
     /// <returns></returns>
+    [Obsolete("Sostituisce i segnaposto direttamente nel testo SQL (rischio SQL injection). Usare ExecuteSafe.")]
     public DataTable Execute(string sKey, string sSQLName, params string[] oParams)
     {
         if (!ContainsKey(sSQLName))
@@ -206,6 +269,7 @@ public class Commander : GCollection<string, string>
         return oDS.Tables[0];
     }
 
+    [Obsolete("Sostituisce i segnaposto direttamente nel testo SQL (rischio SQL injection). Usare ExecuteSafe.")]
     public DataTable Execute(Connection oConn, string sSQLName, params string[] oParams)
     {
         if (!ContainsKey(sSQLName))
@@ -233,6 +297,7 @@ public class Commander : GCollection<string, string>
     /// <param name="sSQLName"></param>
     /// <param name="oObject"></param>
     /// <returns></returns>
+    [Obsolete("Sostituisce i segnaposto direttamente nel testo SQL (rischio SQL injection). Usare ExecuteSafe.")]
     public DataTable Execute(string sKey, string sSQLName, object oObject)
     {
         if (!ContainsKey(sSQLName))
@@ -255,6 +320,7 @@ public class Commander : GCollection<string, string>
         return oDS.Tables[0];
     }
 
+    [Obsolete("Sostituisce i segnaposto direttamente nel testo SQL (rischio SQL injection). Usare ExecuteSafe.")]
     public DataTable Execute(Connection oConn, string sSQLName, object oObject)
     {
         if (!ContainsKey(sSQLName))

@@ -14,6 +14,22 @@ public class Transactions : System.Collections.Specialized.NameObjectCollectionB
     {
         _oConnections = oConnections;
     }
+
+    // Connessioni aperte da Begin, da richiudere a fine transazione.
+    private readonly HashSet<string> _oOpenedHere = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+    // Chiude la contabilità della transazione: la connessione non deve più riferirla.
+    private void End(string sKeyConnection)
+    {
+        Remove(sKeyConnection);
+        if (_oConnections is not null && _oConnections.Contains(sKeyConnection))
+        {
+            Connection oConnection = _oConnections[sKeyConnection];
+            oConnection.ClearTransaction();
+            if (_oOpenedHere.Remove(sKeyConnection) && oConnection.State == ConnectionState.Open)
+                oConnection.Close();
+        }
+    }
     /// <summary>
     /// 
     /// </summary>
@@ -92,8 +108,16 @@ public class Transactions : System.Collections.Specialized.NameObjectCollectionB
             {
                 if (_oConnections is not null && _oConnections.Contains(sKeyConnection))
                 {
-                    var result = _oConnections[sKeyConnection].BeginTransaction();
-                    this[sKeyConnection] = (Transaction)result;
+                    // La transazione vive sulla connessione condivisa della chiave: se è chiusa viene
+                    // aperta qui e richiusa a fine transazione.
+                    Connection oConnection = _oConnections[sKeyConnection];
+                    if (oConnection.State == ConnectionState.Closed)
+                    {
+                        oConnection.Open();
+                        _oOpenedHere.Add(sKeyConnection);
+                    }
+                    DbTransaction result = oConnection.BeginTransaction();
+                    this[sKeyConnection] = result as Transaction ?? new Transaction(result);
                 }
             }
             catch (Exception)
@@ -113,7 +137,7 @@ public class Transactions : System.Collections.Specialized.NameObjectCollectionB
             try
             {
                 this[sKeyConnection].Commit();
-                Remove(sKeyConnection);
+                End(sKeyConnection);
             }
             catch (Exception)
             {
@@ -132,7 +156,7 @@ public class Transactions : System.Collections.Specialized.NameObjectCollectionB
             try
             {
                 this[sKeyConnection].Rollback();
-                Remove(sKeyConnection);
+                End(sKeyConnection);
             }
             catch (Exception)
             {

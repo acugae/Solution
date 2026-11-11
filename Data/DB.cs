@@ -20,7 +20,15 @@ public class DB
     {
         Always, Whenever
     }
-    private enModeConnectionOpen _ModeConnection = enModeConnectionOpen.Always;
+    // Dalla 2.0.0 il default è una connessione dedicata per ogni operazione (sicuro in ambienti multi-thread).
+    private enModeConnectionOpen _ModeConnection = enModeConnectionOpen.Whenever;
+
+    // Connessione dedicata all'operazione, salvo modalità Always oppure transazione aperta sulla
+    // connessione: in quel caso l'operazione deve partecipare alla transazione.
+    private bool UseDedicatedConnection(string sKey)
+    {
+        return _ModeConnection == enModeConnectionOpen.Whenever && !oData.Transactions.Contains(sKey);
+    }
     public enModeConnectionOpen ModeConnection
     {
         get { return _ModeConnection; }
@@ -46,11 +54,11 @@ public class DB
                 try
                 {
                     oData.Connections[i].Open();
-                    Console.WriteLine(" Aperta ");
+                    System.Diagnostics.Trace.WriteLine(" Aperta ");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Errore: " + ex.Message);
+                    System.Diagnostics.Trace.WriteLine("Errore: " + ex.Message);
                 }
                 finally
                 {
@@ -67,12 +75,12 @@ public class DB
                 try
                 {
                     oData.Connections[i].Close();
-                    Console.WriteLine(" Aperta ");
+                    System.Diagnostics.Trace.WriteLine(" Aperta ");
                 }
                 catch (Exception ex)
                 {
                     //Logger.WriteLine("????????????? DB CLOSING EXCEPTION ????????? = " + oData.Connections[i].Key + "; error=" + ex.Message + "\n" + ex.StackTrace, Logger.TipoLog.Error);
-                    Console.WriteLine(" Errore ");
+                    System.Diagnostics.Trace.WriteLine(" Errore ");
                 }
                 finally
                 {
@@ -92,7 +100,8 @@ public class DB
     {
         Exception exResult = null;
         DataTable oDT = null;
-        Connection oConn = (_ModeConnection == enModeConnectionOpen.Whenever ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
+        bool bDedicated = UseDedicatedConnection(sKey);
+        Connection oConn = (bDedicated ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
         try
         {
             if (oConn.State == ConnectionState.Closed)
@@ -110,7 +119,7 @@ public class DB
                 }
                 if (exResult != null)
                 {
-                    if (_ModeConnection == enModeConnectionOpen.Whenever)
+                    if (bDedicated)
                         oConn.Dispose();
                     System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exResult).Throw();
                 }
@@ -123,7 +132,7 @@ public class DB
         }
         finally
         {
-            if (_ModeConnection == enModeConnectionOpen.Whenever)
+            if (bDedicated)
                 oConn.Dispose();
         }
         //
@@ -139,7 +148,8 @@ public class DB
     {
         Exception exResult = null;
         DataTable oDT = null;
-        Connection oConn = (_ModeConnection == enModeConnectionOpen.Whenever ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
+        bool bDedicated = UseDedicatedConnection(sKey);
+        Connection oConn = (bDedicated ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
         try
         {
             if (oConn.State == ConnectionState.Closed)
@@ -157,7 +167,7 @@ public class DB
                 }
                 if (exResult != null)
                 {
-                    if (_ModeConnection == enModeConnectionOpen.Whenever)
+                    if (bDedicated)
                         oConn.Dispose();
                     System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exResult).Throw();
                 }
@@ -170,7 +180,7 @@ public class DB
         }
         finally
         {
-            if (_ModeConnection == enModeConnectionOpen.Whenever)
+            if (bDedicated)
                 oConn.Dispose();
         }
         //
@@ -186,7 +196,8 @@ public class DB
     {
         Exception exResult = null;
         DataTable oDT = null;
-        Connection oConn = (_ModeConnection == enModeConnectionOpen.Whenever ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
+        bool bDedicated = UseDedicatedConnection(sKey);
+        Connection oConn = (bDedicated ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
         try
         {
             if (oConn.State == ConnectionState.Closed)
@@ -204,7 +215,7 @@ public class DB
                 }
                 if (exResult != null)
                 {
-                    if (_ModeConnection == enModeConnectionOpen.Whenever)
+                    if (bDedicated)
                         oConn.Dispose();
                     System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exResult).Throw();
                 }
@@ -217,7 +228,7 @@ public class DB
         }
         finally
         {
-            if (_ModeConnection == enModeConnectionOpen.Whenever)
+            if (bDedicated)
                 oConn.Dispose();
         }
         //
@@ -233,7 +244,8 @@ public class DB
     {
         Exception exResult = null;
         DataSet oDS = null;
-        Connection oConn = (_ModeConnection == enModeConnectionOpen.Whenever ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
+        bool bDedicated = UseDedicatedConnection(sKey);
+        Connection oConn = (bDedicated ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
         try
         {
             if (oConn.State == ConnectionState.Closed)
@@ -251,7 +263,7 @@ public class DB
                 }
                 if (exResult != null)
                 {
-                    if (_ModeConnection == enModeConnectionOpen.Whenever)
+                    if (bDedicated)
                         oConn.Dispose();
                     System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exResult).Throw();
                 }
@@ -264,7 +276,7 @@ public class DB
         }
         finally
         {
-            if (_ModeConnection == enModeConnectionOpen.Whenever)
+            if (bDedicated)
                 oConn.Dispose();
         }
         if (exResult != null)
@@ -281,7 +293,8 @@ public class DB
     {
         Exception exResult = null;
         int iResult = -1;
-        Connection oConn = (_ModeConnection == enModeConnectionOpen.Whenever ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
+        bool bDedicated = UseDedicatedConnection(sKey);
+        Connection oConn = (bDedicated ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
         try
         {
             if (oConn.State == ConnectionState.Closed)
@@ -299,7 +312,7 @@ public class DB
                 }
                 if (exResult != null)
                 {
-                    if (_ModeConnection == enModeConnectionOpen.Whenever)
+                    if (bDedicated)
                         oConn.Dispose();
                     System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exResult).Throw();
                 }
@@ -314,7 +327,7 @@ public class DB
         }
         finally
         {
-            if (_ModeConnection == enModeConnectionOpen.Whenever)
+            if (bDedicated)
                 oConn.Dispose();
         }
         if (exResult != null)
@@ -331,11 +344,11 @@ public class DB
                 try
                 {
                     await oData.Connections[i].OpenAsync(cancellationToken);
-                    Console.WriteLine(" Aperta ");
+                    System.Diagnostics.Trace.WriteLine(" Aperta ");
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Errore: " + ex.Message);
+                    System.Diagnostics.Trace.WriteLine("Errore: " + ex.Message);
                 }
             }
         }
@@ -353,7 +366,7 @@ public class DB
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine("Errore: " + ex.Message);
+                    System.Diagnostics.Trace.WriteLine("Errore: " + ex.Message);
                 }
             }
         }
@@ -364,7 +377,7 @@ public class DB
 
     public async Task<DataTable?> InvokeSQLAsync(string sKey, string sSQL, CancellationToken cancellationToken = default, params Parameter[] pParams)
     {
-        bool closeConnection = _ModeConnection == enModeConnectionOpen.Whenever;
+        bool closeConnection = UseDedicatedConnection(sKey);
         Connection oConn = (closeConnection ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
 
         try
@@ -391,7 +404,7 @@ public class DB
 
     public async Task<DataTable?> InvokeAsync(string sKey, string sSQL, CancellationToken cancellationToken = default, params Parameter[] pParams)
     {
-        bool closeConnection = _ModeConnection == enModeConnectionOpen.Whenever;
+        bool closeConnection = UseDedicatedConnection(sKey);
         Connection oConn = (closeConnection ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
 
         try
@@ -422,7 +435,7 @@ public class DB
 
     public async Task<DataTable?> InvokeAsync(string sKey, string sSQL, CancellationToken cancellationToken = default)
     {
-        bool closeConnection = _ModeConnection == enModeConnectionOpen.Whenever;
+        bool closeConnection = UseDedicatedConnection(sKey);
         Connection oConn = (closeConnection ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
 
         try
@@ -448,7 +461,7 @@ public class DB
 
     public async Task<DataTable?> GetAsync(string sKey, string sSQL, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
     {
-        bool closeConnection = _ModeConnection == enModeConnectionOpen.Whenever;
+        bool closeConnection = UseDedicatedConnection(sKey);
         Connection oConn = (closeConnection ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
 
         try
@@ -472,7 +485,7 @@ public class DB
 
     public async Task<int> ExecuteAsync(string sKey, string sSQL, Dictionary<string, object>? parameters = null, CancellationToken cancellationToken = default)
     {
-        bool closeConnection = _ModeConnection == enModeConnectionOpen.Whenever;
+        bool closeConnection = UseDedicatedConnection(sKey);
         Connection oConn = (closeConnection ? oData.Connections.Clone(sKey) : oData.Connections[sKey]);
 
         try

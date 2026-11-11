@@ -4,6 +4,14 @@ namespace Solution.Persistence;
 /// </summary>
 public class Table
 {
+    // Il valore viene scritto nel testo SQL senza apici: deve essere davvero un numero.
+    private static string NumericLiteral(object oValue)
+    {
+        string sValue = (oValue?.ToString() ?? "").Trim().Replace(",", ".");
+        if (!System.Text.RegularExpressions.Regex.IsMatch(sValue, @"^[+-]?\d+(\.\d+)?([eE][+-]?\d+)?$"))
+            throw new FormatException("Valore numerico non valido: '" + oValue + "'.");
+        return sValue;
+    }
     private DataManager _oData = null;
     private string _strNameTable = "";
     private Collection _oFields = new Collection();
@@ -585,7 +593,7 @@ public class Table
             if (oValue.GetType() == Type.GetType("System.Int32"))
                 strCampo += " " + oValue.ToString() + " ";
             if (oValue.GetType() == Type.GetType("System.String"))
-                strCampo += "'" + oValue.ToString() + "'";
+                strCampo += "'" + oValue.ToString().Replace("'", "''") + "'";
             if (oValue.GetType() == Type.GetType("System.DateTime"))
             {
                 int dd = DateTime.Parse(oValue.ToString()).Day;
@@ -601,7 +609,7 @@ public class Table
             if (oValue.GetType() == Type.GetType("System.Double"))
                 strCampo += " " + oValue.ToString().Replace(",", ".") + " ";
             if (oValue.GetType() == Type.GetType("System.Boolean"))
-                strCampo += "'" + oValue.ToString() + "'";
+                strCampo += "'" + oValue.ToString().Replace("'", "''") + "'";
             if (oValue.GetType() == Type.GetType("System.Byte[]"))
             {
                 strCampo += " 0x" + oReflection.BinaryToHex((byte[])oValue) + " ";
@@ -656,7 +664,7 @@ public class Table
             string strCampo = "";
             sType = sType.Trim().ToLower();
             if (sType.Equals("int") || sType.Equals("smallint"))
-                strCampo += " " + oValue.ToString() + " ";
+                strCampo += " " + NumericLiteral(oValue) + " ";
             if (sType.Equals("string") || sType.Equals("text") || sType.Equals("ntext") || sType.Equals("varchar") || sType.Equals("nvarchar"))
                 strCampo += "'" + oValue.ToString().Replace("'", "''") + "'";
             if (sType.Equals("date") || sType.Equals("datetime"))
@@ -672,9 +680,9 @@ public class Table
                 strCampo += "'" + yyyy + "-" + mm.ToString().PadLeft(2, '0') + "-" + dd.ToString().PadLeft(2, '0') + "T" + hh.ToString().PadLeft(2, '0') + ":" + min.ToString().PadLeft(2, '0') + ":" + ss.ToString().PadLeft(2, '0') + "'";
             }
             if (sType.Equals("double") || sType.Equals("real") || sType.Equals("numeric"))
-                strCampo += " " + oValue.ToString().Replace(",", ".") + " ";
+                strCampo += " " + NumericLiteral(oValue) + " ";
             if (sType.Equals("boolean") || sType.Equals("bool") || sType.Equals("bit"))
-                strCampo += "'" + oValue.ToString() + "'";
+                strCampo += "'" + oValue.ToString().Replace("'", "''") + "'";
             if (sType.Equals("byte") || sType.Equals("binary") || sType.Equals("image") || sType.Equals("blob"))
             {
                 strCampo += " 0x" + oReflection.BinaryToHex((byte[])oValue) + " ";
@@ -1418,7 +1426,7 @@ public class Table1N
             if (oValue.GetType() == Type.GetType("System.Int32"))
                 strCampo += " " + oValue.ToString() + " ";
             if (oValue.GetType() == Type.GetType("System.String"))
-                strCampo += "'" + oValue.ToString() + "'";
+                strCampo += "'" + oValue.ToString().Replace("'", "''") + "'";
             if (oValue.GetType() == Type.GetType("System.DateTime"))
             {
                 int dd = DateTime.Parse(oValue.ToString()).Day;

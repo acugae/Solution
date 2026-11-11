@@ -90,22 +90,27 @@ public class ConnectionBuilder
     /// <param name="server">Nome server</param>
     /// <param name="database">Nome database</param>
     /// <param name="integratedSecurity">Usa Windows Authentication</param>
-    public ConnectionBuilder ForSqlServer(string server, string database, bool integratedSecurity = true)
+    /// <param name="trustServerCertificate">
+    /// true = accetta qualsiasi certificato del server (nessuna verifica). Dalla 2.0.0 il default è false:
+    /// il certificato del server viene verificato.
+    /// </param>
+    public ConnectionBuilder ForSqlServer(string server, string database, bool integratedSecurity = true, bool trustServerCertificate = false)
     {
         _providerKey = "sqldb";
-        _connectionString = integratedSecurity
-            ? $"Server={server};Database={database};Integrated Security=True;TrustServerCertificate=True;"
-            : $"Server={server};Database={database};TrustServerCertificate=True;";
+        _connectionString = $"Server={QuoteValue(server)};Database={QuoteValue(database)};"
+            + (integratedSecurity ? "Integrated Security=True;" : "")
+            + (trustServerCertificate ? "TrustServerCertificate=True;" : "");
         return this;
     }
 
     /// <summary>
     /// Costruisce la connessione con i parametri SQL Server (user/password).
     /// </summary>
-    public ConnectionBuilder ForSqlServer(string server, string database, string user, string password)
+    public ConnectionBuilder ForSqlServer(string server, string database, string user, string password, bool trustServerCertificate = false)
     {
         _providerKey = "sqldb";
-        _connectionString = $"Server={server};Database={database};User Id={QuoteValue(user)};Password={QuoteValue(password)};TrustServerCertificate=True;";
+        _connectionString = $"Server={QuoteValue(server)};Database={QuoteValue(database)};User Id={QuoteValue(user)};Password={QuoteValue(password)};"
+            + (trustServerCertificate ? "TrustServerCertificate=True;" : "");
         return this;
     }
 
@@ -130,7 +135,7 @@ public class ConnectionBuilder
     public ConnectionBuilder ForMySQL(string server, string database, string user, string password, int port = 3306)
     {
         _providerKey = "mysdb";
-        _connectionString = $"Server={server};Port={port};Database={database};User={QuoteValue(user)};Password={QuoteValue(password)};";
+        _connectionString = $"Server={QuoteValue(server)};Port={port};Database={QuoteValue(database)};User={QuoteValue(user)};Password={QuoteValue(password)};";
         return this;
     }
 
@@ -140,7 +145,7 @@ public class ConnectionBuilder
     public ConnectionBuilder ForPostgreSQL(string host, string database, string user, string password, int port = 5432)
     {
         _providerKey = "pstdb";
-        _connectionString = $"Host={host};Port={port};Database={database};Username={QuoteValue(user)};Password={QuoteValue(password)};";
+        _connectionString = $"Host={QuoteValue(host)};Port={port};Database={QuoteValue(database)};Username={QuoteValue(user)};Password={QuoteValue(password)};";
         return this;
     }
 

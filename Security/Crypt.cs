@@ -152,7 +152,7 @@ public class SymmetricCryptAlgorithm
     /// <param name="plainText">Stringa in chiaro.</param>
     /// <param name="key">Chiave di crittografia.</param>
     /// <returns>La stringa crittografata.</returns>
-    [Obsolete("Cifratura legacy: IV fisso e chiave non derivata. Per i nuovi dati usare EncryptSecure (formato diverso: i dati esistenti restano leggibili solo con Decrypt).")]
+    [Obsolete("Cifratura legacy: IV fisso e chiave non derivata. Per i nuovi dati usare EncryptAuthenticated (formato diverso: i dati esistenti restano leggibili solo con Decrypt).")]
     public virtual string Encrypt(string plainText, string key)
     {
         byte[] plainByte = ASCIIEncoding.ASCII.GetBytes(plainText);
@@ -191,7 +191,7 @@ public class SymmetricCryptAlgorithm
     /// <param name="plainByte">Array di byte in chiaro.</param>
     /// <param name="key">Chiave di crittografia.</param>
     /// <returns>Array di byte crittografato.</returns>
-    [Obsolete("Cifratura legacy: IV fisso e chiave non derivata. Per i nuovi dati usare EncryptSecure (formato diverso: i dati esistenti restano leggibili solo con Decrypt).")]
+    [Obsolete("Cifratura legacy: IV fisso e chiave non derivata. Per i nuovi dati usare EncryptAuthenticated (formato diverso: i dati esistenti restano leggibili solo con Decrypt).")]
     public virtual byte[] Encrypt(byte[] plainByte, string key)
     {
         byte[] keyByte = GetLegalKey(key);
@@ -222,7 +222,7 @@ public class SymmetricCryptAlgorithm
     /// <param name="cryptoText">Stringa crittografata.</param>
     /// <param name="key">Chiave di crittografia.</param>
     /// <returns>La stringa in chiaro.</returns>
-    [Obsolete("Cifratura legacy: IV fisso e chiave non derivata. Usare solo per leggere dati cifrati con Encrypt; per i nuovi dati usare EncryptSecure/DecryptSecure.")]
+    [Obsolete("Cifratura legacy: IV fisso e chiave non derivata. Usare solo per leggere dati cifrati con Encrypt; per i nuovi dati usare EncryptAuthenticated/DecryptAuthenticated.")]
     public virtual string Decrypt(string cryptoText, string key)
     {
         // Convert from base 64 string to bytes
@@ -259,7 +259,7 @@ public class SymmetricCryptAlgorithm
     /// <param name="cryptoByte">Attary di byte da crittografare.</param>
     /// <param name="key">Chiave di crittografia.</param>
     /// <returns>Array di byte in chiaro.</returns>
-    [Obsolete("Cifratura legacy: IV fisso e chiave non derivata. Usare solo per leggere dati cifrati con Encrypt; per i nuovi dati usare EncryptSecure/DecryptSecure.")]
+    [Obsolete("Cifratura legacy: IV fisso e chiave non derivata. Usare solo per leggere dati cifrati con Encrypt; per i nuovi dati usare EncryptAuthenticated/DecryptAuthenticated.")]
     public virtual byte[] Decrypt(byte[] cryptoByte, string key)
     {
         byte[] keyByte = GetLegalKey(key);
@@ -288,7 +288,156 @@ public class SymmetricCryptAlgorithm
         }
     }
 
-    #region Secure Methods (Recommended)
+    #region Authenticated encryption (AES-256-GCM) - raccomandata dalla 2.0.0
+
+    private const byte GCM_VERSION_PASSWORD = 2;
+    private const byte GCM_VERSION_KEY = 3;
+    private const int GCM_SALT_SIZE = 16;
+    private const int GCM_NONCE_SIZE = 12;
+    private const int GCM_TAG_SIZE = 16;
+    private const int GCM_KEY_SIZE = 32;
+    private const int GCM_ITERATIONS = 600000;
+
+    /// <summary>
+    /// Cifra con AES-256-GCM (cifratura autenticata): se il dato cifrato viene alterato, la decifratura fallisce.
+    /// La chiave viene derivata dalla password con PBKDF2-SHA256 (600.000 iterazioni, volutamente lento):
+    /// per cifrare molti valori usare la versione con chiave a 32 byte (vedi GenerateKey).
+    /// </summary>
+    /// <returns>Base64 di: versione(1) + salt(16) + nonce(12) + tag(16) + dati cifrati</returns>
+    public static string EncryptAuthenticated(string plainText, string password)
+    {
+        ArgumentNullException.ThrowIfNull(plainText);
+        return Convert.ToBase64String(EncryptAuthenticated(Encoding.UTF8.GetBytes(plainText), password));
+    }
+
+    /// <summary>Cifra con AES-256-GCM derivando la chiave dalla password (PBKDF2-SHA256).</summary>
+    public static byte[] EncryptAuthenticated(byte[] plainBytes, string password)
+    {
+        ArgumentNullException.ThrowIfNull(plainBytes);
+        if (string.IsNullOrEmpty(password))
+            throw new ArgumentNullException(nameof(password));
+
+        byte[] salt = RandomNumberGenerator.GetBytes(GCM_SALT_SIZE);
+        byte[] key = Rfc2898DeriveBytes.Pbkdf2(password, salt, GCM_ITERATIONS, HashAlgorithmName.SHA256, GCM_KEY_SIZE);
+        try
+        {
+            return GcmEncrypt(GCM_VERSION_PASSWORD, salt, key, plainBytes);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+        }
+    }
+
+    /// <summary>Cifra con AES-256-GCM usando direttamente una chiave di 32 byte (nessuna derivazione: veloce).</summary>
+    /// <returns>versione(1) + nonce(12) + tag(16) + dati cifrati</returns>
+    public static byte[] EncryptAuthenticated(byte[] plainBytes, byte[] key)
+    {
+        ArgumentNullException.ThrowIfNull(plainBytes);
+        CheckKey(key);
+        return GcmEncrypt(GCM_VERSION_KEY, Array.Empty<byte>(), key, plainBytes);
+    }
+
+    /// <summary>Decifra un testo prodotto da EncryptAuthenticated(string, string).</summary>
+    /// <exception cref="CryptographicException">Password errata, dato alterato o formato non riconosciuto</exception>
+    public static string DecryptAuthenticated(string cipherText, string password)
+    {
+        if (string.IsNullOrEmpty(cipherText))
+            throw new ArgumentNullException(nameof(cipherText));
+        return Encoding.UTF8.GetString(DecryptAuthenticated(Convert.FromBase64String(cipherText), password));
+    }
+
+    /// <summary>Decifra dati prodotti da EncryptAuthenticated(byte[], string).</summary>
+    public static byte[] DecryptAuthenticated(byte[] cipherBytes, string password)
+    {
+        ArgumentNullException.ThrowIfNull(cipherBytes);
+        if (string.IsNullOrEmpty(password))
+            throw new ArgumentNullException(nameof(password));
+        if (cipherBytes.Length < 1 + GCM_SALT_SIZE + GCM_NONCE_SIZE + GCM_TAG_SIZE || cipherBytes[0] != GCM_VERSION_PASSWORD)
+            throw new CryptographicException("Formato del dato cifrato non riconosciuto.");
+
+        byte[] salt = new byte[GCM_SALT_SIZE];
+        Buffer.BlockCopy(cipherBytes, 1, salt, 0, GCM_SALT_SIZE);
+        byte[] key = Rfc2898DeriveBytes.Pbkdf2(password, salt, GCM_ITERATIONS, HashAlgorithmName.SHA256, GCM_KEY_SIZE);
+        try
+        {
+            return GcmDecrypt(cipherBytes, 1 + GCM_SALT_SIZE, key);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+        }
+    }
+
+    /// <summary>Decifra dati prodotti da EncryptAuthenticated(byte[], byte[]).</summary>
+    public static byte[] DecryptAuthenticated(byte[] cipherBytes, byte[] key)
+    {
+        ArgumentNullException.ThrowIfNull(cipherBytes);
+        CheckKey(key);
+        if (cipherBytes.Length < 1 + GCM_NONCE_SIZE + GCM_TAG_SIZE || cipherBytes[0] != GCM_VERSION_KEY)
+            throw new CryptographicException("Formato del dato cifrato non riconosciuto.");
+        return GcmDecrypt(cipherBytes, 1, key);
+    }
+
+    /// <summary>Genera una chiave casuale di 32 byte per EncryptAuthenticated(byte[], byte[]).</summary>
+    public static byte[] GenerateKey()
+    {
+        return RandomNumberGenerator.GetBytes(GCM_KEY_SIZE);
+    }
+
+    private static void CheckKey(byte[] key)
+    {
+        ArgumentNullException.ThrowIfNull(key);
+        if (key.Length != GCM_KEY_SIZE)
+            throw new ArgumentException("La chiave deve essere di 32 byte (AES-256).", nameof(key));
+    }
+
+    // Formato: versione(1) + prefisso (salt oppure vuoto) + nonce(12) + tag(16) + dati cifrati
+    private static byte[] GcmEncrypt(byte version, byte[] prefix, byte[] key, byte[] plainBytes)
+    {
+        byte[] nonce = RandomNumberGenerator.GetBytes(GCM_NONCE_SIZE);
+        byte[] cipher = new byte[plainBytes.Length];
+        byte[] tag = new byte[GCM_TAG_SIZE];
+        using (AesGcm aes = new AesGcm(key, GCM_TAG_SIZE))
+        {
+            aes.Encrypt(nonce, plainBytes, cipher, tag);
+        }
+
+        byte[] result = new byte[1 + prefix.Length + GCM_NONCE_SIZE + GCM_TAG_SIZE + cipher.Length];
+        int offset = 0;
+        result[offset++] = version;
+        Buffer.BlockCopy(prefix, 0, result, offset, prefix.Length);
+        offset += prefix.Length;
+        Buffer.BlockCopy(nonce, 0, result, offset, GCM_NONCE_SIZE);
+        offset += GCM_NONCE_SIZE;
+        Buffer.BlockCopy(tag, 0, result, offset, GCM_TAG_SIZE);
+        offset += GCM_TAG_SIZE;
+        Buffer.BlockCopy(cipher, 0, result, offset, cipher.Length);
+        return result;
+    }
+
+    private static byte[] GcmDecrypt(byte[] cipherBytes, int offset, byte[] key)
+    {
+        byte[] nonce = new byte[GCM_NONCE_SIZE];
+        byte[] tag = new byte[GCM_TAG_SIZE];
+        Buffer.BlockCopy(cipherBytes, offset, nonce, 0, GCM_NONCE_SIZE);
+        offset += GCM_NONCE_SIZE;
+        Buffer.BlockCopy(cipherBytes, offset, tag, 0, GCM_TAG_SIZE);
+        offset += GCM_TAG_SIZE;
+        byte[] cipher = new byte[cipherBytes.Length - offset];
+        Buffer.BlockCopy(cipherBytes, offset, cipher, 0, cipher.Length);
+
+        byte[] plain = new byte[cipher.Length];
+        using (AesGcm aes = new AesGcm(key, GCM_TAG_SIZE))
+        {
+            aes.Decrypt(nonce, cipher, tag, plain);
+        }
+        return plain;
+    }
+
+    #endregion
+
+    #region Secure Methods (legacy CBC)
     
     /// <summary>
     /// Abilita la modalità sicura con IV random e derivazione chiave PBKDF2.
@@ -306,6 +455,7 @@ public class SymmetricCryptAlgorithm
     /// <param name="plainText">Testo da crittografare</param>
     /// <param name="password">Password (verrà derivata con PBKDF2)</param>
     /// <returns>Base64: salt(16) + iv(16) + ciphertext</returns>
+    [Obsolete("AES-CBC senza autenticazione: i dati possono essere alterati senza che la decifratura se ne accorga. Per i nuovi dati usare EncryptAuthenticated/DecryptAuthenticated; DecryptSecure resta per leggere i dati esistenti.")]
     public string EncryptSecure(string plainText, string password)
     {
         if (string.IsNullOrEmpty(plainText))
@@ -321,6 +471,7 @@ public class SymmetricCryptAlgorithm
     /// <summary>
     /// Crittografa in modalità sicura: IV random prepended al ciphertext, chiave derivata con PBKDF2.
     /// </summary>
+    [Obsolete("AES-CBC senza autenticazione: i dati possono essere alterati senza che la decifratura se ne accorga. Per i nuovi dati usare EncryptAuthenticated/DecryptAuthenticated; DecryptSecure resta per leggere i dati esistenti.")]
     public byte[] EncryptSecure(byte[] plainBytes, string password)
     {
         if (plainBytes == null || plainBytes.Length == 0)
@@ -364,6 +515,7 @@ public class SymmetricCryptAlgorithm
     /// <param name="cipherText">Base64: salt(16) + iv(16) + ciphertext</param>
     /// <param name="password">Password usata per la crittografia</param>
     /// <returns>Testo in chiaro</returns>
+    [Obsolete("AES-CBC senza autenticazione: i dati possono essere alterati senza che la decifratura se ne accorga. Per i nuovi dati usare EncryptAuthenticated/DecryptAuthenticated; DecryptSecure resta per leggere i dati esistenti.")]
     public string DecryptSecure(string cipherText, string password)
     {
         if (string.IsNullOrEmpty(cipherText))
@@ -379,6 +531,7 @@ public class SymmetricCryptAlgorithm
     /// <summary>
     /// Decrittografa dati crittografati con EncryptSecure.
     /// </summary>
+    [Obsolete("AES-CBC senza autenticazione: i dati possono essere alterati senza che la decifratura se ne accorga. Per i nuovi dati usare EncryptAuthenticated/DecryptAuthenticated; DecryptSecure resta per leggere i dati esistenti.")]
     public byte[] DecryptSecure(byte[] cipherBytes, string password)
     {
         if (cipherBytes == null || cipherBytes.Length == 0)
@@ -465,8 +618,15 @@ public class AsymmetricCryptAlgorithm
     /// </summary>
     public AsymmetricCryptAlgorithm()
     {
-        mAlgorithm = ServiceProviderEnum.DSA;
+        // Dalla 2.0.0 il default è RSA: DSA è un algoritmo di sola firma e non può cifrare.
+        mAlgorithm = ServiceProviderEnum.RSA;
     }
+
+    /// <summary>
+    /// Padding usato da Encrypt/Decrypt con RSA. true (default dalla 2.0.0) = OAEP;
+    /// false = PKCS#1 v1.5, necessario solo per leggere dati cifrati con le versioni precedenti.
+    /// </summary>
+    public bool UseOaepPadding { get; set; } = true;
     /// <summary>
     /// Inizializza una nuova istanza della classe.
     /// </summary>
@@ -507,7 +667,7 @@ public class AsymmetricCryptAlgorithm
         switch (mAlgorithm)
         {
             case ServiceProviderEnum.RSA:
-                oAA = new RSACryptoServiceProvider();
+                oAA = new RSACryptoServiceProvider(2048);
                 break;
             case ServiceProviderEnum.DSA:
                 oAA = new DSACryptoServiceProvider();
@@ -535,7 +695,7 @@ public class AsymmetricCryptAlgorithm
     /// <returns>Stringa crittografata.</returns>
     public virtual string Encrypt(string cryptoText, CryptKeys cPublicKey)
     {
-        byte[] cryptoByte = System.Text.Encoding.ASCII.GetBytes(cryptoText);
+        byte[] cryptoByte = System.Text.Encoding.UTF8.GetBytes(cryptoText);
         //byte[] cryptoByte = Convert.FromBase64String(cryptoText);
         byte[] cryptoByte2 = Encrypt(cryptoByte, cPublicKey);
         return System.Convert.ToBase64String(cryptoByte2);
@@ -550,7 +710,7 @@ public class AsymmetricCryptAlgorithm
     {
         byte[] cryptoByte = System.Convert.FromBase64String(cryptoText);
         byte[] cryptoByte2 = Decrypt(cryptoByte, cPrivateKey);
-        return System.Text.Encoding.ASCII.GetString(cryptoByte2);
+        return System.Text.Encoding.UTF8.GetString(cryptoByte2);
     }
 
     //public static byte[] StringToByteArray(string str)
@@ -581,8 +741,10 @@ public class AsymmetricCryptAlgorithm
             case ServiceProviderEnum.RSA:
                 oAA = new RSACryptoServiceProvider();
                 ((RSACryptoServiceProvider)oAA).FromXmlString((string)cPublicKey.PublicKey);
-                cryptoBuffer = ((RSACryptoServiceProvider)oAA).Encrypt(cryptoBuffer, false);
+                cryptoBuffer = ((RSACryptoServiceProvider)oAA).Encrypt(cryptoBuffer, UseOaepPadding);
                 break;
+            default:
+                throw new NotSupportedException("DSA non supporta la cifratura: usare ServiceProviderEnum.RSA.");
         }
         //
         return cryptoBuffer;
@@ -601,8 +763,10 @@ public class AsymmetricCryptAlgorithm
             case ServiceProviderEnum.RSA:
                 oAA = new RSACryptoServiceProvider();
                 ((RSACryptoServiceProvider)oAA).FromXmlString((string)cPrivateKey.PrivateKey);
-                cryptoBuffer = ((RSACryptoServiceProvider)oAA).Decrypt(cryptoBuffer, false);
+                cryptoBuffer = ((RSACryptoServiceProvider)oAA).Decrypt(cryptoBuffer, UseOaepPadding);
                 break;
+            default:
+                throw new NotSupportedException("DSA non supporta la cifratura: usare ServiceProviderEnum.RSA.");
         }
         return cryptoBuffer;
     }
@@ -621,10 +785,12 @@ public class HashAlgorithm
     public enum ServiceProviderEnum : int
     {
         // Supported algorithms
+        [Obsolete("SHA1 non è più considerato sicuro. Usare SHA256 o superiore; per le password usare PasswordHasher.")]
         SHA1,
         SHA256,
         SHA384,
         SHA512,
+        [Obsolete("MD5 non è sicuro. Usare SHA256 o superiore; per le password usare PasswordHasher.")]
         MD5
     }
     /// <summary>

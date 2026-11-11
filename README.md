@@ -4,6 +4,8 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![.NET](https://img.shields.io/badge/.NET-10.0-blue.svg)](https://dotnet.microsoft.com/)
 
+> **2.0.0** introduces breaking changes (safer defaults for connections, TLS, SFTP and SQL building). See [CHANGELOG.md](CHANGELOG.md) for the migration notes.
+
 A comprehensive .NET library providing utilities for database operations, I/O, security, reflection, object mapping, and much more, now with built-in SQLite provider support.
 
 ## 📦 Installation

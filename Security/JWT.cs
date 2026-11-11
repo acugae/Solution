@@ -8,6 +8,7 @@ public class JWT
     /// Legge e valida un token JWT (validazione base per retrocompatibilità).
     /// Per una validazione completa usare ReadSecure().
     /// </summary>
+    [Obsolete("Non verifica issuer e audience e non impone una lunghezza minima della chiave. Usare ReadSecure.")]
     public static Claim[] Read(string Key, string sToken)
     {
         var tokenHandler = new JwtSecurityTokenHandler();
@@ -28,6 +29,13 @@ public class JWT
 
     public static Claim[] Read(string Key, string sToken, TokenValidationParameters validationParameters)
     {
+        ArgumentNullException.ThrowIfNull(validationParameters);
+        // La chiave passata viene usata se i parametri non ne indicano già una (prima veniva ignorata).
+        if (!string.IsNullOrEmpty(Key) && validationParameters.IssuerSigningKey == null
+            && validationParameters.IssuerSigningKeys == null && validationParameters.IssuerSigningKeyResolver == null)
+        {
+            validationParameters.IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Key));
+        }
         var tokenHandler = new JwtSecurityTokenHandler();
         tokenHandler.ValidateToken(sToken, validationParameters, out SecurityToken validatedToken);
         var jwtToken = (JwtSecurityToken)validatedToken;
@@ -72,8 +80,16 @@ public class JWT
         return jwtToken.Claims.ToArray();
     }
     
+    private static void CheckAlgorithm(string algorithm)
+    {
+        if (algorithm != SecurityAlgorithms.HmacSha256 && algorithm != SecurityAlgorithms.HmacSha384 && algorithm != SecurityAlgorithms.HmacSha512)
+            throw new ArgumentException("Algoritmo di firma non ammesso: usare HmacSha256, HmacSha384 o HmacSha512.", nameof(algorithm));
+    }
+
+    [Obsolete("Crea token senza issuer e audience. Usare CreateSecure.")]
     public static string Create(string Key, int expiderMinutes, Claim[] addClaims, string Algorithm = SecurityAlgorithms.HmacSha256)
     {
+        CheckAlgorithm(Algorithm);
         List<Claim> claims = [
                         new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
                         new Claim(JwtRegisteredClaimNames.Iat, ((DateTimeOffset)DateTime.UtcNow).ToUnixTimeSeconds().ToString(), ClaimValueTypes.Integer64),
@@ -113,6 +129,7 @@ public class JWT
             throw new ArgumentNullException(nameof(issuer));
         if (string.IsNullOrEmpty(audience))
             throw new ArgumentNullException(nameof(audience));
+        CheckAlgorithm(algorithm);
             
         var allClaims = new List<Claim>
         {

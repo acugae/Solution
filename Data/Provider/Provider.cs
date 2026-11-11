@@ -31,8 +31,15 @@ public class  Provider
             }
             else
             {
-                Assembly oAss = Assembly.LoadFile(sFilename);
+                // Provider esterno: la factory viene letta dal membro statico "Instance" della classe indicata.
+                Assembly oAss = Assembly.LoadFile(Path.GetFullPath(sFilename));
                 Type? oType = oAss.GetType(sClassFactoryName);
+                if (oType == null)
+                    throw new InvalidOperationException("Provider '" + sKeyProvider + "': classe '" + sClassFactoryName + "' non trovata in " + sFilename + ".");
+                object? oInstance = oType.GetField("Instance", BindingFlags.Public | BindingFlags.Static)?.GetValue(null)
+                    ?? oType.GetProperty("Instance", BindingFlags.Public | BindingFlags.Static)?.GetValue(null);
+                instance = oInstance as DbProviderFactory
+                    ?? throw new InvalidOperationException("Provider '" + sKeyProvider + "': la classe '" + sClassFactoryName + "' non espone un membro statico Instance di tipo DbProviderFactory.");
             }
         }
         catch (TargetInvocationException e)
