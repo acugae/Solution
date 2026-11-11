@@ -594,12 +594,6 @@ public static class MergeExtensions
 
 public class GenericObject
 {
-    private JsonSerializerSettings _jsonSettings = new JsonSerializerSettings
-    {
-        TypeNameHandling = TypeNameHandling.All,
-        TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Full 
-    };
-
     Dictionary<string, object> oAttribute = new Dictionary<string, object>();
     //
     public GenericObject() { }

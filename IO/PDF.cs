@@ -251,9 +251,9 @@ public class PDF
             // step 5: we close the document
             document.Close();
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw e;
+            throw;
         }
     }
 
@@ -316,9 +316,9 @@ public class PDF
             // step 5: we close the document
             document.Close();
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw e;
+            throw;
         }
 
         return mergeStream.ToArray();

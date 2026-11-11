@@ -96,9 +96,9 @@ public class Transactions : System.Collections.Specialized.NameObjectCollectionB
                     this[sKeyConnection] = (Transaction)result;
                 }
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw (e);
+                throw;
             }
         }
     }
@@ -115,9 +115,9 @@ public class Transactions : System.Collections.Specialized.NameObjectCollectionB
                 this[sKeyConnection].Commit();
                 Remove(sKeyConnection);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw (e);
+                throw;
             }
         }
     }
@@ -134,9 +134,9 @@ public class Transactions : System.Collections.Specialized.NameObjectCollectionB
                 this[sKeyConnection].Rollback();
                 Remove(sKeyConnection);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw (e);
+                throw;
             }
         }
     }

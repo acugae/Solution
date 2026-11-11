@@ -221,27 +221,15 @@ public class StringAdvance
 
         // Use a 4-byte array to fill it with random bytes and convert it then
         // to an integer value.
-        byte[] randomBytes = new byte[4];
-
-        // Generate 4 random bytes.
-        RandomNumberGenerator rng = RandomNumberGenerator.Create(); //  new RNGCryptoServiceProvider();
-        rng.GetBytes(randomBytes);
-
-        // Convert 4 bytes into a 32-bit integer value.
-        int seed = (randomBytes[0] & 0x7f) << 24 |
-                    randomBytes[1] << 16 |
-                    randomBytes[2] << 8 |
-                    randomBytes[3];
-
-        // Now, this is real randomization.
-        Random random = new Random(seed);
+        // Numeri casuali generati direttamente dal generatore crittografico
+        // (prima veniva usato solo per inizializzare System.Random con 31 bit).
 
         // This array will hold password characters.
         char[] password = null;
 
         // Allocate appropriate memory for the password.
         if (minLength < maxLength)
-            password = new char[random.Next(minLength, maxLength + 1)];
+            password = new char[RandomNumberGenerator.GetInt32(minLength, maxLength + 1)];
         else
             password = new char[minLength];
 
@@ -271,7 +259,7 @@ public class StringAdvance
             if (lastLeftGroupsOrderIdx == 0)
                 nextLeftGroupsOrderIdx = 0;
             else
-                nextLeftGroupsOrderIdx = random.Next(0,
+                nextLeftGroupsOrderIdx = RandomNumberGenerator.GetInt32(0,
                                                      lastLeftGroupsOrderIdx);
 
             // Get the actual index of the character group, from which we will
@@ -286,7 +274,7 @@ public class StringAdvance
             if (lastCharIdx == 0)
                 nextCharIdx = 0;
             else
-                nextCharIdx = random.Next(0, lastCharIdx + 1);
+                nextCharIdx = RandomNumberGenerator.GetInt32(0, lastCharIdx + 1);
 
             // Add this character to the password.
             password[i] = charGroups[nextGroupIdx][nextCharIdx];
@@ -823,9 +811,9 @@ public class StringAdvance
             }
             return svValues;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            throw ex;
+            throw;
         }
     }
     /// <summary>

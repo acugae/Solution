@@ -225,8 +225,9 @@ public class QueryBuilder
     /// <returns>DataTable con i risultati</returns>
     public DataTable Select()
     {
-        string sql = BuildSql();
-        return _db.Get(_connectionKey, sql);
+        var parameters = new Dictionary<string, object>();
+        string sql = BuildSql(parameters);
+        return _db.Get(_connectionKey, sql, parameters);
     }
 
     /// <summary>
@@ -270,8 +271,9 @@ public class QueryBuilder
     /// <returns>Numero di record</returns>
     public int Count()
     {
-        string sql = BuildCountSql();
-        var dt = _db.Get(_connectionKey, sql);
+        var parameters = new Dictionary<string, object>();
+        string sql = BuildCountSql(parameters);
+        var dt = _db.Get(_connectionKey, sql, parameters);
         if (dt == null || dt.Rows.Count == 0)
             return 0;
         return Convert.ToInt32(dt.Rows[0][0]);
@@ -298,7 +300,11 @@ public class QueryBuilder
 
     #region SQL Building
 
-    private string BuildSql()
+    /// <summary>
+    /// Costruisce la query. Se <paramref name="parameters"/> è valorizzato i valori dei filtri
+    /// vengono passati come parametri; se è null vengono scritti in linea (solo per ToSql()).
+    /// </summary>
+    private string BuildSql(Dictionary<string, object>? parameters = null)
     {
         if (string.IsNullOrEmpty(_tableName))
             throw new InvalidOperationException("Table name not specified. Use From() method.");
@@ -319,7 +325,7 @@ public class QueryBuilder
         if (_filters.Count > 0)
         {
             sb.Append(" WHERE ");
-            sb.Append(string.Join(" AND ", _filters.Select(f => f.ToSql())));
+            sb.Append(string.Join(" AND ", _filters.Select(f => f.ToSql(parameters))));
         }
 
         // ORDER BY
@@ -345,7 +351,7 @@ public class QueryBuilder
         return sb.ToString();
     }
 
-    private string BuildCountSql()
+    private string BuildCountSql(Dictionary<string, object>? parameters = null)
     {
         if (string.IsNullOrEmpty(_tableName))
             throw new InvalidOperationException("Table name not specified. Use From() method.");
@@ -356,7 +362,7 @@ public class QueryBuilder
         if (_filters.Count > 0)
         {
             sb.Append(" WHERE ");
-            sb.Append(string.Join(" AND ", _filters.Select(f => f.ToSql())));
+            sb.Append(string.Join(" AND ", _filters.Select(f => f.ToSql(parameters))));
         }
 
         return sb.ToString();
@@ -380,7 +386,7 @@ internal class QueryFilter
         Value = value;
     }
 
-    public string ToSql()
+    public string ToSql(Dictionary<string, object>? parameters = null)
     {
         switch (Operator)
         {
@@ -391,19 +397,39 @@ internal class QueryFilter
             case "IN":
                 if (Value is object[] values)
                 {
-                    var formatted = values.Select(v => FormatValue(v));
+                    var formatted = values.Select(v => FormatValue(v, parameters)).ToList();
                     return $"[{Column}] IN ({string.Join(", ", formatted)})";
                 }
-                return $"[{Column}] IN ({FormatValue(Value)})";
+                return $"[{Column}] IN ({FormatValue(Value, parameters)})";
             case "BETWEEN":
                 if (Value is object[] range && range.Length == 2)
                 {
-                    return $"[{Column}] BETWEEN {FormatValue(range[0])} AND {FormatValue(range[1])}";
+                    return $"[{Column}] BETWEEN {FormatValue(range[0], parameters)} AND {FormatValue(range[1], parameters)}";
                 }
                 throw new InvalidOperationException("BETWEEN requires two values");
             default:
-                return $"[{Column}] {Operator} {FormatValue(Value)}";
+                return $"[{Column}] {Operator} {FormatValue(Value, parameters)}";
         }
+    }
+
+    private static string FormatValue(object? value, Dictionary<string, object>? parameters)
+    {
+        if (parameters == null)
+            return FormatValue(value);
+
+        value = SqlValue.Normalize(value);
+        if (value == null)
+            return "NULL";
+        // Stesse conversioni usate finora per i valori in linea:
+        // date al secondo, booleani come 1/0.
+        if (value is DateTime dt)
+            value = new DateTime(dt.Year, dt.Month, dt.Day, dt.Hour, dt.Minute, dt.Second);
+        else if (value is bool b)
+            value = b ? 1 : 0;
+
+        string name = "@qb" + parameters.Count;
+        parameters[name] = value;
+        return name;
     }
 
     private static string FormatValue(object? value)

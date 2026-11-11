@@ -39,7 +39,10 @@ public class FileManager
         // Se è impostata una base path, verifica che il path sia al suo interno
         if (!string.IsNullOrEmpty(_allowedBasePath))
         {
-            if (!fullPath.StartsWith(_allowedBasePath, StringComparison.OrdinalIgnoreCase))
+            // Il confronto include il separatore: "C:\\data" non deve autorizzare "C:\\data-altro".
+            string basePath = _allowedBasePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (!fullPath.Equals(basePath, StringComparison.OrdinalIgnoreCase) &&
+                !fullPath.StartsWith(basePath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
             {
                 throw new UnauthorizedAccessException($"Access denied: path is outside allowed directory");
             }

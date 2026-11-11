@@ -141,9 +141,9 @@ public class Table
             ds.Tables[0].TableName = _strNameTable;
             return ds.Tables[0];
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw e;
+            throw;
         }
     }
     /// <summary>
@@ -174,9 +174,9 @@ public class Table
             ds.Tables[0].TableName = _strNameTable;
             return ds.Tables[0];
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw e;
+            throw;
         }
     }
     /// <summary>
@@ -202,9 +202,9 @@ public class Table
                 return null;
             return ds.Tables[0];
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw e;
+            throw;
         }
     }
     /// <summary>
@@ -275,9 +275,9 @@ public class Table
             oDT.Rows.Add(oDR);
             return oDT;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw e;
+            throw;
         }
     }
     /// <summary>
@@ -343,9 +343,9 @@ public class Table
             oDT.Rows.Add(oDR);
             return oDT;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     /// <summary>
@@ -499,9 +499,9 @@ public class Table
                 return null;
             return ds.Tables[0].Rows[0][0];
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     /// <summary>
@@ -525,9 +525,9 @@ public class Table
                 return null;
             return ds.Tables[0];
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     /// <summary>
@@ -565,9 +565,9 @@ public class Table
                 return null;
             return ds.Tables[0];
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     /// <summary>
@@ -608,9 +608,9 @@ public class Table
             }
             return strCampo;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     /// <summary>
@@ -638,9 +638,9 @@ public class Table
                 return "blob";
             return sType;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     /// <summary>
@@ -681,9 +681,9 @@ public class Table
             }
             return strCampo;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     //
@@ -695,9 +695,9 @@ public class Table
                 return true;
             return false;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     //
@@ -784,9 +784,9 @@ public class Table
             ds.Tables[0].TableName = _strNameTable;
             return ds.Tables[0];
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     //
@@ -816,9 +816,9 @@ public class Table
             ds.Tables[0].TableName = _strNameTable;
             return ds.Tables[0];
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     /// <summary>
@@ -882,9 +882,9 @@ public class Table
             }
             _oData.ExecuteNonQuery(sKeyConnection, strSQL, null);
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
         return true;
     }
@@ -898,9 +898,9 @@ public class Table
             strWhere += _generateAND(_oFieldsKey, oValuesKey);
             _oData.ExecuteNonQuery(sKeyConnection, strSQL + strWhere, null);
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     /// <summary>
@@ -935,9 +935,9 @@ public class Table
             strSQL += _generateAND(_oFieldsKey, oValuesKey);
             _oData.ExecuteNonQuery(sKeyConnection, strSQL, null);
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     //
@@ -1174,9 +1174,9 @@ public class Table
             }
             return oVet;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            throw (ex);
+            throw;
         }
     }
 }
@@ -1281,9 +1281,9 @@ public class Table1N
             ds.Tables[0].TableName = _oTParent.TableName + "#" + _oTChild.TableName;
             return ds.Tables[0];
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     //
@@ -1310,9 +1310,9 @@ public class Table1N
             ds.Tables[0].TableName = _oTParent.TableName + "#" + _oTChild.TableName;
             return ds.Tables[0];
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     //
@@ -1339,9 +1339,9 @@ public class Table1N
             ds.Tables[0].TableName = _oTParent.TableName + "#" + _oTChild.TableName;
             return ds.Tables[0];
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     //
@@ -1433,9 +1433,9 @@ public class Table1N
                 strCampo += " " + oValue.ToString().Replace(",", ".") + " ";
             return strCampo;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     //
@@ -1455,9 +1455,9 @@ public class Table1N
                 return ((double)oObj1 == (double)oObj2);
             return false;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     //
@@ -1493,9 +1493,9 @@ public class Table1N
             _oBus.ExecuteNonQuery(_strKey, strSQL, null);
             _oBus.ExecuteNonQuery(_strKey, strSQL2, null);
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     //

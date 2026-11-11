@@ -105,8 +105,23 @@ public class ConnectionBuilder
     public ConnectionBuilder ForSqlServer(string server, string database, string user, string password)
     {
         _providerKey = "sqldb";
-        _connectionString = $"Server={server};Database={database};User Id={user};Password={password};TrustServerCertificate=True;";
+        _connectionString = $"Server={server};Database={database};User Id={QuoteValue(user)};Password={QuoteValue(password)};TrustServerCertificate=True;";
         return this;
+    }
+
+    /// <summary>
+    /// Restituisce il valore pronto per essere inserito in una stringa di connessione:
+    /// se contiene caratteri speciali (; = spazi, apici) viene racchiuso tra apici,
+    /// altrimenti resta invariato. Evita che una password con ';' alteri la stringa.
+    /// </summary>
+    private static string QuoteValue(string value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return value;
+        var builder = new DbConnectionStringBuilder();
+        builder["v"] = value;
+        string pair = builder.ConnectionString; // "v=<valore eventualmente quotato>"
+        return pair.Length > 2 ? pair.Substring(2) : value;
     }
 
     /// <summary>
@@ -115,7 +130,7 @@ public class ConnectionBuilder
     public ConnectionBuilder ForMySQL(string server, string database, string user, string password, int port = 3306)
     {
         _providerKey = "mysdb";
-        _connectionString = $"Server={server};Port={port};Database={database};User={user};Password={password};";
+        _connectionString = $"Server={server};Port={port};Database={database};User={QuoteValue(user)};Password={QuoteValue(password)};";
         return this;
     }
 
@@ -125,7 +140,7 @@ public class ConnectionBuilder
     public ConnectionBuilder ForPostgreSQL(string host, string database, string user, string password, int port = 5432)
     {
         _providerKey = "pstdb";
-        _connectionString = $"Host={host};Port={port};Database={database};Username={user};Password={password};";
+        _connectionString = $"Host={host};Port={port};Database={database};Username={QuoteValue(user)};Password={QuoteValue(password)};";
         return this;
     }
 

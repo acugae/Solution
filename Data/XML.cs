@@ -91,9 +91,9 @@ public class XML
             else
                 _registry.Load(sFileName);
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            throw ex;
+            throw;
         }
     }
 
@@ -237,9 +237,9 @@ public class XML
             }
             return oAttributers;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw e;
+            throw;
         }
     }
     /// <summary>
@@ -269,9 +269,9 @@ public class XML
                 }
             }
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw e;
+            throw;
         }
     }
     /// <summary>
@@ -562,9 +562,9 @@ public class XML
             if (OnChange != null)
                 OnChange(this, new EventArgs());
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw e;
+            throw;
         }
         return tmpNode;
     }
@@ -585,9 +585,9 @@ public class XML
         {
             _registry.Save(sFileName);
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw e;
+            throw;
         }
     }
     /// <summary>
@@ -604,9 +604,9 @@ public class XML
             myStr += @"</registry>";
             return myStr;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            throw ex;
+            throw;
         }
     }
     /// <summary>

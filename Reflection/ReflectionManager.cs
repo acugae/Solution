@@ -397,9 +397,9 @@ public class ReflectionManager
                 {
                     myProperty.SetValue(oObject, PropertyListValue[myProperty.Name]);
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
-                    throw ex;
+                    throw;
                 }
             }
         }
@@ -637,9 +637,9 @@ public class ReflectionManager
             writer.Close();
             return writer.ToArray();
         }
-        catch (Exception err)
+        catch (Exception)
         {
-            throw (err);
+            throw;
         }
     }
     /// <summary>
@@ -659,9 +659,9 @@ public class ReflectionManager
             reader.Close();
             return oObject;
         }
-        catch (Exception err)
+        catch (Exception)
         {
-            throw (err);
+            throw;
         }
     }
     /// <summary>
@@ -678,9 +678,9 @@ public class ReflectionManager
             serializer.Serialize(writer, oObject);
             writer.Close();
         }
-        catch (Exception err)
+        catch (Exception)
         {
-            throw (err);
+            throw;
         }
     }
     /// <summary>
@@ -699,9 +699,9 @@ public class ReflectionManager
             reader.Close();
             return oObject;
         }
-        catch (Exception err)
+        catch (Exception)
         {
-            throw (err);
+            throw;
         }
     }
 #if (!MOBILE)
@@ -722,9 +722,9 @@ public class ReflectionManager
             //return ovBuffer;
             return Binary.ObjectToByteArray(oObjectType);
         }
-        catch (Exception err)
+        catch (Exception)
         {
-            throw (err);
+            throw;
         }
     }
     /// <summary>
@@ -744,9 +744,9 @@ public class ReflectionManager
             //return oObject;
             return Binary.ByteArrayToObject<object>(bBuffer);
         }
-        catch (Exception err)
+        catch (Exception)
         {
-            throw (err);
+            throw;
         }
     }
 #endif

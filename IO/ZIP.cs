@@ -18,23 +18,27 @@ public class ZIP
         {
             using (GZipStream zs = new GZipStream(ms, CompressionMode.Compress, leaveOpen))
             {
-                //BinaryFormatter bf = new BinaryFormatter();
-                //bf.Serialize(zs, obj);
-                return Binary.ObjectToByteArray(zs);
+                byte[] data = Binary.ObjectToByteArray(obj) ?? Array.Empty<byte>();
+                zs.Write(data, 0, data.Length);
             }
-            //return ms.ToArray();
+            // ToArray dopo la chiusura del GZipStream, altrimenti il contenuto non è completo.
+            return ms.ToArray();
         }
     }
 
     public object DecompressObject(byte[] data, bool leaveOpen = false)
     {
+        // Dati non compressi (nessuna intestazione gzip): comportamento precedente.
+        if (data == null || data.Length < 2 || data[0] != 0x1f || data[1] != 0x8b)
+            return Binary.ByteArrayToObject<object>(data);
+
         using (MemoryStream ms = new MemoryStream(data))
         {
             using (GZipStream zs = new GZipStream(ms, CompressionMode.Decompress, leaveOpen))
+            using (MemoryStream output = new MemoryStream())
             {
-                //BinaryFormatter bf = new BinaryFormatter();
-                //return bf.Deserialize(zs);
-                return Binary.ByteArrayToObject<object>(data);
+                zs.CopyTo(output);
+                return Binary.ByteArrayToObject<object>(output.ToArray());
             }
         }
     }
@@ -77,20 +81,30 @@ public class ZIP
                     throw new InvalidOperationException($"Zip bomb protection: exceeded maximum file count ({MaxFileCount})");
                 
                 // Protezione Zip Bomb: verifica dimensione totale
-                if (currentEntry.Size > 0)
-                {
-                    totalExtracted += currentEntry.Size;
-                    if (totalExtracted > MaxExtractSize)
-                        throw new InvalidOperationException($"Zip bomb protection: extracted content exceeds size limit ({MaxExtractSize / (1024 * 1024)}MB)");
-                }
+                if (currentEntry.Size > 0 && totalExtracted + currentEntry.Size > MaxExtractSize)
+                    throw new InvalidOperationException($"Zip bomb protection: extracted content exceeds size limit ({MaxExtractSize / (1024 * 1024)}MB)");
                 
                 // Protezione Path Traversal: verifica nome file
                 string entryName = currentEntry.Name;
                 if (entryName.Contains("..") || Path.IsPathRooted(entryName))
                     throw new InvalidOperationException($"Zip entry contains invalid path: {entryName}");
                 
-                byte[] data = new byte[currentEntry.Size];
-                zipStream.Read(data, 0, data.Length);
+                // Legge l'intero contenuto (una sola Read può restituire meno byte del richiesto)
+                // e conta i byte realmente estratti, senza fidarsi della dimensione dichiarata.
+                byte[] data;
+                using (MemoryStream entryStream = new MemoryStream())
+                {
+                    byte[] buffer = new byte[81920];
+                    int read;
+                    while ((read = zipStream.Read(buffer, 0, buffer.Length)) > 0)
+                    {
+                        totalExtracted += read;
+                        if (totalExtracted > MaxExtractSize)
+                            throw new InvalidOperationException($"Zip bomb protection: extracted content exceeds size limit ({MaxExtractSize / (1024 * 1024)}MB)");
+                        entryStream.Write(buffer, 0, read);
+                    }
+                    data = entryStream.ToArray();
+                }
                 oResult.Add(currentEntry.Name, data);
             }
         }

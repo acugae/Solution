@@ -152,6 +152,7 @@ public class SymmetricCryptAlgorithm
     /// <param name="plainText">Stringa in chiaro.</param>
     /// <param name="key">Chiave di crittografia.</param>
     /// <returns>La stringa crittografata.</returns>
+    [Obsolete("Cifratura legacy: IV fisso e chiave non derivata. Per i nuovi dati usare EncryptSecure (formato diverso: i dati esistenti restano leggibili solo con Decrypt).")]
     public virtual string Encrypt(string plainText, string key)
     {
         byte[] plainByte = ASCIIEncoding.ASCII.GetBytes(plainText);
@@ -190,6 +191,7 @@ public class SymmetricCryptAlgorithm
     /// <param name="plainByte">Array di byte in chiaro.</param>
     /// <param name="key">Chiave di crittografia.</param>
     /// <returns>Array di byte crittografato.</returns>
+    [Obsolete("Cifratura legacy: IV fisso e chiave non derivata. Per i nuovi dati usare EncryptSecure (formato diverso: i dati esistenti restano leggibili solo con Decrypt).")]
     public virtual byte[] Encrypt(byte[] plainByte, string key)
     {
         byte[] keyByte = GetLegalKey(key);
@@ -220,6 +222,7 @@ public class SymmetricCryptAlgorithm
     /// <param name="cryptoText">Stringa crittografata.</param>
     /// <param name="key">Chiave di crittografia.</param>
     /// <returns>La stringa in chiaro.</returns>
+    [Obsolete("Cifratura legacy: IV fisso e chiave non derivata. Usare solo per leggere dati cifrati con Encrypt; per i nuovi dati usare EncryptSecure/DecryptSecure.")]
     public virtual string Decrypt(string cryptoText, string key)
     {
         // Convert from base 64 string to bytes
@@ -256,6 +259,7 @@ public class SymmetricCryptAlgorithm
     /// <param name="cryptoByte">Attary di byte da crittografare.</param>
     /// <param name="key">Chiave di crittografia.</param>
     /// <returns>Array di byte in chiaro.</returns>
+    [Obsolete("Cifratura legacy: IV fisso e chiave non derivata. Usare solo per leggere dati cifrati con Encrypt; per i nuovi dati usare EncryptSecure/DecryptSecure.")]
     public virtual byte[] Decrypt(byte[] cryptoByte, string key)
     {
         byte[] keyByte = GetLegalKey(key);

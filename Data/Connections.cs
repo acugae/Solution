@@ -181,9 +181,9 @@ public class Connections : System.Collections.Specialized.NameObjectCollectionBa
                 }
             }
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw e;
+            throw;
         }
     }
     /// <summary>
@@ -206,9 +206,9 @@ public class Connections : System.Collections.Specialized.NameObjectCollectionBa
             }
             return oEnumConnOpen;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw e;
+            throw;
         }
 
     }

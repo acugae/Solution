@@ -32,9 +32,9 @@ public class DataManager : MarshalByRefObject
                 _oCns = new Connections(_oProviders);
                 _oTrs = new Transactions(_oCns);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw (e);
+                throw;
             }
         }
     }
@@ -121,9 +121,9 @@ public class DataManager : MarshalByRefObject
                 oCMD.Parameters.AddParameterString(strParams);
                 return new DataReader(oCMD.ExecuteReader());
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw (e);
+                throw;
             }
         }
     }
@@ -150,9 +150,9 @@ public class DataManager : MarshalByRefObject
                 oCMD.Parameters.AddParameterString(strParams);
                 return oCMD.ExecuteScalar();
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw e;
+                throw;
             }
         }
     }
@@ -336,10 +336,10 @@ public class DataManager : MarshalByRefObject
                 }
                 return oCMD;
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 //if (_oCns[sKeyConnection].State == ConnectionState.Open) _oCns[sKeyConnection].Close();
-                throw (e);
+                throw;
             }
         }
     }
@@ -385,9 +385,9 @@ public class DataManager : MarshalByRefObject
             {
                 return new Provider.DataAdapter(GetCM(GetCO(sKeyConnection), strSQL, null, timeout));
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw (e);
+                throw;
             }
         }
     }
@@ -405,9 +405,9 @@ public class DataManager : MarshalByRefObject
             {
                 return new Provider.DataAdapter(GetCM(oConnection, strSQL, parameters, timeout));
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                throw (e);
+                throw;
             }
         }
     }

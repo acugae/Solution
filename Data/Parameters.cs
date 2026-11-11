@@ -95,9 +95,9 @@ public class Parameters
             _Command.Parameters.Add(oP.DbParameter);
             return oP;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     /// <summary>
@@ -112,9 +112,9 @@ public class Parameters
             _Command.Parameters.Add(oParam.DbParameter);
             return oParam;
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     /// <summary>
@@ -144,9 +144,9 @@ public class Parameters
                 _Command.Parameters.Add(oP.DbParameter);
             }
         }
-        catch (Exception e)
+        catch (Exception)
         {
-            throw (e);
+            throw;
         }
     }
     /// <summary>

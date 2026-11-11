@@ -80,9 +80,9 @@ public class SMTP : IMailsProvider
         {
             host = parameters.Where(x => x.Key == "host").FirstOrDefault().Value;
         }
-        catch (Exception ex)
+        catch (Exception)
         {
-            throw ex;
+            throw;
         }
     }
 

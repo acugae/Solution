@@ -111,8 +111,8 @@ public class DB
                 if (exResult != null)
                 {
                     if (_ModeConnection == enModeConnectionOpen.Whenever)
-                        oConn.Close();
-                    throw (exResult);
+                        oConn.Dispose();
+                    System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exResult).Throw();
                 }
             }
             oDT = oData.Invoke(oConn, sSQL, pParams);
@@ -124,11 +124,11 @@ public class DB
         finally
         {
             if (_ModeConnection == enModeConnectionOpen.Whenever)
-                oConn.Close();
+                oConn.Dispose();
         }
         //
         if (exResult != null)
-            throw (exResult);
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exResult).Throw();
         return oDT;
     }
     public DataTable Invoke(string sSQL, params Parameter[] pParams)
@@ -158,8 +158,8 @@ public class DB
                 if (exResult != null)
                 {
                     if (_ModeConnection == enModeConnectionOpen.Whenever)
-                        oConn.Close();
-                    throw (exResult);
+                        oConn.Dispose();
+                    System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exResult).Throw();
                 }
             }
             oDT = oData.InvokeStore(oConn, sSQL, pParams);
@@ -171,11 +171,11 @@ public class DB
         finally
         {
             if (_ModeConnection == enModeConnectionOpen.Whenever)
-                oConn.Close();
+                oConn.Dispose();
         }
         //
         if (exResult != null)
-            throw (exResult);
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exResult).Throw();
         return oDT;
     }
     public DataTable Invoke(string sSQL)
@@ -205,8 +205,8 @@ public class DB
                 if (exResult != null)
                 {
                     if (_ModeConnection == enModeConnectionOpen.Whenever)
-                        oConn.Close();
-                    throw (exResult);
+                        oConn.Dispose();
+                    System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exResult).Throw();
                 }
             }
             oDT = oData.InvokeStore(oConn, sSQL);
@@ -218,11 +218,11 @@ public class DB
         finally
         {
             if (_ModeConnection == enModeConnectionOpen.Whenever)
-                oConn.Close();
+                oConn.Dispose();
         }
         //
         if (exResult != null)
-            throw (exResult);
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exResult).Throw();
         return oDT;
     }
     public DataTable Get(string sSQL, Dictionary<string, object>? parameters = null)
@@ -252,8 +252,8 @@ public class DB
                 if (exResult != null)
                 {
                     if (_ModeConnection == enModeConnectionOpen.Whenever)
-                        oConn.Close();
-                    throw (exResult);
+                        oConn.Dispose();
+                    System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exResult).Throw();
                 }
             }
             oDS = oData.GetDS(oConn, sSQL, parameters);
@@ -265,10 +265,10 @@ public class DB
         finally
         {
             if (_ModeConnection == enModeConnectionOpen.Whenever)
-                oConn.Close();
+                oConn.Dispose();
         }
         if (exResult != null)
-            throw (exResult);
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exResult).Throw();
         if (oDS != null && oDS.Tables.Count > 0)
             return oDS.Tables[0];
         return null;
@@ -300,8 +300,8 @@ public class DB
                 if (exResult != null)
                 {
                     if (_ModeConnection == enModeConnectionOpen.Whenever)
-                        oConn.Close();
-                    throw (exResult);
+                        oConn.Dispose();
+                    System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exResult).Throw();
                 }
             }
             DateTime before = DateTime.Now;
@@ -315,10 +315,10 @@ public class DB
         finally
         {
             if (_ModeConnection == enModeConnectionOpen.Whenever)
-                oConn.Close();
+                oConn.Dispose();
         }
         if (exResult != null)
-            throw (exResult);
+            System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture(exResult).Throw();
         return iResult;
     }
 
@@ -382,7 +382,7 @@ public class DB
         finally
         {
             if (closeConnection)
-                await oConn.CloseAsync();
+                await oConn.DisposeAsync();
         }
     }
 
@@ -413,7 +413,7 @@ public class DB
         finally
         {
             if (closeConnection)
-                await oConn.CloseAsync();
+                await oConn.DisposeAsync();
         }
     }
 
@@ -439,7 +439,7 @@ public class DB
         finally
         {
             if (closeConnection)
-                await oConn.CloseAsync();
+                await oConn.DisposeAsync();
         }
     }
 
@@ -463,7 +463,7 @@ public class DB
         finally
         {
             if (closeConnection)
-                await oConn.CloseAsync();
+                await oConn.DisposeAsync();
         }
     }
 
@@ -486,7 +486,7 @@ public class DB
         finally
         {
             if (closeConnection)
-                await oConn.CloseAsync();
+                await oConn.DisposeAsync();
         }
     }
 }

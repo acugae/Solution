@@ -59,7 +59,7 @@ public class Command
     public int ExecuteNonQuery()
     {
         try { return command.ExecuteNonQuery(); }
-        catch (Exception e) { throw (e); }
+        catch (Exception) { throw; }
     }
     public async Task<int> ExecuteNonQueryAsync()
     {

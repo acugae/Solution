@@ -100,6 +100,7 @@ public class CRUDFilters : List<CRUDFilter>
         this.Add(new CRUDFilter(sName, sOperator, oValue));
     }
 
+    [Obsolete("Concatena i valori nella stringa SQL (rischio SQL injection). CRUD.Find usa ora query parametrizzate.")]
     public string getFilters()
     {
         if (this.Count == 0)
@@ -107,6 +108,20 @@ public class CRUDFilters : List<CRUDFilter>
         List<string> ovFilters = new List<string>();
         foreach (CRUDFilter filter in this)
             ovFilters.Add(filter.getFilter());
+        return string.Join(" AND ", ovFilters);
+    }
+
+    /// <summary>
+    /// Costruisce la condizione WHERE usando parametri al posto dei valori concatenati.
+    /// I parametri creati vengono aggiunti a <paramref name="oParams"/>.
+    /// </summary>
+    internal string getFiltersParams(Connection oConnection, List<Parameter> oParams)
+    {
+        if (this.Count == 0)
+            return "";
+        List<string> ovFilters = new List<string>();
+        foreach (CRUDFilter filter in this)
+            ovFilters.Add(filter.getFilterParams(oConnection, oParams));
         return string.Join(" AND ", ovFilters);
     }
 }
@@ -203,9 +218,58 @@ public class CRUDFilter
     public string Operator { get; set; }
     public object Value { get; set; }
 
+    [Obsolete("Concatena il valore nella stringa SQL (rischio SQL injection). CRUD.Find usa ora query parametrizzate.")]
     public string getFilter()
     {
         return Name + " " + getValue(Operator, Value);
+    }
+
+    /// <summary>
+    /// Restituisce il filtro usando parametri al posto del valore concatenato.
+    /// Unica eccezione, per compatibilità: operatore "in" con una stringa già formattata
+    /// (es. "1,2,3"), che resta concatenata come in passato. Passando una lista di valori
+    /// all'operatore "in" viene creato un parametro per ogni elemento.
+    /// </summary>
+    internal string getFilterParams(Connection oConnection, List<Parameter> oParams)
+    {
+        // Come in passato, un valore nullo non è ammesso (prima generava NullReferenceException).
+        if (Value == null)
+            throw new ArgumentNullException(nameof(Value), "CRUDFilter: valore nullo per il filtro '" + Name + "'.");
+
+        object oValue = SqlValue.Normalize(Value)!;
+
+        if (Operator.ToLower() == "in")
+        {
+            // Stringa già formattata: comportamento storico invariato.
+            if (oValue is string)
+                return Name + " " + getValue(Operator, oValue);
+
+            List<string> ovNames = new List<string>();
+            if (oValue is IEnumerable oValues)
+            {
+                foreach (object? oItem in oValues)
+                    ovNames.Add(AddParameter(oConnection, oParams, oItem));
+            }
+            else
+            {
+                ovNames.Add(AddParameter(oConnection, oParams, oValue));
+            }
+            if (ovNames.Count == 0)
+                return "1 = 0";
+            return Name + " in (" + string.Join(", ", ovNames) + ")";
+        }
+
+        return Name + " " + Operator + " " + AddParameter(oConnection, oParams, oValue);
+    }
+
+    private static string AddParameter(Connection oConnection, List<Parameter> oParams, object? oValue)
+    {
+        string sName = "@find" + oParams.Count;
+        Parameter oParam = new Parameter(oConnection);
+        oParam.ParameterName = sName;
+        oParam.Value = SqlValue.Normalize(oValue) ?? DBNull.Value;
+        oParams.Add(oParam);
+        return sName;
     }
     public string getFilterParams(string sPrefix)
     {
@@ -246,6 +310,48 @@ public class CRUDFilter
     }
 }
 
+/// <summary>
+/// Converte i valori provenienti da JSON (System.Text.Json / Newtonsoft) nei tipi .NET
+/// corrispondenti, così da poterli passare come parametri di una query.
+/// </summary>
+internal static class SqlValue
+{
+    public static object? Normalize(object? oValue)
+    {
+        if (oValue is System.Text.Json.JsonElement oElement)
+        {
+            switch (oElement.ValueKind)
+            {
+                case System.Text.Json.JsonValueKind.Null:
+                case System.Text.Json.JsonValueKind.Undefined:
+                    return null;
+                case System.Text.Json.JsonValueKind.String:
+                    return oElement.GetString();
+                case System.Text.Json.JsonValueKind.True:
+                    return true;
+                case System.Text.Json.JsonValueKind.False:
+                    return false;
+                case System.Text.Json.JsonValueKind.Number:
+                    if (oElement.TryGetInt64(out long lValue))
+                        return lValue;
+                    if (oElement.TryGetDecimal(out decimal dValue))
+                        return dValue;
+                    return oElement.GetDouble();
+                case System.Text.Json.JsonValueKind.Array:
+                    List<object?> oItems = new List<object?>();
+                    foreach (System.Text.Json.JsonElement oItem in oElement.EnumerateArray())
+                        oItems.Add(Normalize(oItem));
+                    return oItems;
+                default:
+                    return oElement.GetRawText();
+            }
+        }
+        if (oValue is JValue oJValue)
+            return oJValue.Value;
+        return oValue;
+    }
+}
+
 public class CRUD
 {
     DB oDB = null;
@@ -254,13 +360,14 @@ public class CRUD
 
     public DataTable Find(CRUDFind oFind)
     {
+        List<Parameter> oParams = new List<Parameter>();
         string sSQL = "SELECT " + oFind.getFields() + " FROM [" + oFind.Name + "] ";
-        string sSQLWhere = oFind.Filters.getFilters();
+        string sSQLWhere = oFind.Filters.getFiltersParams(oDB.DataManager.Connections[_sKey], oParams);
         if (!string.IsNullOrEmpty(sSQLWhere))
             sSQL += " WHERE " + sSQLWhere;
         sSQL += " ORDER BY " + oFind.Orders.getOrders();
         sSQL += " " + oFind.Pagination.getPagination();
-        return oDB.InvokeSQL(_sKey, sSQL);
+        return oDB.InvokeSQL(_sKey, sSQL, oParams.ToArray());
     }
 
     public DataRow Find0(string sEntityName, params object[] ovKeyValue)

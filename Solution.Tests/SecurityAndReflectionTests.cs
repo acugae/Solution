@@ -1,3 +1,4 @@
+#pragma warning disable CS0618 // i test coprono anche i metodi legacy
 using System.Reflection;
 using Solution.Reflection;
 using Solution.Security;
