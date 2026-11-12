@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace Solution.Reflection;
 /// <summary>
-/// Classe utilizzata per il recuperano di informazioni su assembly, moduli, membri, parametri e altre entit‡ nel codice gestito esaminandone i metadati. 
+/// Classe utilizzata per il recuperano di informazioni su assembly, moduli, membri, parametri e altre entit√† nel codice gestito esaminandone i metadati. 
 /// </summary>
 public class ReflectionManager
 {
@@ -159,7 +159,7 @@ public class ReflectionManager
     /// <summary>
     /// Imposta un valore di una proprieta su di un oggetto specificato.
     /// </summary>
-    /// <param name="oObject">Oggeto su cui impostare la propriet‡.</param>
+    /// <param name="oObject">Oggeto su cui impostare la propriet√†.</param>
     /// <param name="strPropertyName">Nome della da impostare.</param>
     /// <param name="oValue">Valore da impostare.</param>
     public void CallPropertySet(Object oObject, string strPropertyName, object oValue)
@@ -177,11 +177,11 @@ public class ReflectionManager
         }
     }
     /// <summary>
-    /// Restituisce il valore della propriet‡ spacificata.
+    /// Restituisce il valore della propriet√† spacificata.
     /// </summary>
     /// <param name="oObject">Oggetto di riferimento.</param>
     /// <param name="strPropertyName">Nome della proprieta.</param>
-    /// <returns>Oggetto di ritorno della propriet‡.</returns>
+    /// <returns>Oggetto di ritorno della propriet√†.</returns>
     public object CallPropertyGet(Object oObject, string strPropertyName)
     {
         try
@@ -200,7 +200,7 @@ public class ReflectionManager
     /// Restituisce le proprieta dell'oggetto specificato.
     /// </summary>
     /// <param name="oObject">Oggetto di riferimento.</param>
-    /// <param name="bindingAttr">Specifica i flag che controllano l'associazione e il modo in cui Ë condotta la ricerca.</param>
+    /// <param name="bindingAttr">Specifica i flag che controllano l'associazione e il modo in cui √® condotta la ricerca.</param>
     /// <returns>Collezione di PropertyInfo.</returns>
     public GCollection<string, PropertyInfo> GetProperties(Object oObject, BindingFlags bindingAttr)
     {
@@ -220,10 +220,10 @@ public class ReflectionManager
         }
     }
     /// <summary>
-    /// Ritorna la propriet‡ di un oggetto.
+    /// Ritorna la propriet√† di un oggetto.
     /// </summary>
     /// <param name="oObject">Oggeto da analizzare.</param>
-    /// <param name="sPropertyName">Nome della propriet‡.</param>
+    /// <param name="sPropertyName">Nome della propriet√†.</param>
     /// <returns></returns>
     public PropertyInfo GetProperty(Object oObject, string sPropertyName)
     {
@@ -238,11 +238,11 @@ public class ReflectionManager
         }
     }
     /// <summary>
-    /// Verifica se la propriet‡ Ë un parametro.
+    /// Verifica se la propriet√† √® un parametro.
     /// </summary>
     public bool IsParameter(PropertyInfo property)
     {
-        // Verifica se la propriet‡ ha l'attributo [Parameter] o [CascadingParameter]
+        // Verifica se la propriet√† ha l'attributo [Parameter] o [CascadingParameter]
         return property.GetCustomAttributes(typeof(ParameterAttribute), true).Any() ||
                property.GetCustomAttributes(typeof(CascadingParameterAttribute), true).Any();
     }
@@ -250,7 +250,7 @@ public class ReflectionManager
     /// Ritorna gli eventi di un oggetto.
     /// </summary>
     /// <param name="oObject">Oggeto da analizzare.</param>
-    /// <param name="bindingAttr">Specifica i flag che controllano l'associazione e il modo in cui Ë condotta la ricerca.</param>
+    /// <param name="bindingAttr">Specifica i flag che controllano l'associazione e il modo in cui √® condotta la ricerca.</param>
     /// <returns>Collezione di EventInfo.</returns>
     public GCollection<string, EventInfo> GetEvents(Object oObject, BindingFlags bindingAttr)
     {
@@ -382,10 +382,10 @@ public class ReflectionManager
         return assembly;
     }
     /// <summary>
-    /// Imposta le propriet‡ di un oggetto con i valori specificati.
+    /// Imposta le propriet√† di un oggetto con i valori specificati.
     /// </summary>
     /// <param name="oObject">Oggetto di riferimento.</param>
-    /// <param name="PropertyListValue">Collezione di propriet‡ con valori associati.</param>
+    /// <param name="PropertyListValue">Collezione di propriet√† con valori associati.</param>
     public void SetControlProperties(object oObject, GCollection<string, object> PropertyListValue)
     {
         PropertyDescriptorCollection properties = TypeDescriptor.GetProperties(oObject);
@@ -405,10 +405,10 @@ public class ReflectionManager
         }
     }
     /// <summary>
-    /// Restituisce i valori di tuttle le propriet‡ dell'oggetto.
+    /// Restituisce i valori di tuttle le propriet√† dell'oggetto.
     /// </summary>
     /// <param name="oObject">Oggetto di riferimento.</param>
-    /// <returns>Collezione di propriet‡ valori.</returns>
+    /// <returns>Collezione di propriet√† valori.</returns>
     public GCollection<string, object> GetPropertiesValue(object oObject)
     {
         PropertyDescriptorCollection properties = TypeDescriptor.GetProperties(oObject);

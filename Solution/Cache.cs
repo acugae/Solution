@@ -95,28 +95,39 @@ public class CacheValue<T>
 
     private byte[] SerializeAndCompress(object obj)
     {
+        byte[] raw = Binary.ObjectToByteArray(obj) ?? Array.Empty<byte>();
         using (MemoryStream ms = new MemoryStream())
         {
             using (GZipStream zs = new GZipStream(ms, CompressionMode.Compress, true))
             {
-                //BinaryFormatter bf = new BinaryFormatter();
-                //bf.Serialize(zs, obj);
-                return Binary.ObjectToByteArray(obj);
+                zs.Write(raw, 0, raw.Length);
             }
-            //return ms.ToArray();
+            return ms.ToArray();
         }
     }
 
     private T DecompressAndDeserialize(byte[] data)
     {
+        if (data == null || data.Length == 0)
+            return default;
+        if (data.Length < 2 || data[0] != 0x1f || data[1] != 0x8b)
+            return Binary.ByteArrayToObject<T>(data);
+
         using (MemoryStream ms = new MemoryStream(data))
+        using (GZipStream zs = new GZipStream(ms, CompressionMode.Decompress, true))
+        using (MemoryStream output = new MemoryStream())
         {
-            using (GZipStream zs = new GZipStream(ms, CompressionMode.Decompress, true))
+            byte[] buffer = new byte[81920];
+            long totalRead = 0;
+            int read;
+            while ((read = zs.Read(buffer, 0, buffer.Length)) > 0)
             {
-                //BinaryFormatter bf = new BinaryFormatter();
-                //return (T)bf.Deserialize(zs);
-                return Binary.ByteArrayToObject<T>(data);
+                totalRead += read;
+                if (totalRead > Solution.IO.ZIP.MaxExtractSize)
+                    throw new InvalidOperationException("Cache decompression exceeded maximum allowed size.");
+                output.Write(buffer, 0, read);
             }
+            return Binary.ByteArrayToObject<T>(output.ToArray());
         }
     }
 }
@@ -180,17 +191,25 @@ public class CacheManager
         Init(oXML);
     }
 
+    private static string SafeXPathName(string value)
+    {
+        if (string.IsNullOrEmpty(value) || value.IndexOfAny(['\'', '"', '[', ']', '/', '\\']) >= 0)
+            throw new ArgumentException($"Identificatore XPath non valido: '{value}'");
+        return value;
+    }
+
     private void Init(XML oXML)
     {
         caches = new Dictionary<string, object>();
-        string sTarget = oXML.GetX("/registry/configurations/@target", "preproduzione");
+        string sTarget = SafeXPathName(oXML.GetX("/registry/configurations/@target", "preproduzione"));
         string[] configCaches = oXML.GetX("/registry/configurations/" + sTarget + "/cache/add/@key");
         for (int i = 0; configCaches != null && i < configCaches.Length; i++)
         {
-            string sType = oXML.GetX("/registry/configurations/" + sTarget + "/cache/add[@key='" + configCaches[i] + "']/@type", "");
-            string sPeriod = oXML.GetX("/registry/configurations/" + sTarget + "/cache/add[@key='" + configCaches[i] + "']/@minutesCleanPeriod", "");
-            string sDim = oXML.GetX("/registry/configurations/" + sTarget + "/cache/add[@key='" + configCaches[i] + "']/@byteDimension", "");
-            bool bIsZip = bool.Parse(oXML.GetX("/registry/configurations/" + sTarget + "/cache/add[@key='" + configCaches[i] + "']/@IsZip", "false"));
+            string safeKey = SafeXPathName(configCaches[i]);
+            string sType = oXML.GetX("/registry/configurations/" + sTarget + "/cache/add[@key='" + safeKey + "']/@type", "");
+            string sPeriod = oXML.GetX("/registry/configurations/" + sTarget + "/cache/add[@key='" + safeKey + "']/@minutesCleanPeriod", "");
+            string sDim = oXML.GetX("/registry/configurations/" + sTarget + "/cache/add[@key='" + safeKey + "']/@byteDimension", "");
+            bool bIsZip = bool.Parse(oXML.GetX("/registry/configurations/" + sTarget + "/cache/add[@key='" + safeKey + "']/@IsZip", "false"));
             long bytesDimension = 0;
             bool IsUnit = false;
             if (sDim.ToUpper().Contains("GB"))
@@ -338,7 +357,7 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
     public long Length
     { get; private set; }
     private object _lock = null;
-    private static Timer stateTimer;
+    private Timer stateTimer;
     public bool IsUnit { get; set; }
     public bool IsZip { get; set; }
 
@@ -351,10 +370,13 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
         Length = 0;
         IsUnit = IsUnitSize;
         IsZip = IsZipped;
-        TimerCallback tcb = DeleteExpired;
-        object timerState = new object();
-        Logger.WriteLine("Creating timer of " + TrashPeriod + " minutes for ThrashPeriod", Logger.TipoLog.Debug);
-        stateTimer = new Timer(tcb, timerState, TrashPeriod * 60 * 1000, TrashPeriod * 60 * 1000);
+        if (TrashPeriod > 0)
+        {
+            TimerCallback tcb = DeleteExpired;
+            object timerState = new object();
+            Logger.WriteLine("Creating timer of " + TrashPeriod + " minutes for ThrashPeriod", Logger.TipoLog.Debug);
+            stateTimer = new Timer(tcb, timerState, TrashPeriod * 60 * 1000, TrashPeriod * 60 * 1000);
+        }
     }
 
     public new List<CacheKey> Keys()
@@ -388,7 +410,7 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
                     return;
                 }
             }
-            Logger.WriteLine("StartService:cCache: Adding Value = " + Value.Value.ToString(), Logger.TipoLog.Debug);
+            Logger.WriteLine("StartService:cCache: Adding Value to cache", Logger.TipoLog.Debug);
             base.Add(Key, Value);
             //still newSize computing because after recycler currentSize could be changed
             newSize = CurrentSize + Value.Size;
@@ -445,7 +467,7 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
                     base.Remove(Key);
                     //Add the same key with the new timestamp
                     base.Add(Key, TmpValue);
-                    Logger.WriteLine("StartService:cCache: getting Value = " + Value.ToString(), Logger.TipoLog.Debug);
+                    Logger.WriteLine("StartService:cCache: getting Value from cache", Logger.TipoLog.Debug);
                 }
                 else
                 {

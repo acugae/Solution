@@ -9,6 +9,7 @@ public enum enSQLFIELD { String, Date, Numeric, NumericNull, Bool, None };
 /// </summary>
 public class DataManager : MarshalByRefObject
 {
+    private readonly object _syncRoot = new();
     protected Providers _oProviders = new Providers();
     protected Connections _oCns = null;
     protected Transactions _oTrs = null;
@@ -25,7 +26,7 @@ public class DataManager : MarshalByRefObject
     /// </summary>
     public DataManager()
     {
-        lock (this)
+        lock (_syncRoot)
         {
             try
             {
@@ -106,14 +107,14 @@ public class DataManager : MarshalByRefObject
     /// <param name="strParams">Array di pametri di sostituzione nella forma (nomecampo=tipocampo&amp;nomecampo=tipocampo)</param>
     public DataReader ExecuteReader(string sKeyConnection, string strSQL, string strParams)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             return ExecuteReader(GetCO(sKeyConnection), strSQL, strParams);
         }
     }
     public DataReader ExecuteReader(Connection oConnection, string strSQL, string strParams, int? timeout = null)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             try
             {
@@ -135,14 +136,14 @@ public class DataManager : MarshalByRefObject
     /// <param name="strParams">Array di pametri di sostituzione nella forma (nomecampo=tipocampo&amp;nomecampo=tipocampo)</param>
     public object ExecuteScalar(string sKeyConnection, string strSQL, string strParams)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             return ExecuteScalar(GetCO(sKeyConnection), strSQL, strParams);
         }
     }
     public object ExecuteScalar(Connection oConnection, string strSQL, string strParams, int? timeout = null)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             try
             {
@@ -164,14 +165,14 @@ public class DataManager : MarshalByRefObject
     /// <param name="strParams">Array di pametri di sostituzione nella forma (nomecampo=tipocampo&amp;nomecampo=tipocampo)</param>
     public int ExecuteNonQuery(string sKeyConnection, string strSQL, string strParams)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             return ExecuteNonQuery(GetCO(sKeyConnection), strSQL, strParams);
         }
     }
     public int ExecuteNonQuery(Connection oConnection, string strSQL, string strParams, int? timeout = null)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             Command oCMD = GetCM(oConnection, strSQL, null, timeout);
             oCMD.Parameters.AddParameterString(strParams);
@@ -180,7 +181,7 @@ public class DataManager : MarshalByRefObject
     }
     protected string DBFieldToString(object oField)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             if (oField.GetType() == System.DBNull.Value.GetType())
             {
@@ -319,7 +320,7 @@ public class DataManager : MarshalByRefObject
     /// <returns></returns>
     public Command GetCM(Connection connection, string cmdText, Dictionary<string, object>? parameters = null, int? timeout = null)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             try
             {
@@ -348,7 +349,7 @@ public class DataManager : MarshalByRefObject
     //{
     //    return await Task.Run(() =>
     //    {
-    //        lock (this)
+    //        lock (_syncRoot)
     //        {
     //            try
     //            {
@@ -379,7 +380,7 @@ public class DataManager : MarshalByRefObject
     /// <param name="strSQL">stringa SQL</param>
     public Provider.DataAdapter GetDA(string sKeyConnection, string strSQL, int? timeout = null)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             try
             {
@@ -399,7 +400,7 @@ public class DataManager : MarshalByRefObject
     /// <returns></returns>
     public Provider.DataAdapter GetDA(Connection oConnection, string strSQL, Dictionary<string, object>? parameters = null, int? timeout = null)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             try
             {
@@ -436,7 +437,7 @@ public class DataManager : MarshalByRefObject
     /// <param name="sKeyConnection">Chiave di connessione</param>
     public Connection GetCO(string sKeyConnection)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             return _oCns[sKeyConnection];
         }
@@ -448,7 +449,7 @@ public class DataManager : MarshalByRefObject
     /// <param name="strSQL">Istruzione SQL.</param>
     public DataSet GetDS(string sKeyConnection, string strSQL)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             return GetDS(GetCO(sKeyConnection), strSQL, null);
         }
@@ -456,7 +457,7 @@ public class DataManager : MarshalByRefObject
 
     public DataSet GetDS(Connection oConnection, string strSQL, Dictionary<string, object>? parameters = null)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             DataSet odsTemp = new DataSet();
             GetDA(oConnection, strSQL, parameters).Fill(odsTemp);
@@ -470,7 +471,7 @@ public class DataManager : MarshalByRefObject
     /// <param name="strSQL">Istruzione SQL.</param>
     public DataTable GetDT(string sKeyConnection, string strSQL)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             DataSet oDS = GetDS(sKeyConnection, strSQL);
             if (oDS == null)
@@ -488,7 +489,7 @@ public class DataManager : MarshalByRefObject
     /// <returns></returns>
     public DataTable GetDT(Connection oConnection, string strSQL)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             DataSet oDS = GetDS(oConnection, strSQL);
             if (oDS == null)
@@ -499,7 +500,7 @@ public class DataManager : MarshalByRefObject
         }
     }
     /// <summary>
-    /// Resitituisce un DataSet contenente le informazioni selezionate con l'istruzione specificata. Il DataSet conterr‡ una tabela denominata con il valore di MappingTableName.
+    /// Resitituisce un DataSet contenente le informazioni selezionate con l'istruzione specificata. Il DataSet conterr√† una tabela denominata con il valore di MappingTableName.
     /// </summary>
     /// <param name="sKeyConnection">Chiave di connessione.</param>
     /// <param name="strSQL">Istruzione SQL.</param>
@@ -535,7 +536,7 @@ public class DataManager : MarshalByRefObject
     //    }
     //}
     /// <summary>
-    /// Resitituisce un DataSet contenente le informazioni selezionate con l'istruzione specificata. Il DataSet conterr‡ una tabela denominata con il valore di MappingTableName.
+    /// Resitituisce un DataSet contenente le informazioni selezionate con l'istruzione specificata. Il DataSet conterr√† una tabela denominata con il valore di MappingTableName.
     /// </summary>
     /// <param name="sKeyConnection">Chiave di connessione.</param>
     /// <param name="strSQL">Istruzione SQL.</param>
@@ -543,14 +544,14 @@ public class DataManager : MarshalByRefObject
     /// <param name="dsSource">DataSet a cui aggiungere la tabella.</param>
     public DataSet GetDS(string sKeyConnection, string strSQL, string MappingTableName, DataSet dsSource = null)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             return GetDS(GetCO(sKeyConnection), strSQL, MappingTableName, dsSource);
         }
     }
     public DataSet GetDS(Connection oConnection, string strSQL, string MappingTableName, DataSet dsSource, Dictionary<string, object>? parameters = null)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             dsSource ??= new DataSet(MappingTableName);
             GetDA(oConnection, strSQL, parameters).Fill(dsSource, MappingTableName);
@@ -561,7 +562,7 @@ public class DataManager : MarshalByRefObject
 
     protected string FieldToString(object value, enSQLFIELD tField)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             string cTMP = "";
 
@@ -736,14 +737,14 @@ public class DataManager : MarshalByRefObject
     //}
     public DataTable? InvokeStore(Connection oConnection, string sNameStore, Parameter[]? oParams = null)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             return Invoke(oConnection, sNameStore, oParams, CommandType.StoredProcedure);
         }
     }
     public DataTable? Invoke(Connection oConnection, string sNameStore, Parameter[]? oParams = null, CommandType commandType = CommandType.Text, int? timeout = null)
     {
-        lock (this)
+        lock (_syncRoot)
         {
             Command oCM = GetCM(oConnection, sNameStore, null, timeout);
             oCM.CommandType = commandType; // CommandType.StoredProcedure;

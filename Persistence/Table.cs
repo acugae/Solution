@@ -12,6 +12,14 @@ public class Table
             throw new FormatException("Valore numerico non valido: '" + oValue + "'.");
         return sValue;
     }
+
+    internal static void ValidateWhereClause(string? sWhere)
+    {
+        if (string.IsNullOrEmpty(sWhere))
+            return;
+        if (sWhere.Contains(';') || sWhere.Contains("--") || sWhere.Contains("/*") || sWhere.Contains("*/"))
+            throw new ArgumentException("Clausola WHERE non valida: non sono ammessi ';' o commenti SQL.", nameof(sWhere));
+    }
     private DataManager _oData = null;
     private string _strNameTable = "";
     private Collection _oFields = new Collection();
@@ -139,7 +147,7 @@ public class Table
         try
         {
             DataSet ds = null;
-            ds = _oData.GetDS(sKeyConnection, "SELECT " + soFileds + " FROM " + _strNameTable);
+            ds = _oData.GetDS(sKeyConnection, "SELECT " + soFileds + " FROM " + SqlIdentifier.Safe(_strNameTable));
             if (ds == null)
                 return null;
             if (ds.Tables.Count == 0)
@@ -174,7 +182,7 @@ public class Table
             }
             //
             DataSet ds = null;
-            string strSQL = "SELECT " + soFileds + " FROM " + _strNameTable + " WHERE ";
+            string strSQL = "SELECT " + soFileds + " FROM " + SqlIdentifier.Safe(_strNameTable) + " WHERE ";
             strSQL += _generateAND(_oFieldsKey, oValuesKey);
             ds = _oData.GetDS(sKeyConnection, strSQL);
             if (ds == null || ds.Tables == null || ds.Tables.Count == 0 || ds.Tables[0].Rows.Count == 0)
@@ -199,9 +207,10 @@ public class Table
         {
             if (sWhere.Trim().Length == 0)
                 return Get(sKeyConnection);
+            ValidateWhereClause(sWhere);
             //
             DataSet ds = null;
-            ds = _oData.GetDS(sKeyConnection, "SELECT " + soFileds + " FROM " + _strNameTable + " WHERE " + sWhere);
+            ds = _oData.GetDS(sKeyConnection, "SELECT " + soFileds + " FROM " + SqlIdentifier.Safe(_strNameTable) + " WHERE " + sWhere);
             if (ds == null)
                 return null;
             if (ds.Tables.Count == 0)
@@ -229,8 +238,9 @@ public class Table
     {
         try
         {
+            ValidateWhereClause(sWhere);
             DataSet ds = null;
-            string strSQL = "SELECT " + soFileds + " FROM " + _strNameTable + " WHERE ";
+            string strSQL = "SELECT " + soFileds + " FROM " + SqlIdentifier.Safe(_strNameTable) + " WHERE ";
             strSQL += (sWhere.Length > 0) ? " ( " + sWhere + " ) " + ((svValueHorizontal.Length > 0) ? " AND " : " ") : "";
             if (svValueHorizontal.Length > 0)
                 strSQL += " ( " + _generateOR(sNameFieldTarget, svValueHorizontal) + " ) ";
@@ -496,7 +506,7 @@ public class Table
         try
         {
             DataSet ds = null;
-            string strSQL = "SELECT " + strNameField + " FROM " + _strNameTable + " WHERE ";
+            string strSQL = "SELECT " + SqlIdentifier.Safe(strNameField) + " FROM " + SqlIdentifier.Safe(_strNameTable) + " WHERE ";
             strSQL += _generateAND(_oFieldsKey, oValuesKey);
             ds = _oData.GetDS(sKey, strSQL);
             if (ds == null)
@@ -524,7 +534,7 @@ public class Table
         try
         {
             DataSet ds = null;
-            ds = _oData.GetDS(sKeyConnection, "SELECT " + soFileds + " FROM " + _strNameTable + " WHERE " + strNameField + " = " + GetSQLCampo(oValue, (string)_oFields[strNameField]));
+            ds = _oData.GetDS(sKeyConnection, "SELECT " + soFileds + " FROM " + SqlIdentifier.Safe(_strNameTable) + " WHERE " + SqlIdentifier.Safe(strNameField) + " = " + GetSQLCampo(oValue, (string)_oFields[strNameField]));
             if (ds == null)
                 return null;
             if (ds.Tables.Count == 0)
@@ -552,15 +562,16 @@ public class Table
         {
             if (strNameFields.Length != oValues.Length)
                 return null;
-            string strSQL = "SELECT " + soFileds + " FROM " + _strNameTable + " ";
+            string strSQL = "SELECT " + soFileds + " FROM " + SqlIdentifier.Safe(_strNameTable) + " ";
             strSQL += " WHERE ";
             for (int i = 0; i < strNameFields.Length; i++)
             {
+                string safeField = SqlIdentifier.Safe(strNameFields[i]);
                 string sType = (string)this._oFields[strNameFields[i]];
                 if (sType.ToLower().Equals("string"))
-                    strSQL += " " + strNameFields[i] + " LIKE " + GetSQLCampo(oValues[i], sType);
+                    strSQL += " " + safeField + " LIKE " + GetSQLCampo(oValues[i], sType);
                 else
-                    strSQL += " " + strNameFields[i] + " = " + GetSQLCampo(oValues[i], sType);
+                    strSQL += " " + safeField + " = " + GetSQLCampo(oValues[i], sType);
                 if (i < strNameFields.Length - 1)
                     strSQL += " AND ";
             }
@@ -589,11 +600,11 @@ public class Table
         {
             string strCampo = "";
             if (oValue.GetType() == Type.GetType("System.Int64"))
-                strCampo += " " + oValue.ToString() + " ";
+                strCampo += " " + NumericLiteral(oValue) + " ";
             if (oValue.GetType() == Type.GetType("System.Int32"))
-                strCampo += " " + oValue.ToString() + " ";
+                strCampo += " " + NumericLiteral(oValue) + " ";
             if (oValue.GetType() == Type.GetType("System.String"))
-                strCampo += "'" + oValue.ToString().Replace("'", "''") + "'";
+                strCampo += "'" + oValue.ToString().Replace("\0", "").Replace("'", "''") + "'";
             if (oValue.GetType() == Type.GetType("System.DateTime"))
             {
                 int dd = DateTime.Parse(oValue.ToString()).Day;
@@ -607,9 +618,9 @@ public class Table
                 strCampo += "'" + yyyy + "-" + mm.ToString().PadLeft(2, '0') + "-" + dd.ToString().PadLeft(2, '0') + " " + hh.ToString().PadLeft(2, '0') + ":" + min.ToString().PadLeft(2, '0') + ":" + ss.ToString().PadLeft(2, '0') + "'";
             }
             if (oValue.GetType() == Type.GetType("System.Double"))
-                strCampo += " " + oValue.ToString().Replace(",", ".") + " ";
+                strCampo += " " + NumericLiteral(oValue) + " ";
             if (oValue.GetType() == Type.GetType("System.Boolean"))
-                strCampo += "'" + oValue.ToString().Replace("'", "''") + "'";
+                strCampo += "'" + (Convert.ToBoolean(oValue) ? "True" : "False") + "'";
             if (oValue.GetType() == Type.GetType("System.Byte[]"))
             {
                 strCampo += " 0x" + oReflection.BinaryToHex((byte[])oValue) + " ";
@@ -666,7 +677,7 @@ public class Table
             if (sType.Equals("int") || sType.Equals("smallint"))
                 strCampo += " " + NumericLiteral(oValue) + " ";
             if (sType.Equals("string") || sType.Equals("text") || sType.Equals("ntext") || sType.Equals("varchar") || sType.Equals("nvarchar"))
-                strCampo += "'" + oValue.ToString().Replace("'", "''") + "'";
+                strCampo += "'" + oValue.ToString().Replace("\0", "").Replace("'", "''") + "'";
             if (sType.Equals("date") || sType.Equals("datetime"))
             {
                 int dd = DateTime.Parse(oValue.ToString()).Day;
@@ -682,7 +693,7 @@ public class Table
             if (sType.Equals("double") || sType.Equals("real") || sType.Equals("numeric"))
                 strCampo += " " + NumericLiteral(oValue) + " ";
             if (sType.Equals("boolean") || sType.Equals("bool") || sType.Equals("bit"))
-                strCampo += "'" + oValue.ToString().Replace("'", "''") + "'";
+                strCampo += "'" + oValue.ToString().Replace("\0", "").Replace("'", "''") + "'";
             if (sType.Equals("byte") || sType.Equals("binary") || sType.Equals("image") || sType.Equals("blob"))
             {
                 strCampo += " 0x" + oReflection.BinaryToHex((byte[])oValue) + " ";
@@ -850,7 +861,7 @@ public class Table
             DataSet ds;
             string strSQL = "SELECT " + soFileds + " FROM " + _strNameTable + " WHERE ";
             //
-            // Quando uno dei campi chiave è null è possibile
+            // Quando uno dei campi chiave Ã¨ null Ã¨ possibile
             // fare solo l'inserimento.
             if (IsKeyNull(oValues))
             {
@@ -963,7 +974,7 @@ public class Table
                 continue;
             if (strSQL.Trim().Length > 0)
                 strSQL += " " + sSeparator.Trim() + " ";
-            strSQL += " " + ovFileds.GetKey(i) + " = " + GetSQLCampo(oValoreCampi.GetValue(i), (string)ovFileds.GetValue(i));
+            strSQL += " " + SqlIdentifier.Safe((string)ovFileds.GetKey(i)) + " = " + GetSQLCampo(oValoreCampi.GetValue(i), (string)ovFileds.GetValue(i));
         }
         //
         return strSQL;
@@ -982,7 +993,7 @@ public class Table
                 continue;
             if (strSQL.Trim().Length > 0)
                 strSQL += " " + sSeparator.Trim() + " ";
-            strSQL += " " + ovFileds.GetKey(i) + " ";
+            strSQL += " " + SqlIdentifier.Safe((string)ovFileds.GetKey(i)) + " ";
         }
         //
         return strSQL;
@@ -1036,7 +1047,7 @@ public class Table
     }
     //
     // Questa funzione prende in ingresso tutti i valori di un record
-    // e restituisce i vero se uno dei campi chiave è null
+    // e restituisce i vero se uno dei campi chiave Ã¨ null
     private bool IsKeyNull(object[] oValoreCampi)
     {
         for (int i = 0; i < _oFieldsKey.Count; i++)
@@ -1147,7 +1158,7 @@ public class Table
         string strSQL = "";
         for (int i = 0; i < strNomeCampi.Length; i++)
         {
-            strSQL += strNomeCampi[i];
+            strSQL += SqlIdentifier.Safe(strNomeCampi[i]);
             if (i < strNomeCampi.Length - 1)
                 strSQL += sSymbol;
         }
@@ -1159,7 +1170,7 @@ public class Table
         string strSQL = "";
         for (int i = 0; i < oFields.Count; i++)
         {
-            strSQL += oFields.GetKey(i);
+            strSQL += SqlIdentifier.Safe((string)oFields.GetKey(i));
             if (i < oFields.Count - 1)
                 strSQL += sSymbol;
         }
@@ -1301,13 +1312,15 @@ public class Table1N
         {
             if (sWhere.Trim().Length == 0)
                 return Get();
+            Table.ValidateWhereClause(sWhere);
             //
             DataSet ds = null;
             string sSQL = "";
             sSQL = "SELECT " + _generateKeyVIRGULE(_oTParent.Fields) + ", " + _generateKeyVIRGULE(_oTChild.Fields);
-            sSQL += " FROM " + _oTParent.TableName + " JOIN " + _oTChild.TableName;
+            sSQL += " FROM " + SqlIdentifier.Safe(_oTParent.TableName) + " JOIN " + SqlIdentifier.Safe(_oTChild.TableName);
             sSQL += " ON " + _generateAND(_oRelation);
             sSQL += " WHERE " + sWhere;
+            ds = _oBus.GetDS(_strKey, sSQL);
             //
             if (ds == null)
                 return null;
@@ -1330,13 +1343,15 @@ public class Table1N
         {
             if (sWhere.Trim().Length == 0)
                 return Get();
+            Table.ValidateWhereClause(sWhere);
             //
             DataSet ds = null;
             string sSQL = "";
             sSQL = "SELECT " + _generateKeyVIRGULE(_oTParent.Fields) + ", " + _generateKeyVIRGULE(_oTChild.Fields);
-            sSQL += " FROM " + _oTParent.TableName + " JOIN " + _oTChild.TableName;
+            sSQL += " FROM " + SqlIdentifier.Safe(_oTParent.TableName) + " JOIN " + SqlIdentifier.Safe(_oTChild.TableName);
             sSQL += " ON " + _generateAND(_oRelation);
             sSQL += " WHERE " + sWhere;
+            ds = _oBus.GetDS(_strKey, sSQL);
             //
             if (ds == null)
                 return null;
@@ -1370,9 +1385,9 @@ public class Table1N
         DataSet ds = null;
         string sSQL = "";
         sSQL = "SELECT " + _generateKeyVIRGULE(_oTParent.Fields) + ", " + _generateKeyVIRGULE(_oTChild.Fields);
-        sSQL += " FROM " + _oTParent.TableName + " JOIN " + _oTChild.TableName;
+        sSQL += " FROM " + SqlIdentifier.Safe(_oTParent.TableName) + " JOIN " + SqlIdentifier.Safe(_oTChild.TableName);
         sSQL += " ON " + _generateAND(_oRelation);
-        sSQL += " WHERE " + strNameField + " = " + GetSQLCampo(oValue);
+        sSQL += " WHERE " + SqlIdentifier.Safe(strNameField) + " = " + GetSQLCampo(oValue);
         ds = _oBus.GetDS(_strKey, sSQL);
         //
         if (ds == null)
@@ -1394,12 +1409,12 @@ public class Table1N
         DataSet ds = null;
         string sSQL = "";
         sSQL = "SELECT " + _generateKeyVIRGULE(_oTParent.Fields) + ", " + _generateKeyVIRGULE(_oTChild.Fields);
-        sSQL += " FROM " + _oTParent.TableName + " JOIN " + _oTChild.TableName;
+        sSQL += " FROM " + SqlIdentifier.Safe(_oTParent.TableName) + " JOIN " + SqlIdentifier.Safe(_oTChild.TableName);
         sSQL += " ON " + _generateAND(_oRelation);
         sSQL += " WHERE ";
         for (int i = 0; i < strNameFields.Length; i++)
         {
-            sSQL += " " + strNameFields[i] + " = " + GetSQLCampo(oValues[i]);
+            sSQL += " " + SqlIdentifier.Safe(strNameFields[i]) + " = " + GetSQLCampo(oValues[i]);
             if (i < strNameFields.Length - 1)
                 sSQL += " AND ";
         }
@@ -1426,7 +1441,7 @@ public class Table1N
             if (oValue.GetType() == Type.GetType("System.Int32"))
                 strCampo += " " + oValue.ToString() + " ";
             if (oValue.GetType() == Type.GetType("System.String"))
-                strCampo += "'" + oValue.ToString().Replace("'", "''") + "'";
+                strCampo += "'" + oValue.ToString().Replace("\0", "").Replace("'", "''") + "'";
             if (oValue.GetType() == Type.GetType("System.DateTime"))
             {
                 int dd = DateTime.Parse(oValue.ToString()).Day;

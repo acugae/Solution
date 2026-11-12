@@ -37,7 +37,16 @@ public class ZIP
             using (GZipStream zs = new GZipStream(ms, CompressionMode.Decompress, leaveOpen))
             using (MemoryStream output = new MemoryStream())
             {
-                zs.CopyTo(output);
+                byte[] buffer = new byte[81920];
+                long totalRead = 0;
+                int read;
+                while ((read = zs.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    totalRead += read;
+                    if (totalRead > MaxExtractSize)
+                        throw new InvalidOperationException($"GZip bomb protection: decompressed content exceeds size limit ({MaxExtractSize / (1024 * 1024)}MB)");
+                    output.Write(buffer, 0, read);
+                }
                 return Binary.ByteArrayToObject<object>(output.ToArray());
             }
         }
@@ -45,9 +54,9 @@ public class ZIP
 
     public byte[] Zip(Dictionary<string, byte[]> files)
     {
-        var outputMemStream = new MemoryStream();
-
-        var zipStream = new ZipOutputStream(outputMemStream);
+        using var outputMemStream = new MemoryStream();
+        using var zipStream = new ZipOutputStream(outputMemStream);
+        zipStream.IsStreamOwner = false;
 
         zipStream.SetLevel(9);
         foreach (var file in files)
@@ -87,7 +96,7 @@ public class ZIP
                 // Protezione Path Traversal: verifica nome file
                 string entryName = currentEntry.Name;
                 // ".." è vietato come segmento del percorso (un nome come "a..b.txt" è valido)
-                if (Array.IndexOf(entryName.Split('/', '\\'), "..") >= 0 || Path.IsPathRooted(entryName))
+                if (Array.IndexOf(entryName.Split('/', '\\'), "..") >= 0 || Path.IsPathRooted(entryName) || entryName.Contains(':'))
                     throw new InvalidOperationException($"Zip entry contains invalid path: {entryName}");
                 
                 // Legge l'intero contenuto (una sola Read può restituire meno byte del richiesto)
@@ -106,7 +115,7 @@ public class ZIP
                     }
                     data = entryStream.ToArray();
                 }
-                oResult.Add(currentEntry.Name, data);
+                oResult[currentEntry.Name] = data;
             }
         }
         return oResult;

@@ -77,7 +77,7 @@ public class Trace
     }
 
     /// <summary>
-    /// Scrive un testo specficato se la condizione è True.
+    /// Scrive un testo specficato se la condizione Ã¨ True.
     /// </summary>
     public static void WriteLine(bool condition, string sMessage)
     {
@@ -108,7 +108,7 @@ public class Trace
         System.Diagnostics.Trace.Flush();
     }
     /// <summary>
-    /// Scrive il testo specficato se il Livello è inferiore a quello scelto.
+    /// Scrive il testo specficato se il Livello Ã¨ inferiore a quello scelto.
     /// </summary>
     public static void WriteLine(string sMessage, TraceLevel oTraceLevel)
     {
@@ -126,7 +126,7 @@ public class Trace
         WriteLine(sMessage, intLevel);
     }
     /// <summary>
-    /// Scrive il testo specficato se il Livello è inferiore a quello scelto.
+    /// Scrive il testo specficato se il Livello Ã¨ inferiore a quello scelto.
     /// </summary>
     public static void WriteLine(string sMessage, int intLevel)
     {
@@ -139,7 +139,7 @@ public class Trace
         }
     }
     /// <summary>
-    /// Scrive il testo specficato se la condizione è True e il Livello è inferiore a quello scelto.
+    /// Scrive il testo specficato se la condizione Ã¨ True e il Livello Ã¨ inferiore a quello scelto.
     /// </summary>
     public static void WriteLine(bool condition, string sMessage, int intLevel)
     {

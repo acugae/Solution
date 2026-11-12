@@ -142,6 +142,63 @@ public class Commander : GCollection<string, string>
         return ExecuteSafe(this._oData.GetCO(sKey), sSQLName, oParams);
     }
 
+    private static bool IsInsideStringOrComment(string sSQL, int targetPos, out bool isInsideComment)
+    {
+        bool inSingleQuote = false;
+        bool inLineComment = false;
+        bool inBlockComment = false;
+
+        for (int j = 0; j < targetPos; j++)
+        {
+            char c = sSQL[j];
+            char next = (j + 1 < sSQL.Length) ? sSQL[j + 1] : '\0';
+
+            if (inLineComment)
+            {
+                if (c == '\n' || c == '\r')
+                    inLineComment = false;
+            }
+            else if (inBlockComment)
+            {
+                if (c == '*' && next == '/')
+                {
+                    inBlockComment = false;
+                    j++;
+                }
+            }
+            else if (inSingleQuote)
+            {
+                if (c == '\'')
+                {
+                    if (next == '\'' && j + 1 < targetPos)
+                        j++; // escaped quote ''
+                    else
+                        inSingleQuote = false;
+                }
+            }
+            else
+            {
+                if (c == '-' && next == '-')
+                {
+                    inLineComment = true;
+                    j++;
+                }
+                else if (c == '/' && next == '*')
+                {
+                    inBlockComment = true;
+                    j++;
+                }
+                else if (c == '\'')
+                {
+                    inSingleQuote = true;
+                }
+            }
+        }
+
+        isInsideComment = inLineComment || inBlockComment;
+        return inSingleQuote;
+    }
+
     public DataTable ExecuteSafe(Connection oConn, string sSQLName, Dictionary<string, object> oParams)
     {
         if (!ContainsKey(sSQLName))
@@ -158,18 +215,17 @@ public class Commander : GCollection<string, string>
             while ((iPos = sSQL.IndexOf(sToken, StringComparison.Ordinal)) >= 0)
             {
                 int iEnd = iPos + sToken.Length;
-                int iQuotes = 0;
-                for (int j = 0; j < iPos; j++)
+                bool inQuote = IsInsideStringOrComment(sSQL, iPos, out bool inComment);
+                if (inComment)
                 {
-                    if (sSQL[j] == '\'')
-                        iQuotes++;
+                    throw new NotSupportedException("Commander.ExecuteSafe: il segnaposto " + sToken + " si trova dentro un commento SQL.");
                 }
-                if (iQuotes % 2 == 0)
+                if (!inQuote)
                 {
                     // segnaposto fuori da un testo tra apici
                     sSQL = sSQL.Substring(0, iPos) + sName + sSQL.Substring(iEnd);
                 }
-                else if (sSQL[iPos - 1] == '\'' && iEnd < sSQL.Length && sSQL[iEnd] == '\'')
+                else if (iPos > 0 && sSQL[iPos - 1] == '\'' && iEnd < sSQL.Length && sSQL[iEnd] == '\'')
                 {
                     // '#nome#': gli apici fanno parte del segnaposto
                     sSQL = sSQL.Substring(0, iPos - 1) + sName + sSQL.Substring(iEnd + 1);

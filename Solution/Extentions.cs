@@ -17,7 +17,7 @@ public static class HttpContextExtensions
         }
         catch (Exception ex)
         {
-            return "{ \"errormessage\" : \"" + ex.Message.Replace("'", "''") + "\"  }";
+            return JsonConvert.SerializeObject(new { errormessage = ex.Message });
         }
     }
 }
@@ -254,7 +254,12 @@ public static class RequestExtensions
 public static class StringExtensions
 {
     public static T Deserialize<T>(this string _string) { return JsonConvert.DeserializeObject<T>(_string); }
-    public static T Deserialize<T>(string sJson, JsonSerializerSettings oSetting) { return JsonConvert.DeserializeObject<T>(sJson, oSetting); }
+    public static T Deserialize<T>(string sJson, JsonSerializerSettings oSetting)
+    {
+        if (oSetting != null && oSetting.TypeNameHandling != TypeNameHandling.None && oSetting.SerializationBinder == null)
+            throw new InvalidOperationException("TypeNameHandling diverso da None richiede un SerializationBinder esplicito per sicurezza.");
+        return JsonConvert.DeserializeObject<T>(sJson, oSetting);
+    }
     public static T Deserialize<T>(string sJson, params JsonConverter[] converter) { return JsonConvert.DeserializeObject<T>(sJson, converter); }
     public static string[] GetIntoTag(this string _string, string sTagBegin, string sTagEnd)
     {

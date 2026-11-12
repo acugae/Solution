@@ -4,6 +4,13 @@ using System.IdentityModel.Tokens.Jwt;
 namespace Solution.Security;
 public class JWT
 {
+    private static readonly string[] _allowedAlgorithms =
+    [
+        SecurityAlgorithms.HmacSha256,
+        SecurityAlgorithms.HmacSha384,
+        SecurityAlgorithms.HmacSha512
+    ];
+
     /// <summary>
     /// Legge e valida un token JWT (validazione base per retrocompatibilità).
     /// Per una validazione completa usare ReadSecure().
@@ -17,7 +24,8 @@ public class JWT
             ValidateIssuer = false,
             ValidateAudience = false,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Key)),
-            ValidateIssuerSigningKey = false,
+            ValidateIssuerSigningKey = true,
+            ValidAlgorithms = _allowedAlgorithms,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
@@ -30,14 +38,16 @@ public class JWT
     public static Claim[] Read(string Key, string sToken, TokenValidationParameters validationParameters)
     {
         ArgumentNullException.ThrowIfNull(validationParameters);
+        var effectiveParameters = validationParameters.Clone();
         // La chiave passata viene usata se i parametri non ne indicano già una (prima veniva ignorata).
-        if (!string.IsNullOrEmpty(Key) && validationParameters.IssuerSigningKey == null
-            && validationParameters.IssuerSigningKeys == null && validationParameters.IssuerSigningKeyResolver == null)
+        if (!string.IsNullOrEmpty(Key) && effectiveParameters.IssuerSigningKey == null
+            && effectiveParameters.IssuerSigningKeys == null && effectiveParameters.IssuerSigningKeyResolver == null)
         {
-            validationParameters.IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Key));
+            effectiveParameters.IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Key));
+            effectiveParameters.ValidateIssuerSigningKey = true;
         }
         var tokenHandler = new JwtSecurityTokenHandler();
-        tokenHandler.ValidateToken(sToken, validationParameters, out SecurityToken validatedToken);
+        tokenHandler.ValidateToken(sToken, effectiveParameters, out SecurityToken validatedToken);
         var jwtToken = (JwtSecurityToken)validatedToken;
         return jwtToken.Claims.ToArray();
     }
@@ -71,6 +81,7 @@ public class JWT
             ValidAudience = validAudience,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
             ValidateIssuerSigningKey = true,  // SEMPRE validare la firma
+            ValidAlgorithms = _allowedAlgorithms,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.FromMinutes(1) // Tolleranza minima per clock skew
         };

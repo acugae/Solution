@@ -155,7 +155,7 @@ public class Mapper
         }
     }
     /// <summary>
-    /// Filtra le inforazioni con le propriet‡ dell'oggetto specificato per effettuare un filtro sulla tabella mappata.
+    /// Filtra le inforazioni con le propriet√† dell'oggetto specificato per effettuare un filtro sulla tabella mappata.
     /// </summary>
     /// <param name="sKeyConnection">Chiave di connessione</param>
     /// <param name="oObject">Oggetto </param>
@@ -169,7 +169,7 @@ public class Mapper
         return oT.GetObject(sKeyConnection, oObject);
     }
     /// <summary>
-    /// Filtra le inforazioni con le propriet‡ dell'oggetto specificato per effettuare un filtro sulla tabella mappata.
+    /// Filtra le inforazioni con le propriet√† dell'oggetto specificato per effettuare un filtro sulla tabella mappata.
     /// </summary>
     /// <param name="sKeyConnection">Chiave di connessione</param>
     /// <param name="oObject"></param>

@@ -29,6 +29,7 @@ public class SymmetricCryptAlgorithm
     // Flag per abilitare modalità sicura (IV random prepended al ciphertext)
     private bool _useSecureMode = false;
     private const int PBKDF2_ITERATIONS = 100000;
+    private readonly object _syncRoot = new();
 
     private ServiceProviderEnum mAlgorithm;
     private SymmetricAlgorithm mCryptoService;
@@ -155,35 +156,11 @@ public class SymmetricCryptAlgorithm
     [Obsolete("Cifratura legacy: IV fisso e chiave non derivata. Per i nuovi dati usare EncryptAuthenticated (formato diverso: i dati esistenti restano leggibili solo con Decrypt).")]
     public virtual string Encrypt(string plainText, string key)
     {
+        if (_useSecureMode)
+            return EncryptSecure(plainText, key);
+
         byte[] plainByte = ASCIIEncoding.ASCII.GetBytes(plainText);
         return Convert.ToBase64String(Encrypt(plainByte, key));
-        /*
-        byte[] keyByte = GetLegalKey(key);
-
-        // Set private key
-        mCryptoService.Key = keyByte;
-        SetLegalIV();
-
-        // Encryptor object
-        ICryptoTransform cryptoTransform = mCryptoService.CreateEncryptor();
-
-        // Memory stream object
-        MemoryStream ms = new MemoryStream();
-
-        // Crpto stream object
-        CryptoStream cs = new CryptoStream(ms, cryptoTransform, CryptoStreamMode.Write);
-
-        // Write encrypted byte to memory stream
-        cs.Write(plainByte, 0, plainByte.Length);
-        cs.FlushFinalBlock();
-
-        // Get the encrypted byte length
-        //byte[] cryptoByte = ms.ToArray();
-
-        // Convert into base 64 to enable result to be used in Xml
-        //return Convert.ToBase64String(cryptoByte, 0, cryptoByte.GetLength(0));
-        return Convert.ToBase64String(ms.ToArray());
-        */
     }
     /// <summary>
     /// Crittografa l'array di byte specificato, con la chiave "key"
@@ -194,26 +171,33 @@ public class SymmetricCryptAlgorithm
     [Obsolete("Cifratura legacy: IV fisso e chiave non derivata. Per i nuovi dati usare EncryptAuthenticated (formato diverso: i dati esistenti restano leggibili solo con Decrypt).")]
     public virtual byte[] Encrypt(byte[] plainByte, string key)
     {
-        byte[] keyByte = GetLegalKey(key);
+        if (_useSecureMode)
+            return EncryptSecure(plainByte, key);
 
-        // Set private key
-        mCryptoService.Key = keyByte;
-        SetLegalIV();
+        lock (_syncRoot)
+        {
+            byte[] keyByte = GetLegalKey(key);
 
-        // Encryptor object
-        ICryptoTransform cryptoTransform = mCryptoService.CreateEncryptor();
+            // Set private key
+            mCryptoService.Key = keyByte;
+            SetLegalIV();
 
-        // Memory stream object
-        MemoryStream ms = new MemoryStream();
+            // Encryptor object
+            using ICryptoTransform cryptoTransform = mCryptoService.CreateEncryptor();
 
-        // Crpto stream object
-        CryptoStream cs = new CryptoStream(ms, cryptoTransform, CryptoStreamMode.Write);
+            // Memory stream object
+            using MemoryStream ms = new MemoryStream();
 
-        // Write encrypted byte to memory stream
-        cs.Write(plainByte, 0, plainByte.Length);
-        cs.FlushFinalBlock();
+            // Crpto stream object
+            using (CryptoStream cs = new CryptoStream(ms, cryptoTransform, CryptoStreamMode.Write))
+            {
+                // Write encrypted byte to memory stream
+                cs.Write(plainByte, 0, plainByte.Length);
+                cs.FlushFinalBlock();
+            }
 
-        return ms.ToArray();
+            return ms.ToArray();
+        }
     }
 
     /// <summary>
@@ -225,31 +209,41 @@ public class SymmetricCryptAlgorithm
     [Obsolete("Cifratura legacy: IV fisso e chiave non derivata. Usare solo per leggere dati cifrati con Encrypt; per i nuovi dati usare EncryptAuthenticated/DecryptAuthenticated.")]
     public virtual string Decrypt(string cryptoText, string key)
     {
-        // Convert from base 64 string to bytes
-        byte[] cryptoByte = Convert.FromBase64String(cryptoText);
-        byte[] keyByte = GetLegalKey(key);
-
-        // Set private key
-        mCryptoService.Key = keyByte;
-        SetLegalIV();
-
-        // Decryptor object
-        ICryptoTransform cryptoTransform = mCryptoService.CreateDecryptor();
-        try
+        if (_useSecureMode)
         {
-            // Memory stream object
-            MemoryStream ms = new MemoryStream(cryptoByte, 0, cryptoByte.Length);
-
-            // Crpto stream object
-            CryptoStream cs = new CryptoStream(ms, cryptoTransform, CryptoStreamMode.Read);
-
-            // Get the result from the Crypto stream
-            StreamReader sr = new StreamReader(cs);
-            return sr.ReadToEnd();
+            try
+            {
+                return DecryptSecure(cryptoText, key);
+            }
+            catch
+            {
+                return null;
+            }
         }
-        catch
+
+        lock (_syncRoot)
         {
-            return null;
+            try
+            {
+                // Convert from base 64 string to bytes
+                byte[] cryptoByte = Convert.FromBase64String(cryptoText);
+                byte[] keyByte = GetLegalKey(key);
+
+                // Set private key
+                mCryptoService.Key = keyByte;
+                SetLegalIV();
+
+                // Decryptor object
+                using ICryptoTransform cryptoTransform = mCryptoService.CreateDecryptor();
+                using MemoryStream ms = new MemoryStream(cryptoByte, 0, cryptoByte.Length);
+                using CryptoStream cs = new CryptoStream(ms, cryptoTransform, CryptoStreamMode.Read);
+                using StreamReader sr = new StreamReader(cs);
+                return sr.ReadToEnd();
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 
@@ -262,29 +256,40 @@ public class SymmetricCryptAlgorithm
     [Obsolete("Cifratura legacy: IV fisso e chiave non derivata. Usare solo per leggere dati cifrati con Encrypt; per i nuovi dati usare EncryptAuthenticated/DecryptAuthenticated.")]
     public virtual byte[] Decrypt(byte[] cryptoByte, string key)
     {
-        byte[] keyByte = GetLegalKey(key);
-
-        // Set private key
-        mCryptoService.Key = keyByte;
-        SetLegalIV();
-
-        // Decryptor object
-        ICryptoTransform cryptoTransform = mCryptoService.CreateDecryptor();
-        try
+        if (_useSecureMode)
         {
-            // Memory stream object
-            MemoryStream ms = new MemoryStream(cryptoByte, 0, cryptoByte.Length);
-
-            // Crpto stream object
-            CryptoStream cs = new CryptoStream(ms, cryptoTransform, CryptoStreamMode.Read);
-
-            byte[] fromEncrypt = new byte[cryptoByte.Length];
-            cs.Read(fromEncrypt, 0, fromEncrypt.Length);
-            return fromEncrypt;
+            try
+            {
+                return DecryptSecure(cryptoByte, key);
+            }
+            catch
+            {
+                return null;
+            }
         }
-        catch
+
+        lock (_syncRoot)
         {
-            return null;
+            try
+            {
+                byte[] keyByte = GetLegalKey(key);
+
+                // Set private key
+                mCryptoService.Key = keyByte;
+                SetLegalIV();
+
+                // Decryptor object
+                using ICryptoTransform cryptoTransform = mCryptoService.CreateDecryptor();
+                using MemoryStream ms = new MemoryStream(cryptoByte, 0, cryptoByte.Length);
+                using CryptoStream cs = new CryptoStream(ms, cryptoTransform, CryptoStreamMode.Read);
+                using MemoryStream output = new MemoryStream();
+                cs.CopyTo(output);
+                return output.ToArray();
+            }
+            catch
+            {
+                return null;
+            }
         }
     }
 
@@ -478,35 +483,45 @@ public class SymmetricCryptAlgorithm
             throw new ArgumentNullException(nameof(plainBytes));
         if (string.IsNullOrEmpty(password))
             throw new ArgumentNullException(nameof(password));
-        
-        // Generate random salt and IV
-        byte[] salt = new byte[16];
-        byte[] iv = new byte[mCryptoService.BlockSize / 8];
-        using (var rng = RandomNumberGenerator.Create())
+
+        lock (_syncRoot)
         {
-            rng.GetBytes(salt);
-            rng.GetBytes(iv);
+            // Generate random salt and IV
+            byte[] salt = new byte[16];
+            byte[] iv = new byte[mCryptoService.BlockSize / 8];
+            using (var rng = RandomNumberGenerator.Create())
+            {
+                rng.GetBytes(salt);
+                rng.GetBytes(iv);
+            }
+
+            // Derive key using PBKDF2
+            using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, PBKDF2_ITERATIONS, HashAlgorithmName.SHA256);
+            byte[] key = pbkdf2.GetBytes(mCryptoService.KeySize / 8);
+            try
+            {
+                mCryptoService.Key = key;
+                mCryptoService.IV = iv;
+
+                using var ms = new MemoryStream();
+                // Prepend salt and IV to output
+                ms.Write(salt, 0, salt.Length);
+                ms.Write(iv, 0, iv.Length);
+
+                using var encryptor = mCryptoService.CreateEncryptor();
+                using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
+                {
+                    cs.Write(plainBytes, 0, plainBytes.Length);
+                    cs.FlushFinalBlock();
+                }
+
+                return ms.ToArray();
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(key);
+            }
         }
-        
-        // Derive key using PBKDF2
-        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, PBKDF2_ITERATIONS, HashAlgorithmName.SHA256);
-        byte[] key = pbkdf2.GetBytes(mCryptoService.KeySize / 8);
-        
-        mCryptoService.Key = key;
-        mCryptoService.IV = iv;
-        
-        using var ms = new MemoryStream();
-        // Prepend salt and IV to output
-        ms.Write(salt, 0, salt.Length);
-        ms.Write(iv, 0, iv.Length);
-        
-        using (var cs = new CryptoStream(ms, mCryptoService.CreateEncryptor(), CryptoStreamMode.Write))
-        {
-            cs.Write(plainBytes, 0, plainBytes.Length);
-            cs.FlushFinalBlock();
-        }
-        
-        return ms.ToArray();
     }
     
     /// <summary>
@@ -538,30 +553,40 @@ public class SymmetricCryptAlgorithm
             throw new ArgumentNullException(nameof(cipherBytes));
         if (string.IsNullOrEmpty(password))
             throw new ArgumentNullException(nameof(password));
-        
-        int ivLength = mCryptoService.BlockSize / 8;
-        if (cipherBytes.Length < 16 + ivLength)
-            throw new ArgumentException("Invalid ciphertext length");
-        
-        // Extract salt and IV from ciphertext
-        byte[] salt = new byte[16];
-        byte[] iv = new byte[ivLength];
-        Array.Copy(cipherBytes, 0, salt, 0, 16);
-        Array.Copy(cipherBytes, 16, iv, 0, ivLength);
-        
-        // Derive key using PBKDF2
-        using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, PBKDF2_ITERATIONS, HashAlgorithmName.SHA256);
-        byte[] key = pbkdf2.GetBytes(mCryptoService.KeySize / 8);
-        
-        mCryptoService.Key = key;
-        mCryptoService.IV = iv;
-        
-        int cipherDataLength = cipherBytes.Length - 16 - ivLength;
-        using var ms = new MemoryStream(cipherBytes, 16 + ivLength, cipherDataLength);
-        using var cs = new CryptoStream(ms, mCryptoService.CreateDecryptor(), CryptoStreamMode.Read);
-        using var output = new MemoryStream();
-        cs.CopyTo(output);
-        return output.ToArray();
+
+        lock (_syncRoot)
+        {
+            int ivLength = mCryptoService.BlockSize / 8;
+            if (cipherBytes.Length < 16 + ivLength)
+                throw new ArgumentException("Invalid ciphertext length");
+
+            // Extract salt and IV from ciphertext
+            byte[] salt = new byte[16];
+            byte[] iv = new byte[ivLength];
+            Array.Copy(cipherBytes, 0, salt, 0, 16);
+            Array.Copy(cipherBytes, 16, iv, 0, ivLength);
+
+            // Derive key using PBKDF2
+            using var pbkdf2 = new Rfc2898DeriveBytes(password, salt, PBKDF2_ITERATIONS, HashAlgorithmName.SHA256);
+            byte[] key = pbkdf2.GetBytes(mCryptoService.KeySize / 8);
+            try
+            {
+                mCryptoService.Key = key;
+                mCryptoService.IV = iv;
+
+                int cipherDataLength = cipherBytes.Length - 16 - ivLength;
+                using var ms = new MemoryStream(cipherBytes, 16 + ivLength, cipherDataLength);
+                using var decryptor = mCryptoService.CreateDecryptor();
+                using var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read);
+                using var output = new MemoryStream();
+                cs.CopyTo(output);
+                return output.ToArray();
+            }
+            finally
+            {
+                CryptographicOperations.ZeroMemory(key);
+            }
+        }
     }
     
     #endregion
@@ -682,7 +707,7 @@ public class AsymmetricCryptAlgorithm
     public CryptKeys CreateKeys()
     {
         CryptKeys oKeys = new CryptKeys();
-        AsymmetricAlgorithm oAA = CreateProvider();
+        using AsymmetricAlgorithm oAA = CreateProvider();
         oKeys.PrivateKey = oAA.ToXmlString(true);
         oKeys.PublicKey = oAA.ToXmlString(false);
         return oKeys;
@@ -735,13 +760,14 @@ public class AsymmetricCryptAlgorithm
     /// <returns>Buffer crittografato.</returns>
     public virtual byte[] Encrypt(byte[] cryptoBuffer, CryptKeys cPublicKey)
     {
-        AsymmetricAlgorithm oAA = null;
         switch (mAlgorithm)
         {
             case ServiceProviderEnum.RSA:
-                oAA = new RSACryptoServiceProvider();
-                ((RSACryptoServiceProvider)oAA).FromXmlString((string)cPublicKey.PublicKey);
-                cryptoBuffer = ((RSACryptoServiceProvider)oAA).Encrypt(cryptoBuffer, UseOaepPadding);
+                using (var rsa = new RSACryptoServiceProvider())
+                {
+                    rsa.FromXmlString((string)cPublicKey.PublicKey);
+                    cryptoBuffer = rsa.Encrypt(cryptoBuffer, UseOaepPadding);
+                }
                 break;
             default:
                 throw new NotSupportedException("DSA non supporta la cifratura: usare ServiceProviderEnum.RSA.");
@@ -757,13 +783,14 @@ public class AsymmetricCryptAlgorithm
     /// <returns>Buffer in chiaro.</returns>
     public virtual byte[] Decrypt(byte[] cryptoBuffer, CryptKeys cPrivateKey)
     {
-        AsymmetricAlgorithm oAA = null;
         switch (mAlgorithm)
         {
             case ServiceProviderEnum.RSA:
-                oAA = new RSACryptoServiceProvider();
-                ((RSACryptoServiceProvider)oAA).FromXmlString((string)cPrivateKey.PrivateKey);
-                cryptoBuffer = ((RSACryptoServiceProvider)oAA).Decrypt(cryptoBuffer, UseOaepPadding);
+                using (var rsa = new RSACryptoServiceProvider())
+                {
+                    rsa.FromXmlString((string)cPrivateKey.PrivateKey);
+                    cryptoBuffer = rsa.Decrypt(cryptoBuffer, UseOaepPadding);
+                }
                 break;
             default:
                 throw new NotSupportedException("DSA non supporta la cifratura: usare ServiceProviderEnum.RSA.");
@@ -779,6 +806,7 @@ public class AsymmetricCryptAlgorithm
 public class HashAlgorithm
 {
     private System.Security.Cryptography.HashAlgorithm mCryptoService;
+    private readonly object _syncRoot = new();
     /// <summary>
     /// Providers supportati.
     /// </summary>
@@ -834,7 +862,11 @@ public class HashAlgorithm
     /// <returns>Stringa contenente il valore hash.</returns>
     public virtual string Generate(byte[] oBuffer)
     {
-        byte[] cryptoByte = mCryptoService.ComputeHash(oBuffer);
+        byte[] cryptoByte;
+        lock (_syncRoot)
+        {
+            cryptoByte = mCryptoService.ComputeHash(oBuffer);
+        }
         return Convert.ToBase64String(cryptoByte, 0, cryptoByte.Length);
     }
 
@@ -845,8 +877,7 @@ public class HashAlgorithm
     /// <returns>Stringa contenente il valore hash.</returns>
     public virtual string Generate(string plainText)
     {
-        byte[] cryptoByte = mCryptoService.ComputeHash(ASCIIEncoding.ASCII.GetBytes(plainText));
-        return Convert.ToBase64String(cryptoByte, 0, cryptoByte.Length);
+        return Generate(Encoding.UTF8.GetBytes(plainText));
     }
 }
 #endregion

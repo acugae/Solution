@@ -3,14 +3,14 @@ public class XLS
 {
     public void WriteToFile(string sFileXLS, IWorkbook hssfworkbook)
     {
-        FileStream file = new FileStream(sFileXLS, FileMode.Create);
+        string validPath = FileManager.ValidatePath(sFileXLS);
+        using FileStream file = new FileStream(validPath, FileMode.Create, FileAccess.Write);
         hssfworkbook.Write(file, false);
-        file.Close();
     }
 
     public byte[] Write(IWorkbook hssfworkbook)
     {
-        MemoryStream oM = new MemoryStream();
+        using MemoryStream oM = new MemoryStream();
         hssfworkbook.Write(oM, false);
         return oM.ToArray();
     }
@@ -50,7 +50,9 @@ public class XLS
     {
         try
         {
-            HSSFWorkbook oH = new HSSFWorkbook(new FileStream(sFileXLS, FileMode.Open));
+            string validPath = FileManager.ValidatePath(sFileXLS);
+            using FileStream fs = new FileStream(validPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            HSSFWorkbook oH = new HSSFWorkbook(fs);
             return oH;
         }
         catch (IOException)
@@ -76,7 +78,9 @@ public class XLS
     {
         try
         {
-            XSSFWorkbook oH = new XSSFWorkbook(new FileStream(sFileXLSX, FileMode.Open));
+            string validPath = FileManager.ValidatePath(sFileXLSX);
+            using FileStream fs = new FileStream(validPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            XSSFWorkbook oH = new XSSFWorkbook(fs);
             return oH;
         }
         catch (IOException)
@@ -402,7 +406,8 @@ public class XLS
     public DataTable ConvertCSVtoDataTable(string strFilePath, char sSeparator = ';', bool bAutoGenerateProgressiveColumn = false)
     {
         DataTable dt = new DataTable();
-        StreamReader sr = new StreamReader(strFilePath);
+        string validPath = FileManager.ValidatePath(strFilePath);
+        using StreamReader sr = new StreamReader(validPath);
         if (!bAutoGenerateProgressiveColumn)
         {
             string[] headers = sr.ReadLine().Split(sSeparator);

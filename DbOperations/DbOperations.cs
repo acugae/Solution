@@ -67,7 +67,8 @@ namespace Solution.DbOperations
                 throw new ArgumentNullException(nameof(options.tableName));
             }
             // Il nome della tabella finisce nel testo SQL: deve essere un nome valido.
-            Solution.Data.SqlIdentifier.Quote(options.tableName);
+            string quotedTable = Solution.Data.SqlIdentifier.Quote(options.tableName);
+            string safeTable = Solution.Data.SqlIdentifier.Safe(options.tableName);
 
             if (options.Connection.State == ConnectionState.Closed) options.Connection.Open();
             bool internalTransaction = false;
@@ -95,11 +96,11 @@ namespace Solution.DbOperations
                 }
 
                 //Creating temp table on database
-                string pks = string.Join(",", fieldsCreate.OrderBy(p => p.Order).Where(p => p.IsPrimaryKey).Select(s => s.Name));
+                string pks = string.Join(",", fieldsCreate.OrderBy(p => p.Order).Where(p => p.IsPrimaryKey).Select(s => Solution.Data.SqlIdentifier.Quote(s.Name)));
 
                 contentCreate.AddRange(fieldsCreate.Select(e =>
                 {
-                    string name = e.Name;
+                    string name = Solution.Data.SqlIdentifier.Quote(e.Name);
                     string typeSql = e.TypeSql;
                     string autoIncrement = ((e.IsPrimaryKey && options.primaryKeyAutoIncrement
                                              && (e.TypeSql.ToLower() == "int" || e.TypeSql.ToLower() == "bigint"))
@@ -107,14 +108,14 @@ namespace Solution.DbOperations
                             : "");
                     string isNullable = (e.IsNullable ? "NULL" : "NOT NULL");
 
-                    return $"[{name}] {typeSql} {autoIncrement} {isNullable}";
+                    return $"{name} {typeSql} {autoIncrement} {isNullable}";
                 }));
 
                 //UNIQUEIDENTIFIER And primaryKeyAutoIncrement And is Primary   
                 string[] constraint = fieldsCreate.Where(p => options.primaryKeyAutoIncrement && p.IsPrimaryKey && p.TypeSql == "UNIQUEIDENTIFIER").Select(s =>
                    {
                        return
-                           $"ALTER TABLE [{options.tableName}] ADD  CONSTRAINT [DF_{options.tableName}_{s.Name}]  DEFAULT (newsequentialid()) FOR [{s.Name}];";
+                           $"ALTER TABLE {quotedTable} ADD CONSTRAINT [DF_{safeTable}_{Solution.Data.SqlIdentifier.Safe(s.Name)}] DEFAULT (newsequentialid()) FOR {Solution.Data.SqlIdentifier.Quote(s.Name)};";
                    }).ToArray();
 
                 if (!string.IsNullOrEmpty(pks))
@@ -122,8 +123,8 @@ namespace Solution.DbOperations
                     contentCreate.Add($" PRIMARY KEY({pks})");
                 }
 
-                string commandCreate = $"IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = N'{options.tableName}')" +
-                                       $" CREATE TABLE [{options.tableName}] ({string.Join(", ", contentCreate)}); {string.Join(",", constraint)}";
+                string commandCreate = $"IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = N'{safeTable}')" +
+                                       $" CREATE TABLE {quotedTable} ({string.Join(", ", contentCreate)}); {string.Join(",", constraint)}";
 
                 ExecuteCommand(options, commandCreate);
 
@@ -175,10 +176,11 @@ namespace Solution.DbOperations
                 throw new ArgumentNullException(nameof(options.tableName));
             }
             // Il nome della tabella finisce nel testo SQL: deve essere un nome valido.
-            Solution.Data.SqlIdentifier.Quote(options.tableName);
+            string quotedTable = Solution.Data.SqlIdentifier.Quote(options.tableName);
+            string safeTable = Solution.Data.SqlIdentifier.Safe(options.tableName);
 
-            string command = (options.useIfExist ? $"IF OBJECT_ID(N'{options.tableName}', N'U') IS NOT NULL" : "") +
-                             $" DROP TABLE [{options.tableName}];";
+            string command = (options.useIfExist ? $"IF OBJECT_ID(N'{safeTable}', N'U') IS NOT NULL" : "") +
+                             $" DROP TABLE {quotedTable};";
 
             ExecuteCommand(options, command);
         }
@@ -456,10 +458,12 @@ namespace Solution.DbOperations
                 throw new ArgumentNullException(nameof(options.tableName));
             }
             // Il nome della tabella finisce nel testo SQL: deve essere un nome valido.
-            Solution.Data.SqlIdentifier.Quote(options.tableName);
+            string quotedTable = Solution.Data.SqlIdentifier.Quote(options.tableName);
+            string safeTable = Solution.Data.SqlIdentifier.Safe(options.tableName);
 
             //Bulk in Temp Table
-            string tempTable = $"{options.tableName}_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid():N}";
+            string tempTable = $"{safeTable}_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid():N}";
+            string quotedTempTable = Solution.Data.SqlIdentifier.Quote(tempTable);
 
             BulkInsert(data, new BulkInsertOptions<TSource>()
             {
@@ -504,27 +508,27 @@ namespace Solution.DbOperations
             var props = GetProperties(options.primaryKeys, options.includeColumns, options.excludeColumns);
             var pk = props.Where(p => p.IsPrimaryKey);
             var columns = props.Where(p => !p.IsPrimaryKey)
-                .Select(s => s.Name);
+                .Select(s => Solution.Data.SqlIdentifier.Quote(s.Name));
 
             if (!pk.Any())
             {
                 throw new ArgumentNullException(nameof(options.primaryKeys));
             }
 
-            string pkCreateStr = string.Join(",", pk.Select(s => $"{s.Name} {s.TypeSql} NOT NULL "));
-            string pkStr = string.Join(",", pk.Select(s => $"{s.Name}"));
-            string pkStrFromInserted = string.Join(",", pk.Select(s => $" INSERTED.{s.Name} "));
-            string joinField = string.Join(" AND ", pk.Select(s => $" tp.{s.Name} = tr.{s.Name} "));
+            string pkCreateStr = string.Join(",", pk.Select(s => $"{Solution.Data.SqlIdentifier.Quote(s.Name)} {s.TypeSql} NOT NULL "));
+            string pkStr = string.Join(",", pk.Select(s => $"{Solution.Data.SqlIdentifier.Quote(s.Name)}"));
+            string pkStrFromInserted = string.Join(",", pk.Select(s => $" INSERTED.{Solution.Data.SqlIdentifier.Quote(s.Name)} "));
+            string joinField = string.Join(" AND ", pk.Select(s => $" tp.{Solution.Data.SqlIdentifier.Quote(s.Name)} = tr.{Solution.Data.SqlIdentifier.Quote(s.Name)} "));
             string columnsStr = string.Join(", ", columns);
 
             string sql = $" DECLARE @tmpTbl as TABLE(intID bigint not null identity(1,1), {pkCreateStr} ); " +
-                         $"INSERT [{options.tableName}] " +
+                         $"INSERT {quotedTable} " +
                          $"({columnsStr}) " +
                          $"OUTPUT {pkStrFromInserted} INTO @tmpTbl({pkStr}) " +
-                         $"SELECT {columnsStr} FROM {tempTable}; " +
-                         $"SELECT tr.* FROM {options.tableName} tr " +
+                         $"SELECT {columnsStr} FROM {quotedTempTable}; " +
+                         $"SELECT tr.* FROM {quotedTable} tr " +
                          $" JOIN @tmpTbl tp on {joinField}; " +
-                         $"DROP TABLE {tempTable} ;";
+                         $"DROP TABLE {quotedTempTable} ;";
 
             return ExecuteCommand<TSource>(options, sql);
         }
@@ -580,17 +584,29 @@ namespace Solution.DbOperations
                 throw;
             }
         }
+        private static void ValidateSqlClause(string? clause, string paramName)
+        {
+            if (string.IsNullOrEmpty(clause))
+                return;
+            if (clause.Contains(';') || clause.Contains("--") || clause.Contains("/*") || clause.Contains("*/"))
+                throw new ArgumentException($"Clausola SQL non valida in '{paramName}': non sono ammessi ';' o commenti SQL.", paramName);
+        }
+
         public static void BulkUpdate<TSource>(IEnumerable<TSource> data, IBulkUpdateOptions<TSource> options)
         {
-            string tempTable = $"{options.tableName}_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid():N}";
-            string joinParams = "";
-
             if (string.IsNullOrEmpty(options.tableName))
             {
                 throw new ArgumentNullException(nameof(options.tableName));
             }
             // Il nome della tabella finisce nel testo SQL: deve essere un nome valido.
-            Solution.Data.SqlIdentifier.Quote(options.tableName);
+            string quotedTable = Solution.Data.SqlIdentifier.Quote(options.tableName);
+            string safeTable = Solution.Data.SqlIdentifier.Safe(options.tableName);
+            ValidateSqlClause(options.joinSql, nameof(options.joinSql));
+            ValidateSqlClause(options.otherSqlWhereCondition, nameof(options.otherSqlWhereCondition));
+
+            string tempTable = $"{safeTable}_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid():N}";
+            string quotedTempTable = Solution.Data.SqlIdentifier.Quote(tempTable);
+            string joinParams = "";
 
             if (options.joinColumns == null)
             {
@@ -622,7 +638,7 @@ namespace Solution.DbOperations
 
 
             var fieldsCreate = GetProperties<TSource>(options.joinColumns, null, options.excludeColumns, null);
-            joinParams = string.Join(" AND ", fieldsCreate.OrderBy(p => p.Order).Where(p => p.IsPrimaryKey).Select(s => $" [ExtendedRes].{s.Name} = [ExtendedTemp].{s.Name}"));
+            joinParams = string.Join(" AND ", fieldsCreate.OrderBy(p => p.Order).Where(p => p.IsPrimaryKey).Select(s => $" [ExtendedRes].{Solution.Data.SqlIdentifier.Quote(s.Name)} = [ExtendedTemp].{Solution.Data.SqlIdentifier.Quote(s.Name)}"));
 
             if (string.IsNullOrEmpty(joinParams))
             {
@@ -633,15 +649,15 @@ namespace Solution.DbOperations
             var fieldsUpdate = "";
             if (fieldsUpdatelist.Any())
             {
-                fieldsUpdate = string.Join(" , ", fieldsUpdatelist.Select(s => $" {s} = [ExtendedTemp].{s}"));
+                fieldsUpdate = string.Join(" , ", fieldsUpdatelist.Select(s => $" {Solution.Data.SqlIdentifier.Quote(s)} = [ExtendedTemp].{Solution.Data.SqlIdentifier.Quote(s)}"));
             }
 
             string query = $"UPDATE [ExtendedRes] " +
                            $" SET {fieldsUpdate} " +
-                           $" FROM [{tempTable}] as [ExtendedTemp] " +
-                           $" INNER JOIN [{options.tableName}] as [ExtendedRes] on {joinParams} {options.joinSql} " +
+                           $" FROM {quotedTempTable} as [ExtendedTemp] " +
+                           $" INNER JOIN {quotedTable} as [ExtendedRes] on {joinParams} {options.joinSql} " +
                            $"{(!string.IsNullOrEmpty(options.otherSqlWhereCondition) ? " WHERE " + options.otherSqlWhereCondition : "")}; " +
-                           $"DROP TABLE [{tempTable}];";
+                           $"DROP TABLE {quotedTempTable};";
 
             ExecuteCommand(options, query);
         }
@@ -701,15 +717,19 @@ namespace Solution.DbOperations
         }
         public static IEnumerable<TRes> BulkUpdateWithResult<TSource, TRes>(IEnumerable<TSource> data, IBulkUpdateOptions<TSource> options) where TSource : class, new() where TRes : class, new()
         {
-            string tempTable = $"{options.tableName}_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid():N}";
-            string joinParams = "";
-
             if (string.IsNullOrEmpty(options.tableName))
             {
                 throw new ArgumentNullException(nameof(options.tableName));
             }
             // Il nome della tabella finisce nel testo SQL: deve essere un nome valido.
-            Solution.Data.SqlIdentifier.Quote(options.tableName);
+            string quotedTable = Solution.Data.SqlIdentifier.Quote(options.tableName);
+            string safeTable = Solution.Data.SqlIdentifier.Safe(options.tableName);
+            ValidateSqlClause(options.joinSql, nameof(options.joinSql));
+            ValidateSqlClause(options.otherSqlWhereCondition, nameof(options.otherSqlWhereCondition));
+
+            string tempTable = $"{safeTable}_{DateTime.Now:yyyyMMddHHmmss}_{Guid.NewGuid():N}";
+            string quotedTempTable = Solution.Data.SqlIdentifier.Quote(tempTable);
+            string joinParams = "";
 
             if (options.joinColumns == null)
             {
@@ -756,7 +776,7 @@ namespace Solution.DbOperations
             });
 
             var fieldsCreate = GetProperties<TSource>(options.joinColumns, null, null, null);
-            joinParams = string.Join(" AND ", fieldsCreate.OrderBy(p => p.Order).Where(p => p.IsPrimaryKey).Select(s => $" [ExtendedRes].{s.Name} = [ExtendedTemp].{s.Name}"));
+            joinParams = string.Join(" AND ", fieldsCreate.OrderBy(p => p.Order).Where(p => p.IsPrimaryKey).Select(s => $" [ExtendedRes].{Solution.Data.SqlIdentifier.Quote(s.Name)} = [ExtendedTemp].{Solution.Data.SqlIdentifier.Quote(s.Name)}"));
 
             if (string.IsNullOrEmpty(joinParams))
             {
@@ -767,7 +787,7 @@ namespace Solution.DbOperations
             var fieldsUpdate = "";
             if (fieldsUpdatelist.Any())
             {
-                fieldsUpdate = string.Join(" , ", fieldsUpdatelist.Select(s => $" {s} = [ExtendedTemp].{s}"));
+                fieldsUpdate = string.Join(" , ", fieldsUpdatelist.Select(s => $" {Solution.Data.SqlIdentifier.Quote(s)} = [ExtendedTemp].{Solution.Data.SqlIdentifier.Quote(s)}"));
             }
 
             var props = GetProperties(options.primaryKeys, options.includeColumns, options.excludeColumns);
@@ -781,21 +801,21 @@ namespace Solution.DbOperations
                 throw new ArgumentNullException(nameof(options.primaryKeys));
             }
 
-            string pkCreateStr = string.Join(",", pk.Select(s => $"{s.Name} {s.TypeSql} NOT NULL "));
-            string pkStr = string.Join(",", pk.Select(s => $"{s.Name}"));
-            string pkStrFromInserted = string.Join(",", pk.Select(s => $" INSERTED.{s.Name} "));
-            string joinField = string.Join(" AND ", pk.Select(s => $" tp.{s.Name} = tr.{s.Name} "));
+            string pkCreateStr = string.Join(",", pk.Select(s => $"{Solution.Data.SqlIdentifier.Quote(s.Name)} {s.TypeSql} NOT NULL "));
+            string pkStr = string.Join(",", pk.Select(s => $"{Solution.Data.SqlIdentifier.Quote(s.Name)}"));
+            string pkStrFromInserted = string.Join(",", pk.Select(s => $" INSERTED.{Solution.Data.SqlIdentifier.Quote(s.Name)} "));
+            string joinField = string.Join(" AND ", pk.Select(s => $" tp.{Solution.Data.SqlIdentifier.Quote(s.Name)} = tr.{Solution.Data.SqlIdentifier.Quote(s.Name)} "));
 
             string query = $"DECLARE @tmpTbl as TABLE(intID bigint not null identity(1,1), {pkCreateStr} ); " +
                            $"UPDATE [ExtendedRes] " +
                            $" SET {fieldsUpdate} " +
                            $" OUTPUT {pkStrFromInserted} INTO @tmpTbl({pkStr}) " +
-                           $" FROM [{tempTable}] as [ExtendedTemp] " +
-                           $" INNER JOIN [{options.tableName}] as [ExtendedRes] on {joinParams} {options.joinSql} " +
+                           $" FROM {quotedTempTable} as [ExtendedTemp] " +
+                           $" INNER JOIN {quotedTable} as [ExtendedRes] on {joinParams} {options.joinSql} " +
                            $" {(!string.IsNullOrEmpty(options.otherSqlWhereCondition) ? " WHERE " + options.otherSqlWhereCondition : "")}; " +
-                           $" SELECT tr.* FROM {options.tableName} tr " +
+                           $" SELECT tr.* FROM {quotedTable} tr " +
                            $" JOIN @tmpTbl tp on {joinField}; " +
-                           $" DROP TABLE [{tempTable}];";
+                           $" DROP TABLE {quotedTempTable};";
 
             return ExecuteCommand<TRes>(options, query);
         }

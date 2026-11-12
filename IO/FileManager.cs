@@ -5,7 +5,7 @@
 public class FileManager
 {
     // Directory base per validazione path (null = nessuna restrizione)
-    private static string? _allowedBasePath = null;
+    private static volatile string? _allowedBasePath = null;
     
     /// <summary>
     /// Imposta una directory base. Tutte le operazioni file saranno ristrette a questa directory.
@@ -15,9 +15,10 @@ public class FileManager
     {
         if (!string.IsNullOrEmpty(basePath))
         {
-            _allowedBasePath = Path.GetFullPath(basePath);
-            if (!Directory.Exists(_allowedBasePath))
-                throw new DirectoryNotFoundException($"Base path does not exist: {_allowedBasePath}");
+            string fullBase = Path.GetFullPath(basePath);
+            if (!Directory.Exists(fullBase))
+                throw new DirectoryNotFoundException($"Base path does not exist: {fullBase}");
+            _allowedBasePath = fullBase;
         }
         else
         {
@@ -28,7 +29,7 @@ public class FileManager
     /// <summary>
     /// Valida e normalizza un path, prevenendo path traversal attacks.
     /// </summary>
-    private static string ValidatePath(string path)
+    internal static string ValidatePath(string path)
     {
         if (string.IsNullOrEmpty(path))
             throw new ArgumentNullException(nameof(path));
@@ -37,10 +38,11 @@ public class FileManager
         string fullPath = Path.GetFullPath(path);
         
         // Se è impostata una base path, verifica che il path sia al suo interno
-        if (!string.IsNullOrEmpty(_allowedBasePath))
+        string? allowedBase = _allowedBasePath;
+        if (!string.IsNullOrEmpty(allowedBase))
         {
             // Il confronto include il separatore: "C:\\data" non deve autorizzare "C:\\data-altro".
-            string basePath = _allowedBasePath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            string basePath = allowedBase.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
             if (!fullPath.Equals(basePath, StringComparison.OrdinalIgnoreCase) &&
                 !fullPath.StartsWith(basePath + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
             {
@@ -126,7 +128,13 @@ public class FileManager
     /// <returns>Path assoluto.</returns>
     static public string GetPathRoot(string sPath)
     {
-        sPath = Path.IsPathRooted(sPath) ? sPath : sPath.IndexOf("~") >= 0 ? Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, sPath.Replace("~", "")) : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, sPath);
-        return sPath;
+        if (string.IsNullOrEmpty(sPath))
+            return AppDomain.CurrentDomain.BaseDirectory;
+        if (!Path.IsPathRooted(sPath))
+        {
+            string relative = sPath.StartsWith("~") ? sPath.Substring(1).TrimStart('/', '\\') : sPath;
+            sPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relative);
+        }
+        return ValidatePath(sPath);
     }
 }

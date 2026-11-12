@@ -128,58 +128,40 @@ public class DBField
         //
         if (!sType.Equals(""))
         {
+            string safeType = SqlIdentifier.Safe(sType);
             //
             // Questi "if" eliminano la grandezza del campi per questi tipi
-            if (sType.ToUpper().IndexOf("INT") >= 0
-                || sType.ToUpper().IndexOf("DATETIME") >= 0
-                || sType.ToUpper().IndexOf("BIT") >= 0
-                || sType.ToUpper().IndexOf("UNIQUEIDENTIFIER") >= 0
-                || sType.ToUpper().IndexOf("NTEXT") >= 0
-                || sType.ToUpper().IndexOf("IMAGE") >= 0
+            if (safeType.ToUpper().IndexOf("INT") >= 0
+                || safeType.ToUpper().IndexOf("DATETIME") >= 0
+                || safeType.ToUpper().IndexOf("BIT") >= 0
+                || safeType.ToUpper().IndexOf("UNIQUEIDENTIFIER") >= 0
+                || safeType.ToUpper().IndexOf("NTEXT") >= 0
+                || safeType.ToUpper().IndexOf("IMAGE") >= 0
             )
             {
-                strValue = sType;
+                strValue = safeType;
             }
-            else if (sType.ToUpper().IndexOf("VARCHAR") >= 0 || sType.ToUpper().IndexOf("VARBINARY") >= 0)
+            else if (safeType.ToUpper().IndexOf("VARCHAR") >= 0 || safeType.ToUpper().IndexOf("VARBINARY") >= 0)
             {
-                strValue = sType + "(" + (iLength == -1 ? "MAX" : iLength.ToString()) + ")";
+                strValue = safeType + "(" + (iLength == -1 ? "MAX" : iLength.ToString()) + ")";
                 bIsString = true;
             }
-            /*
-            if(sType.ToUpper().IndexOf("TEXT") >= 0)
-            {
-                int a = sType.IndexOf("(");
-                int b = sType.IndexOf(")");
-                if(a == -1)
-                    strValue = sType;
-                else
-                    strValue = sType.Replace(sType.Substring(a, b-a+1),"");
-            }
-            if(sType.ToUpper().IndexOf("DATETIME") >= 0)
-            {
-                int a = sType.IndexOf("(");
-                int b = sType.IndexOf(")");
-                if(a == -1)
-                    strValue = sType;
-                else
-                    strValue = sType.Replace(sType.Substring(a, b-a+1),"");
-            }
-            */
-            /*
-            int a = sType.IndexOf("(");
-            int b = sType.IndexOf(")");
-            if(a == -1)
-                strValue = sType;
             else
-                strValue = sType.Replace(sType.Substring(a, b-a+1),"");
-            */
-            else
-                strValue = sType + "(" + iLength.ToString() + ")";
+                strValue = safeType + "(" + iLength.ToString() + ")";
             //
         }
         //
         if (!this.Default.Equals(""))
-            strValue += " DEFAULT " + (bIsString ? "'" + this.Default + "'" : this.Default) + " ";
+        {
+            if (bIsString)
+                strValue += " DEFAULT '" + this.Default.Replace("'", "''") + "' ";
+            else
+            {
+                if (this.Default.Contains(';') || this.Default.Contains("--") || this.Default.Contains("/*") || this.Default.Contains("*/"))
+                    throw new ArgumentException("Valore di default SQL non valido.");
+                strValue += " DEFAULT " + this.Default + " ";
+            }
+        }
         strValue += " " + (bIsNull ? "Null" : "Not Null");
         //strValue += " " + (bPrimaryKey ? "Primary Key" : "" );
         //
@@ -494,7 +476,7 @@ public class SQLDBWrite
             string mykey = (string)oFields.GetKey(i);
             if (virgola)
                 mySQL += ", ";
-            mySQL += " [" + mykey + "] ";
+            mySQL += " " + SqlIdentifier.Quote(mykey) + " ";
             mySQL += " " + ((DBField)oFields[mykey]).GetStringColumn() + " ";
             virgola = true;
         }
@@ -581,7 +563,7 @@ public class SQLDBWrite
         string mySQL = "ALTER TABLE " + SqlIdentifier.Safe(strTable) + " ";
         try
         {
-            mySQL += "ADD " + oField.Name + " " + oField.GetStringColumn();
+            mySQL += "ADD " + SqlIdentifier.Quote(oField.Name) + " " + oField.GetStringColumn();
             _oBUS.ExecuteNonQuery(strConn, mySQL, null);
             return true;
         }
@@ -597,7 +579,7 @@ public class SQLDBWrite
         string mySQL = "ALTER TABLE " + SqlIdentifier.Safe(strTable) + " ";
         try
         {
-            mySQL += "ALTER COLUMN " + oField.Name + " " + oField.GetStringColumn();
+            mySQL += "ALTER COLUMN " + SqlIdentifier.Quote(oField.Name) + " " + oField.GetStringColumn();
             _oBUS.ExecuteNonQuery(strConn, mySQL, null);
             return true;
         }
@@ -711,7 +693,7 @@ public class SQLDBWrite
         {
             if (virgola)
                 mySQL += ", ";
-            mySQL += " [" + ColumsKey[i] + "] ";
+            mySQL += " " + SqlIdentifier.Quote(ColumsKey[i]) + " ";
             virgola = true;
         }
         mySQL += " ) ";
@@ -743,7 +725,7 @@ public class SQLDBWrite
         {
             if (virgola)
                 mySQL += ", ";
-            mySQL += " [" + ((string)ColumsKey.GetKey(i)) + "] ";
+            mySQL += " " + SqlIdentifier.Quote((string)ColumsKey.GetKey(i)) + " ";
             virgola = true;
         }
         mySQL += " ) ";
@@ -818,7 +800,11 @@ public class SQLDBWrite
             {
                 if (virgola)
                     mySQL += ", ";
-                mySQL += "CONSTRAINT [DF_" + SqlIdentifier.Safe(strTable) + "_" + mykey + "] DEFAULT " + Colums[mykey] + " FOR [" + mykey + "]";
+                string safeKey = SqlIdentifier.Safe(mykey);
+                string defaultVal = Colums[mykey]?.ToString() ?? "";
+                if (defaultVal.Contains(';') || defaultVal.Contains("--") || defaultVal.Contains("/*") || defaultVal.Contains("*/"))
+                    throw new ArgumentException("Valore di default SQL non valido.");
+                mySQL += "CONSTRAINT [DF_" + SqlIdentifier.Safe(strTable) + "_" + safeKey + "] DEFAULT " + defaultVal + " FOR " + SqlIdentifier.Quote(mykey);
                 //
                 virgola = true;
             }

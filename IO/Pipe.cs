@@ -9,16 +9,16 @@ class PipeServer
     public void Create(string PipeName)
     {
         _pipeName = PipeName;
-        pipeServer = new NamedPipeServerStream(PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
+        pipeServer = new NamedPipeServerStream(PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Message, PipeOptions.Asynchronous | PipeOptions.FirstPipeInstance);
     }
 
     public void WriteLine(string sMessage)
     {
         try
         {
-            if (!pipeServer.IsConnected)
+            if (pipeServer == null || !pipeServer.IsConnected)
                 return;
-            using (StreamWriter sw = new StreamWriter(pipeServer))
+            using (StreamWriter sw = new StreamWriter(pipeServer, Encoding.UTF8, 1024, leaveOpen: true))
             {
                 sw.AutoFlush = true;
                 sw.WriteLine(sMessage);
@@ -33,7 +33,7 @@ class PipeServer
     public void Close(string PipeName)
     {
         // Kill original sever and create new wait server
-        pipeServer.Close();
+        pipeServer?.Close();
         pipeServer = null;
     }
 }
@@ -53,10 +53,12 @@ class PipeClient
     {
         try
         {
+            if (pipeStream == null)
+                return null;
             if (!pipeStream.IsConnected)
                 pipeStream.Connect(iTimeout);
             //
-            using (StreamReader sr = new StreamReader(pipeStream))
+            using (StreamReader sr = new StreamReader(pipeStream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 1024, leaveOpen: true))
             {
                 string temp;
                 while ((temp = sr.ReadLine()) != null)
@@ -65,7 +67,7 @@ class PipeClient
                 }
             }
         }
-        catch (TimeoutException oEX)
+        catch (TimeoutException)
         {
             return null;
         }

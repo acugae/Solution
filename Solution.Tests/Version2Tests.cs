@@ -103,4 +103,55 @@ public class Version2Tests
 
         Assert.Equal("valore", result.GetProperty("Name").GetString());
     }
+
+    [Fact]
+    public void UseSecureMode_EnablesRandomCiphertextInEncryptDecrypt()
+    {
+#pragma warning disable CS0618
+        var crypt = new SymmetricCryptAlgorithm().UseSecureMode();
+        const string text = "Testo UTF-8 sicuro: àèìòù";
+
+        string first = crypt.Encrypt(text, "password-di-test");
+        string second = crypt.Encrypt(text, "password-di-test");
+
+        Assert.NotEqual(first, second);
+        Assert.Equal(text, crypt.Decrypt(first, "password-di-test"));
+        Assert.Null(crypt.Decrypt(first, "password-errata"));
+#pragma warning restore CS0618
+    }
+
+    [Fact]
+    public void JwtRead_ValidatesSignatureAndRejectsWrongKey()
+    {
+#pragma warning disable CS0618
+        const string validKey = "chiave-segreta-molto-lunga-almeno-32-byte!!";
+        const string wrongKey = "altra-chiave-segreta-molto-lunga-32-byte!!";
+
+        string token = JWT.Create(validKey, 10, []);
+        Assert.NotEmpty(JWT.Read(validKey, token));
+        Assert.ThrowsAny<Exception>(() => JWT.Read(wrongKey, token));
+#pragma warning restore CS0618
+    }
+
+    [Fact]
+    public void CacheValue_WhenZipped_CompressesAndDecompressesValue()
+    {
+        string repeated = new string('A', 2000);
+        var zipped = new CacheValue<string>(repeated, 10, zip: true);
+        var unzipped = new CacheValue<string>(repeated, 10, zip: false);
+
+        Assert.Equal(repeated, zipped.Value);
+        Assert.True(zipped.Size < unzipped.Size);
+    }
+
+    [Fact]
+    public void JsonDeserialize_RejectsUnsafeTypeNameHandlingWithoutBinder()
+    {
+        var unsafeSettings = new Newtonsoft.Json.JsonSerializerSettings
+        {
+            TypeNameHandling = Newtonsoft.Json.TypeNameHandling.All
+        };
+
+        Assert.Throws<InvalidOperationException>(() => JSON.Deserialize<object>("{}", unsafeSettings));
+    }
 }

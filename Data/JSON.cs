@@ -22,7 +22,8 @@ public class JSON
 
     static public T Deserialize<T>(string sJson, JsonSerializerSettings oSetting)
     {
-
+        if (oSetting != null && oSetting.TypeNameHandling != TypeNameHandling.None && oSetting.SerializationBinder == null)
+            throw new InvalidOperationException("TypeNameHandling diverso da None richiede un SerializationBinder esplicito per sicurezza.");
         return JsonConvert.DeserializeObject<T>(sJson, oSetting);
     }
 

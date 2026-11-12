@@ -5,7 +5,7 @@ public class PDF
 
     public PdfReader Open(string sFileInput)
     {
-        return new PdfReader(sFileInput);
+        return new PdfReader(FileManager.ValidatePath(sFileInput));
     }
 
 
@@ -74,12 +74,14 @@ public class PDF
 
     public void CopyPage(string sFileInput, int pageNumber, string sFileOutput)
     {
-        PdfReader reader = new PdfReader(sFileInput);
+        string validInput = FileManager.ValidatePath(sFileInput);
+        string validOutput = FileManager.ValidatePath(sFileOutput);
+        PdfReader reader = new PdfReader(validInput);
         try
         {
             iTextSharp.text.Rectangle size = reader.GetPageSizeWithRotation(pageNumber);
             Document document = new Document(size);
-            using FileStream output = new FileStream(sFileOutput, FileMode.Create, FileAccess.Write);
+            using FileStream output = new FileStream(validOutput, FileMode.Create, FileAccess.Write);
             PdfWriter writer = PdfWriter.GetInstance(document, output);
             document.AddTitle("Cedolino");
             document.AddSubject("Generatore Automatico");
@@ -104,77 +106,103 @@ public class PDF
     /// <param name="neededPages">List of the pages to be copied from input pdf file to the output pdf file.</param>
     public void CreatePdfFromDifferentPages(string sFileInput, string sFileOutput, IList<int> neededPages)
     {
-        Document document = new Document();
-        PdfSmartCopy copy = new PdfSmartCopy(document, new FileStream(sFileOutput, FileMode.Create));
+        string validInput = FileManager.ValidatePath(sFileInput);
+        string validOutput = FileManager.ValidatePath(sFileOutput);
+        using FileStream outStream = new FileStream(validOutput, FileMode.Create, FileAccess.Write);
+        using Document document = new Document();
+        PdfSmartCopy copy = new PdfSmartCopy(document, outStream);
         document.Open();
-        foreach (int page in neededPages)
+        using PdfReader reader = new PdfReader(validInput);
+        try
         {
-            PdfReader reader = new PdfReader(sFileInput);
-            copy.AddPage(copy.GetImportedPage(reader, page));
+            foreach (int page in neededPages)
+            {
+                copy.AddPage(copy.GetImportedPage(reader, page));
+            }
+        }
+        finally
+        {
+            document.Close();
+            copy.Close();
+            reader.Close();
         }
     }
 
     public List<string> GetFields(string sFilename)
     {
         List<string> oList = new List<string>();
-        if (!File.Exists(sFilename))
+        string validPath = FileManager.ValidatePath(sFilename);
+        if (!File.Exists(validPath))
             return null;
-        PdfReader reader = new PdfReader(sFilename);
-
-        //StreamWriter oWriter = new StreamWriter(sFilename + ".pdf");
-        //MemoryStream oWriter = new MemoryStream();
-        //PdfStamper pdfStamper = new PdfStamper(reader, oWriter.BaseStream);
-        //
-
-        AcroFields oFieldsPDf = reader.AcroFields;
-        //oFieldsPDf.GenerateAppearances = false;
-        foreach (KeyValuePair<string, AcroFields.Item> oItem in oFieldsPDf.Fields)
+        PdfReader reader = new PdfReader(validPath);
+        try
         {
-            oList.Add(oItem.Key);
+            AcroFields oFieldsPDf = reader.AcroFields;
+            foreach (KeyValuePair<string, AcroFields.Item> oItem in oFieldsPDf.Fields)
+            {
+                oList.Add(oItem.Key);
+            }
+            return oList;
         }
-        //pdfStamper.Close();
-        reader.Close();
-        return oList;
+        finally
+        {
+            reader.Close();
+        }
     }
 
     public List<string> GetFields(byte[] oFilePDF)
     {
         List<string> oList = new List<string>();
         PdfReader reader = new PdfReader(oFilePDF);
-        AcroFields oFieldsPDf = reader.AcroFields;
-        //oFieldsPDf.GenerateAppearances = false;
-        foreach (KeyValuePair<string, AcroFields.Item> oItem in oFieldsPDf.Fields)
+        try
         {
-            oList.Add(oItem.Key);
+            AcroFields oFieldsPDf = reader.AcroFields;
+            foreach (KeyValuePair<string, AcroFields.Item> oItem in oFieldsPDf.Fields)
+            {
+                oList.Add(oItem.Key);
+            }
+            return oList;
         }
-        //pdfStamper.Close();
-        reader.Close();
-        return oList;
+        finally
+        {
+            reader.Close();
+        }
     }
 
 
     public void Write(string sFileInput, string sFileOutput, GCollection<string, string> oFileds)
     {
-        if (!File.Exists(sFileInput))
+        string validInput = FileManager.ValidatePath(sFileInput);
+        string validOutput = FileManager.ValidatePath(sFileOutput);
+        if (!File.Exists(validInput))
             return;
-        PdfReader reader = new PdfReader(sFileInput);
-        StreamWriter oWriter = new StreamWriter(sFileOutput);
-        PdfStamper pdfStamper = new PdfStamper(reader, oWriter.BaseStream);
-        //
-        AcroFields oFieldsPDf = pdfStamper.AcroFields;
-        oFieldsPDf.GenerateAppearances = true;
-        foreach (KeyValuePair<string, AcroFields.Item> oItem in oFieldsPDf.Fields)
+        PdfReader reader = new PdfReader(validInput);
+        try
         {
-            if (oFileds.ContainsKey(oItem.Key))
+            using FileStream outStream = new FileStream(validOutput, FileMode.Create, FileAccess.Write);
+            PdfStamper pdfStamper = new PdfStamper(reader, outStream);
+            try
             {
-                oFieldsPDf.SetField(oItem.Key, oFileds[oItem.Key]);
-                //oFieldsPDf.SetFieldProperty(oItem.Key, "setfflags", PdfFormField.FF_READ_ONLY, null);
-
+                AcroFields oFieldsPDf = pdfStamper.AcroFields;
+                oFieldsPDf.GenerateAppearances = true;
+                foreach (KeyValuePair<string, AcroFields.Item> oItem in oFieldsPDf.Fields)
+                {
+                    if (oFileds.ContainsKey(oItem.Key))
+                    {
+                        oFieldsPDf.SetField(oItem.Key, oFileds[oItem.Key]);
+                    }
+                }
+                pdfStamper.FormFlattening = true;
+            }
+            finally
+            {
+                pdfStamper.Close();
             }
         }
-        pdfStamper.FormFlattening = true;
-        pdfStamper.Close();
-        reader.Close();
+        finally
+        {
+            reader.Close();
+        }
     }
 
     public void WriteImage(string sFileInput, string sFileOutput, SkiaSharp.SKBitmap oImage, float x, float y)
@@ -194,34 +222,28 @@ public class PDF
 
     public void MergeFiles(string destinationFile, string[] sourceFiles)
     {
-
+        string validDest = FileManager.ValidatePath(destinationFile);
+        var readers = new List<PdfReader>();
         try
         {
             int f = 0;
-            // we create a reader for a certain document
-            PdfReader reader = new PdfReader(sourceFiles[f]);
+            PdfReader reader = new PdfReader(FileManager.ValidatePath(sourceFiles[f]));
+            readers.Add(reader);
 
-            // we retrieve the total number of pages
             int n = reader.NumberOfPages;
-
-            //Console.WriteLine("There are " + n + " pages in the original file.");
-            // step 1: creation of a document-object
-            Document document = new Document(reader.GetPageSizeWithRotation(1));
-            // step 2: we create a writer that listens to the document
-            PdfWriter writer = PdfWriter.GetInstance(document, new FileStream(destinationFile, FileMode.Create));
-            // step 3: we open the document
+            using FileStream destStream = new FileStream(validDest, FileMode.Create, FileAccess.Write);
+            using Document document = new Document(reader.GetPageSizeWithRotation(1));
+            PdfWriter writer = PdfWriter.GetInstance(document, destStream);
             document.Open();
             PdfContentByte cb = writer.DirectContent;
             PdfImportedPage page;
             int rotation;
-            // step 4: we add content
             while (f < sourceFiles.Length)
             {
                 int i = 0;
                 while (i < n)
                 {
                     i++;
-
                     document.SetPageSize(reader.GetPageSizeWithRotation(i));
                     document.NewPage();
                     page = writer.GetImportedPage(reader, i);
@@ -229,64 +251,54 @@ public class PDF
                     if (rotation == 90 || rotation == 270)
                     {
                         cb.AddTemplate(page, 0, -1f, 1f, 0, 0, reader.GetPageSizeWithRotation(i).Height);
-
-
                     }
                     else
                     {
                         cb.AddTemplate(page, 1f, 0, 0, 1f, 0, 0);
-
                     }
-                    //Console.WriteLine("Processed page " + i);
                 }
                 f++;
                 if (f < sourceFiles.Length)
                 {
-                    reader = new PdfReader(sourceFiles[f]);
-                    // we retrieve the total number of pages
+                    reader = new PdfReader(FileManager.ValidatePath(sourceFiles[f]));
+                    readers.Add(reader);
                     n = reader.NumberOfPages;
-                    //Console.WriteLine("There are " + n + " pages in the original file.");
                 }
             }
-            // step 5: we close the document
             document.Close();
         }
-        catch (Exception)
+        finally
         {
-            throw;
+            foreach (var r in readers)
+            {
+                try { r.Close(); } catch { }
+            }
         }
     }
 
     public byte[] MergeFiles(List<byte[]> sourceFiles)
     {
-        MemoryStream mergeStream = new MemoryStream();
+        using MemoryStream mergeStream = new MemoryStream();
+        var readers = new List<PdfReader>();
         try
         {
             int f = 0;
-            // we create a reader for a certain document
             PdfReader reader = new PdfReader(sourceFiles[f]);
+            readers.Add(reader);
 
-            // we retrieve the total number of pages
             int n = reader.NumberOfPages;
-
-            //Console.WriteLine("There are " + n + " pages in the original file.");
-            // step 1: creation of a document-object
-            Document document = new Document(reader.GetPageSizeWithRotation(1));
-            // step 2: we create a writer that listens to the document
+            using Document document = new Document(reader.GetPageSizeWithRotation(1));
             PdfWriter writer = PdfWriter.GetInstance(document, mergeStream);
-            // step 3: we open the document
             document.Open();
             PdfContentByte cb = writer.DirectContent;
             PdfImportedPage page;
             int rotation;
-            // step 4: we add content
             while (f < sourceFiles.Count)
             {
                 int i = 0;
                 while (i < n)
                 {
                     i++;
-
                     document.SetPageSize(reader.GetPageSizeWithRotation(i));
                     document.NewPage();
                     page = writer.GetImportedPage(reader, i);
@@ -294,31 +306,28 @@ public class PDF
                     if (rotation == 90 || rotation == 270)
                     {
                         cb.AddTemplate(page, 0, -1f, 1f, 0, 0, reader.GetPageSizeWithRotation(i).Height);
-
-
                     }
                     else
                     {
                         cb.AddTemplate(page, 1f, 0, 0, 1f, 0, 0);
-
                     }
-                    //Console.WriteLine("Processed page " + i);
                 }
                 f++;
                 if (f < sourceFiles.Count)
                 {
                     reader = new PdfReader(sourceFiles[f]);
-                    // we retrieve the total number of pages
+                    readers.Add(reader);
                     n = reader.NumberOfPages;
-                    //Console.WriteLine("There are " + n + " pages in the original file.");
                 }
             }
-            // step 5: we close the document
             document.Close();
         }
-        catch (Exception)
+        finally
         {
-            throw;
+            foreach (var r in readers)
+            {
+                try { r.Close(); } catch { }
+            }
         }
 
         return mergeStream.ToArray();

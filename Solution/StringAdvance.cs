@@ -58,7 +58,7 @@ public class StringAdvance
         return tmpstr;
     }
     /// <summary>
-    /// Sostituisce tutte le occorrenze di oldString con newString, consente la modalit‡ (case insensitive) 
+    /// Sostituisce tutte le occorrenze di oldString con newString, consente la modalit√† (case insensitive) 
     /// </summary>
     /// <param name="oldString">Stringa da sostituire</param>
     /// <param name="newString">Stringa con cui sostituire le occorrenze di oldString</param>
@@ -93,7 +93,7 @@ public class StringAdvance
         }
     }
     /// <summary>
-    /// Sostituisce tutte le occorrenze di StringSearch con (BeginTag + StringSearch + EndTag), consente la modalit‡ (case insensitive) 
+    /// Sostituisce tutte le occorrenze di StringSearch con (BeginTag + StringSearch + EndTag), consente la modalit√† (case insensitive) 
     /// </summary>
     /// <param name="StringSearch">Stringa da sostituire</param>
     /// <param name="BeginTag">Apertura del TAG sottoforma di Stringa con cui sostituire le occorrenze di StringSearch</param>
@@ -338,7 +338,7 @@ public class StringAdvance
         return sTmpString;
     }
     /// <summary>
-    /// Serializza un DataTime nell'istanza dell'oggetto. La lunghezza della stringa Ë pari a 17 caratteri.
+    /// Serializza un DataTime nell'istanza dell'oggetto. La lunghezza della stringa √® pari a 17 caratteri.
     /// </summary>
     /// <param name="oDate">Data da serializzare</param>
     public void SerializeDateTime(DateTime oDate)
@@ -354,7 +354,7 @@ public class StringAdvance
         _string = sAnno + sMese + sGiorno + sOra + sMinuti + sSecondi;
     }
     /// <summary>
-    /// Serializza un Integer nell'istanza dell'oggetto. La lunghezza della stringa Ë pari a 4 caratteri.
+    /// Serializza un Integer nell'istanza dell'oggetto. La lunghezza della stringa √® pari a 4 caratteri.
     /// </summary>
     /// <param name="iValue">Data da serializzare</param>
     public void SerializeInt32(int iValue)
@@ -452,9 +452,9 @@ public class StringAdvance
         return true;
     }
     /// <summary>
-    /// Controlla se la data inserita nell'istanza Ë una data lavorativa.
+    /// Controlla se la data inserita nell'istanza √® una data lavorativa.
     /// </summary>
-    /// <returns>Ritona "True" se la data Ë lavorativa, "False" altrimenti.</returns>
+    /// <returns>Ritona "True" se la data √® lavorativa, "False" altrimenti.</returns>
     public bool IsDataLavorativa()
     {
         try
@@ -700,7 +700,7 @@ public class StringAdvance
         return cont;
     }
     /// <summary>
-    /// Contolla se ogni catattere nell'istanza Ë presente in strCtrl
+    /// Contolla se ogni catattere nell'istanza √® presente in strCtrl
     /// </summary>
     /// <param name="strTarget">Stringa da controllare</param>
     /// <param name="strCtrl">Stringa di controllo</param>
@@ -723,7 +723,7 @@ public class StringAdvance
         return true;
     }
     /// <summary>
-    /// Contolla se ogni catattere in strTarget Ë presente in strCtrl
+    /// Contolla se ogni catattere in strTarget √® presente in strCtrl
     /// </summary>
     /// <param name="strTarget">Stringa da controllare</param>
     /// <param name="strCtrl">Stringa di controllo</param>
@@ -755,7 +755,7 @@ public class StringAdvance
         return true;
     }
     /// <summary>
-    /// Controlla se l'istanza Ë un'email.
+    /// Controlla se l'istanza √® un'email.
     /// </summary>
     public bool IsEmail()
     {

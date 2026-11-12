@@ -17,7 +17,7 @@ public class XML
     /// </summary>
     public XML()
     {
-        _registry = new XmlDocument();
+        _registry = new XmlDocument { XmlResolver = null };
         _registry.LoadXml(CreateXML());
     }
 
@@ -50,7 +50,7 @@ public class XML
     public void LoadXml(string sStringXML)
     {
         _strFileName = "";
-        _registry = new XmlDocument();
+        _registry = new XmlDocument { XmlResolver = null };
         _registry.LoadXml(sStringXML);
     }
     /// <summary>
@@ -84,12 +84,13 @@ public class XML
     {
         try
         {
-            _strFileName = sFileName;
-            _registry = new XmlDocument();
-            if (!File.Exists(sFileName))
+            string validPath = FileManager.ValidatePath(sFileName);
+            _strFileName = validPath;
+            _registry = new XmlDocument { XmlResolver = null };
+            if (!File.Exists(validPath))
                 _registry.LoadXml(CreateXML());
             else
-                _registry.Load(sFileName);
+                _registry.Load(validPath);
         }
         catch (Exception)
         {
@@ -583,7 +584,8 @@ public class XML
     {
         try
         {
-            _registry.Save(sFileName);
+            string validPath = FileManager.ValidatePath(sFileName);
+            _registry.Save(validPath);
         }
         catch (Exception)
         {

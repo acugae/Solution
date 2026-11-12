@@ -1,6 +1,7 @@
 ﻿namespace Solution.Data;
 public class CRUDBase
 {
+    private readonly object _syncRoot = new();
     public CRUDBase(string sName) => Name = sName;
     public CRUDBase(string sName, Dictionary<string, object> Attributes)
     {
@@ -12,10 +13,10 @@ public class CRUDBase
     public Dictionary<string, object> Attributes { get { return oAttributes; } set { oAttributes = value; } }
     public object this[string sAttributeName]
     {
-        get { lock (this) { return oAttributes[sAttributeName]; } }
+        get { lock (_syncRoot) { return oAttributes[sAttributeName]; } }
         set
         {
-            lock (this)
+            lock (_syncRoot)
             {
                 if (oAttributes.ContainsKey(sAttributeName))
                     oAttributes[sAttributeName] = value;
@@ -191,9 +192,25 @@ public class CRUDPagination
     public string getPagination()
     {
         if (offset != null)
-            return "OFFSET " + offset.ToString() + " ROWS FETCH NEXT " + size.ToString() + " ROWS ONLY";
-        else if (page != null)
-            return "OFFSET " + (size * (page - 1)).ToString() + " ROWS FETCH NEXT " + size.ToString() + " ROWS ONLY";
+        {
+            if (offset.Value < 0)
+                throw new ArgumentOutOfRangeException(nameof(offset), "Offset non può essere negativo.");
+            if (size != null)
+            {
+                if (size.Value <= 0)
+                    throw new ArgumentOutOfRangeException(nameof(size), "Size deve essere maggiore di zero.");
+                return "OFFSET " + offset.Value.ToString() + " ROWS FETCH NEXT " + size.Value.ToString() + " ROWS ONLY";
+            }
+            return "OFFSET " + offset.Value.ToString() + " ROWS";
+        }
+        else if (page != null && size != null)
+        {
+            if (page.Value <= 0)
+                throw new ArgumentOutOfRangeException(nameof(page), "Page deve essere maggiore di zero.");
+            if (size.Value <= 0)
+                throw new ArgumentOutOfRangeException(nameof(size), "Size deve essere maggiore di zero.");
+            return "OFFSET " + (size.Value * (page.Value - 1)).ToString() + " ROWS FETCH NEXT " + size.Value.ToString() + " ROWS ONLY";
+        }
         else
             return "";
     }
@@ -333,18 +350,18 @@ public class CRUDFilter
 internal static class SqlIdentifier
 {
     private static readonly System.Text.RegularExpressions.Regex _oPart =
-        new System.Text.RegularExpressions.Regex(@"^[^\[\]'""`;\p{Cc}]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
+        new System.Text.RegularExpressions.Regex(@"^[^\[\]'""`;\(\)\p{Cc}]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
     private static readonly System.Text.RegularExpressions.Regex _oSafe =
-        new System.Text.RegularExpressions.Regex(@"^[\p{L}\p{N}_@#$\[\]\. ]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
+        new System.Text.RegularExpressions.Regex(@"^[\p{L}\p{N}_@#$\[\]\.]+$", System.Text.RegularExpressions.RegexOptions.Compiled);
 
     /// <summary>
     /// Per i punti in cui il nome viene scritto nella stringa SQL senza parentesi quadre (DDL):
-    /// restituisce il nome invariato se contiene solo lettere, cifre, spazio e _ @ # $ . [ ], altrimenti eccezione.
+    /// restituisce il nome invariato se contiene solo lettere, cifre e _ @ # $ . [ ], altrimenti eccezione.
     /// </summary>
     public static string Safe(string? sName)
     {
-        if (string.IsNullOrWhiteSpace(sName) || !_oSafe.IsMatch(sName))
+        if (string.IsNullOrWhiteSpace(sName) || !_oSafe.IsMatch(sName) || sName.Contains("--") || sName.Contains("/*") || sName.Contains("*/"))
             throw new ArgumentException("Nome SQL non valido: '" + sName + "'.");
         return sName;
     }
@@ -365,8 +382,8 @@ internal static class SqlIdentifier
             string sPart = ovParts[i].Trim();
             if (sPart.Length >= 2 && sPart[0] == '[' && sPart[sPart.Length - 1] == ']')
                 sPart = sPart.Substring(1, sPart.Length - 2);
-            if (!_oPart.IsMatch(sPart))
-                throw new ArgumentException("Nome SQL non valido: '" + sName + "'. Non sono ammessi [ ] ' \" ` ; e caratteri di controllo.");
+            if (!_oPart.IsMatch(sPart) || sPart.Contains("--") || sPart.Contains("/*") || sPart.Contains("*/"))
+                throw new ArgumentException("Nome SQL non valido: '" + sName + "'. Non sono ammessi [ ] ' \" ` ; ( ) commenti e caratteri di controllo.");
             ovParts[i] = "[" + sPart + "]";
         }
         return string.Join(".", ovParts);
