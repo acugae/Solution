@@ -12,7 +12,7 @@ namespace Solution.Security;
 ///string s3 = oCrypt.Decrypt(s2, "12345");
 ///     </code>
 /// </example>
-public class SymmetricCryptAlgorithm
+public class SymmetricCryptAlgorithm : IDisposable
 {
     public enum ServiceProviderEnum : int
     {
@@ -29,6 +29,9 @@ public class SymmetricCryptAlgorithm
     // Flag per abilitare modalità sicura (IV random prepended al ciphertext)
     private bool _useSecureMode = false;
     private const int PBKDF2_ITERATIONS = 100000;
+    private const int PBKDF2_AEAD_ITERATIONS = 600000;
+    private const string AEAD_VERSION_PREFIX = "$v2$";
+    private bool _disposed = false;
 
     private ServiceProviderEnum mAlgorithm;
     private SymmetricAlgorithm mCryptoService;
@@ -154,35 +157,11 @@ public class SymmetricCryptAlgorithm
     /// <returns>La stringa crittografata.</returns>
     public virtual string Encrypt(string plainText, string key)
     {
+        if (_useSecureMode)
+            return EncryptSecure(plainText, key);
+
         byte[] plainByte = ASCIIEncoding.ASCII.GetBytes(plainText);
         return Convert.ToBase64String(Encrypt(plainByte, key));
-        /*
-        byte[] keyByte = GetLegalKey(key);
-
-        // Set private key
-        mCryptoService.Key = keyByte;
-        SetLegalIV();
-
-        // Encryptor object
-        ICryptoTransform cryptoTransform = mCryptoService.CreateEncryptor();
-
-        // Memory stream object
-        MemoryStream ms = new MemoryStream();
-
-        // Crpto stream object
-        CryptoStream cs = new CryptoStream(ms, cryptoTransform, CryptoStreamMode.Write);
-
-        // Write encrypted byte to memory stream
-        cs.Write(plainByte, 0, plainByte.Length);
-        cs.FlushFinalBlock();
-
-        // Get the encrypted byte length
-        //byte[] cryptoByte = ms.ToArray();
-
-        // Convert into base 64 to enable result to be used in Xml
-        //return Convert.ToBase64String(cryptoByte, 0, cryptoByte.GetLength(0));
-        return Convert.ToBase64String(ms.ToArray());
-        */
     }
     /// <summary>
     /// Crittografa l'array di byte specificato, con la chiave "key"
@@ -192,6 +171,9 @@ public class SymmetricCryptAlgorithm
     /// <returns>Array di byte crittografato.</returns>
     public virtual byte[] Encrypt(byte[] plainByte, string key)
     {
+        if (_useSecureMode)
+            return EncryptSecure(plainByte, key);
+
         byte[] keyByte = GetLegalKey(key);
 
         // Set private key
@@ -199,17 +181,13 @@ public class SymmetricCryptAlgorithm
         SetLegalIV();
 
         // Encryptor object
-        ICryptoTransform cryptoTransform = mCryptoService.CreateEncryptor();
-
-        // Memory stream object
-        MemoryStream ms = new MemoryStream();
-
-        // Crpto stream object
-        CryptoStream cs = new CryptoStream(ms, cryptoTransform, CryptoStreamMode.Write);
-
-        // Write encrypted byte to memory stream
-        cs.Write(plainByte, 0, plainByte.Length);
-        cs.FlushFinalBlock();
+        using ICryptoTransform cryptoTransform = mCryptoService.CreateEncryptor();
+        using MemoryStream ms = new MemoryStream();
+        using (CryptoStream cs = new CryptoStream(ms, cryptoTransform, CryptoStreamMode.Write))
+        {
+            cs.Write(plainByte, 0, plainByte.Length);
+            cs.FlushFinalBlock();
+        }
 
         return ms.ToArray();
     }
@@ -222,6 +200,9 @@ public class SymmetricCryptAlgorithm
     /// <returns>La stringa in chiaro.</returns>
     public virtual string Decrypt(string cryptoText, string key)
     {
+        if (_useSecureMode)
+            return DecryptSecure(cryptoText, key);
+
         // Convert from base 64 string to bytes
         byte[] cryptoByte = Convert.FromBase64String(cryptoText);
         byte[] keyByte = GetLegalKey(key);
@@ -231,17 +212,12 @@ public class SymmetricCryptAlgorithm
         SetLegalIV();
 
         // Decryptor object
-        ICryptoTransform cryptoTransform = mCryptoService.CreateDecryptor();
+        using ICryptoTransform cryptoTransform = mCryptoService.CreateDecryptor();
         try
         {
-            // Memory stream object
-            MemoryStream ms = new MemoryStream(cryptoByte, 0, cryptoByte.Length);
-
-            // Crpto stream object
-            CryptoStream cs = new CryptoStream(ms, cryptoTransform, CryptoStreamMode.Read);
-
-            // Get the result from the Crypto stream
-            StreamReader sr = new StreamReader(cs);
+            using MemoryStream ms = new MemoryStream(cryptoByte, 0, cryptoByte.Length);
+            using CryptoStream cs = new CryptoStream(ms, cryptoTransform, CryptoStreamMode.Read);
+            using StreamReader sr = new StreamReader(cs);
             return sr.ReadToEnd();
         }
         catch
@@ -258,6 +234,9 @@ public class SymmetricCryptAlgorithm
     /// <returns>Array di byte in chiaro.</returns>
     public virtual byte[] Decrypt(byte[] cryptoByte, string key)
     {
+        if (_useSecureMode)
+            return DecryptSecure(cryptoByte, key);
+
         byte[] keyByte = GetLegalKey(key);
 
         // Set private key
@@ -265,18 +244,14 @@ public class SymmetricCryptAlgorithm
         SetLegalIV();
 
         // Decryptor object
-        ICryptoTransform cryptoTransform = mCryptoService.CreateDecryptor();
+        using ICryptoTransform cryptoTransform = mCryptoService.CreateDecryptor();
         try
         {
-            // Memory stream object
-            MemoryStream ms = new MemoryStream(cryptoByte, 0, cryptoByte.Length);
-
-            // Crpto stream object
-            CryptoStream cs = new CryptoStream(ms, cryptoTransform, CryptoStreamMode.Read);
-
-            byte[] fromEncrypt = new byte[cryptoByte.Length];
-            cs.Read(fromEncrypt, 0, fromEncrypt.Length);
-            return fromEncrypt;
+            using MemoryStream ms = new MemoryStream(cryptoByte, 0, cryptoByte.Length);
+            using CryptoStream cs = new CryptoStream(ms, cryptoTransform, CryptoStreamMode.Read);
+            using MemoryStream output = new MemoryStream();
+            cs.CopyTo(output);
+            return output.ToArray();
         }
         catch
         {
@@ -405,6 +380,118 @@ public class SymmetricCryptAlgorithm
         using var output = new MemoryStream();
         cs.CopyTo(output);
         return output.ToArray();
+    }
+
+    /// <summary>
+    /// Crittografa in modalità autenticata AEAD (AES-256-GCM + PBKDF2-SHA256 600k iterazioni).
+    /// Formato: "$v2$" + Base64(salt[16] || nonce[12] || tag[16] || ciphertext).
+    /// </summary>
+    public string EncryptAuthenticated(string plainText, string password)
+    {
+        if (string.IsNullOrEmpty(plainText))
+            throw new ArgumentNullException(nameof(plainText));
+        if (string.IsNullOrEmpty(password))
+            throw new ArgumentNullException(nameof(password));
+
+        byte[] plainBytes = Encoding.UTF8.GetBytes(plainText);
+        byte[] salt = RandomNumberGenerator.GetBytes(16);
+        byte[] nonce = RandomNumberGenerator.GetBytes(AesGcm.NonceByteSizes.MaxSize); // 12 bytes
+        byte[] key = Rfc2898DeriveBytes.Pbkdf2(password, salt, PBKDF2_AEAD_ITERATIONS, HashAlgorithmName.SHA256, 32);
+        byte[] cipherBytes = new byte[plainBytes.Length];
+        byte[] tag = new byte[AesGcm.TagByteSizes.MaxSize]; // 16 bytes
+
+        try
+        {
+            using var aesGcm = new AesGcm(key, AesGcm.TagByteSizes.MaxSize);
+            aesGcm.Encrypt(nonce, plainBytes, cipherBytes, tag);
+
+            byte[] payload = new byte[salt.Length + nonce.Length + tag.Length + cipherBytes.Length];
+            Buffer.BlockCopy(salt, 0, payload, 0, salt.Length);
+            Buffer.BlockCopy(nonce, 0, payload, salt.Length, nonce.Length);
+            Buffer.BlockCopy(tag, 0, payload, salt.Length + nonce.Length, tag.Length);
+            Buffer.BlockCopy(cipherBytes, 0, payload, salt.Length + nonce.Length + tag.Length, cipherBytes.Length);
+            return AEAD_VERSION_PREFIX + Convert.ToBase64String(payload);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+        }
+    }
+
+    /// <summary>
+    /// Decrittografa un ciphertext generato con EncryptAuthenticated (AES-256-GCM).
+    /// </summary>
+    public string DecryptAuthenticated(string cipherText, string password)
+    {
+        if (string.IsNullOrEmpty(cipherText))
+            throw new ArgumentNullException(nameof(cipherText));
+        if (string.IsNullOrEmpty(password))
+            throw new ArgumentNullException(nameof(password));
+        if (!cipherText.StartsWith(AEAD_VERSION_PREFIX, StringComparison.Ordinal))
+            throw new ArgumentException("Ciphertext is not in authenticated v2 format.", nameof(cipherText));
+
+        byte[] payload = Convert.FromBase64String(cipherText[AEAD_VERSION_PREFIX.Length..]);
+        const int headerSize = 16 + 12 + 16;
+        if (payload.Length < headerSize)
+            throw new ArgumentException("Invalid authenticated ciphertext length.", nameof(cipherText));
+
+        byte[] salt = payload[..16];
+        byte[] nonce = payload[16..28];
+        byte[] tag = payload[28..44];
+        byte[] cipherBytes = payload[44..];
+        byte[] plainBytes = new byte[cipherBytes.Length];
+        byte[] key = Rfc2898DeriveBytes.Pbkdf2(password, salt, PBKDF2_AEAD_ITERATIONS, HashAlgorithmName.SHA256, 32);
+
+        try
+        {
+            using var aesGcm = new AesGcm(key, AesGcm.TagByteSizes.MaxSize);
+            aesGcm.Decrypt(nonce, cipherBytes, tag, plainBytes);
+            return Encoding.UTF8.GetString(plainBytes);
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(key);
+        }
+    }
+
+    /// <summary>
+    /// Decrittografa automaticamente sia il formato autenticato v2 (AES-GCM) sia il formato legacy,
+    /// segnalando via <paramref name="usedLegacyFormat"/> se è necessario rieseguire la cifratura (lazy re-encryption).
+    /// </summary>
+    public string? DecryptAuto(string cipherText, string password, out bool usedLegacyFormat)
+    {
+        if (string.IsNullOrEmpty(cipherText))
+            throw new ArgumentNullException(nameof(cipherText));
+        if (string.IsNullOrEmpty(password))
+            throw new ArgumentNullException(nameof(password));
+
+        if (cipherText.StartsWith(AEAD_VERSION_PREFIX, StringComparison.Ordinal))
+        {
+            usedLegacyFormat = false;
+            return DecryptAuthenticated(cipherText, password);
+        }
+
+        usedLegacyFormat = true;
+        bool prevMode = _useSecureMode;
+        _useSecureMode = false;
+        try
+        {
+            return Decrypt(cipherText, password);
+        }
+        finally
+        {
+            _useSecureMode = prevMode;
+        }
+    }
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            mCryptoService?.Dispose();
+            _disposed = true;
+        }
+        GC.SuppressFinalize(this);
     }
     
     #endregion
@@ -571,17 +658,17 @@ public class AsymmetricCryptAlgorithm
     /// <returns>Buffer crittografato.</returns>
     public virtual byte[] Encrypt(byte[] cryptoBuffer, CryptKeys cPublicKey)
     {
-        AsymmetricAlgorithm oAA = null;
         switch (mAlgorithm)
         {
             case ServiceProviderEnum.RSA:
-                oAA = new RSACryptoServiceProvider();
-                ((RSACryptoServiceProvider)oAA).FromXmlString((string)cPublicKey.PublicKey);
-                cryptoBuffer = ((RSACryptoServiceProvider)oAA).Encrypt(cryptoBuffer, false);
-                break;
+                using (var rsa = new RSACryptoServiceProvider(2048))
+                {
+                    rsa.FromXmlString((string)cPublicKey.PublicKey);
+                    return rsa.Encrypt(cryptoBuffer, false);
+                }
+            default:
+                throw new NotSupportedException($"Encryption is not supported for algorithm '{mAlgorithm}'. Use ServiceProviderEnum.RSA.");
         }
-        //
-        return cryptoBuffer;
     }
     /// <summary>
     /// Consente la decrittografia del buffer specificato mediante chiave privata.
@@ -591,16 +678,17 @@ public class AsymmetricCryptAlgorithm
     /// <returns>Buffer in chiaro.</returns>
     public virtual byte[] Decrypt(byte[] cryptoBuffer, CryptKeys cPrivateKey)
     {
-        AsymmetricAlgorithm oAA = null;
         switch (mAlgorithm)
         {
             case ServiceProviderEnum.RSA:
-                oAA = new RSACryptoServiceProvider();
-                ((RSACryptoServiceProvider)oAA).FromXmlString((string)cPrivateKey.PrivateKey);
-                cryptoBuffer = ((RSACryptoServiceProvider)oAA).Decrypt(cryptoBuffer, false);
-                break;
+                using (var rsa = new RSACryptoServiceProvider(2048))
+                {
+                    rsa.FromXmlString((string)cPrivateKey.PrivateKey);
+                    return rsa.Decrypt(cryptoBuffer, false);
+                }
+            default:
+                throw new NotSupportedException($"Decryption is not supported for algorithm '{mAlgorithm}'. Use ServiceProviderEnum.RSA.");
         }
-        return cryptoBuffer;
     }
 }
 #endregion
@@ -608,19 +696,22 @@ public class AsymmetricCryptAlgorithm
 #region Hash Class...
 
 /// <summary>Contiene i metodi e le propriet� per utilizzare algoritmi di hashing</summary>
-public class HashAlgorithm
+public class HashAlgorithm : IDisposable
 {
     private System.Security.Cryptography.HashAlgorithm mCryptoService;
+    private bool _disposed = false;
     /// <summary>
     /// Providers supportati.
     /// </summary>
     public enum ServiceProviderEnum : int
     {
         // Supported algorithms
+        [Obsolete("SHA1 is cryptographically weak. Use SHA256 or SHA512 instead.")]
         SHA1,
         SHA256,
         SHA384,
         SHA512,
+        [Obsolete("MD5 is cryptographically broken. Use SHA256 or SHA512 instead.")]
         MD5
     }
     /// <summary>
@@ -677,6 +768,16 @@ public class HashAlgorithm
     {
         byte[] cryptoByte = mCryptoService.ComputeHash(ASCIIEncoding.ASCII.GetBytes(plainText));
         return Convert.ToBase64String(cryptoByte, 0, cryptoByte.Length);
+    }
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            mCryptoService?.Dispose();
+            _disposed = true;
+        }
+        GC.SuppressFinalize(this);
     }
 }
 #endregion

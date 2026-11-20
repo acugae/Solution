@@ -58,7 +58,7 @@ public class StringAdvance
         return tmpstr;
     }
     /// <summary>
-    /// Sostituisce tutte le occorrenze di oldString con newString, consente la modalità (case insensitive) 
+    /// Sostituisce tutte le occorrenze di oldString con newString, consente la modalitï¿½ (case insensitive) 
     /// </summary>
     /// <param name="oldString">Stringa da sostituire</param>
     /// <param name="newString">Stringa con cui sostituire le occorrenze di oldString</param>
@@ -93,7 +93,7 @@ public class StringAdvance
         }
     }
     /// <summary>
-    /// Sostituisce tutte le occorrenze di StringSearch con (BeginTag + StringSearch + EndTag), consente la modalità (case insensitive) 
+    /// Sostituisce tutte le occorrenze di StringSearch con (BeginTag + StringSearch + EndTag), consente la modalitï¿½ (case insensitive) 
     /// </summary>
     /// <param name="StringSearch">Stringa da sostituire</param>
     /// <param name="BeginTag">Apertura del TAG sottoforma di Stringa con cui sostituire le occorrenze di StringSearch</param>
@@ -219,29 +219,12 @@ public class StringAdvance
         // second), we will use a random number generator to seed the
         // randomizer.
 
-        // Use a 4-byte array to fill it with random bytes and convert it then
-        // to an integer value.
-        byte[] randomBytes = new byte[4];
-
-        // Generate 4 random bytes.
-        RandomNumberGenerator rng = RandomNumberGenerator.Create(); //  new RNGCryptoServiceProvider();
-        rng.GetBytes(randomBytes);
-
-        // Convert 4 bytes into a 32-bit integer value.
-        int seed = (randomBytes[0] & 0x7f) << 24 |
-                    randomBytes[1] << 16 |
-                    randomBytes[2] << 8 |
-                    randomBytes[3];
-
-        // Now, this is real randomization.
-        Random random = new Random(seed);
-
         // This array will hold password characters.
         char[] password = null;
 
-        // Allocate appropriate memory for the password.
+        // Allocate appropriate memory for the password using a CSPRNG.
         if (minLength < maxLength)
-            password = new char[random.Next(minLength, maxLength + 1)];
+            password = new char[RandomNumberGenerator.GetInt32(minLength, maxLength + 1)];
         else
             password = new char[minLength];
 
@@ -271,8 +254,7 @@ public class StringAdvance
             if (lastLeftGroupsOrderIdx == 0)
                 nextLeftGroupsOrderIdx = 0;
             else
-                nextLeftGroupsOrderIdx = random.Next(0,
-                                                     lastLeftGroupsOrderIdx);
+                nextLeftGroupsOrderIdx = RandomNumberGenerator.GetInt32(0, lastLeftGroupsOrderIdx + 1);
 
             // Get the actual index of the character group, from which we will
             // pick the next character.
@@ -286,7 +268,7 @@ public class StringAdvance
             if (lastCharIdx == 0)
                 nextCharIdx = 0;
             else
-                nextCharIdx = random.Next(0, lastCharIdx + 1);
+                nextCharIdx = RandomNumberGenerator.GetInt32(0, lastCharIdx + 1);
 
             // Add this character to the password.
             password[i] = charGroups[nextGroupIdx][nextCharIdx];
@@ -350,7 +332,7 @@ public class StringAdvance
         return sTmpString;
     }
     /// <summary>
-    /// Serializza un DataTime nell'istanza dell'oggetto. La lunghezza della stringa è pari a 17 caratteri.
+    /// Serializza un DataTime nell'istanza dell'oggetto. La lunghezza della stringa ï¿½ pari a 17 caratteri.
     /// </summary>
     /// <param name="oDate">Data da serializzare</param>
     public void SerializeDateTime(DateTime oDate)
@@ -366,7 +348,7 @@ public class StringAdvance
         _string = sAnno + sMese + sGiorno + sOra + sMinuti + sSecondi;
     }
     /// <summary>
-    /// Serializza un Integer nell'istanza dell'oggetto. La lunghezza della stringa è pari a 4 caratteri.
+    /// Serializza un Integer nell'istanza dell'oggetto. La lunghezza della stringa ï¿½ pari a 4 caratteri.
     /// </summary>
     /// <param name="iValue">Data da serializzare</param>
     public void SerializeInt32(int iValue)
@@ -464,9 +446,9 @@ public class StringAdvance
         return true;
     }
     /// <summary>
-    /// Controlla se la data inserita nell'istanza è una data lavorativa.
+    /// Controlla se la data inserita nell'istanza ï¿½ una data lavorativa.
     /// </summary>
-    /// <returns>Ritona "True" se la data è lavorativa, "False" altrimenti.</returns>
+    /// <returns>Ritona "True" se la data ï¿½ lavorativa, "False" altrimenti.</returns>
     public bool IsDataLavorativa()
     {
         try
@@ -712,7 +694,7 @@ public class StringAdvance
         return cont;
     }
     /// <summary>
-    /// Contolla se ogni catattere nell'istanza è presente in strCtrl
+    /// Contolla se ogni catattere nell'istanza ï¿½ presente in strCtrl
     /// </summary>
     /// <param name="strTarget">Stringa da controllare</param>
     /// <param name="strCtrl">Stringa di controllo</param>
@@ -735,7 +717,7 @@ public class StringAdvance
         return true;
     }
     /// <summary>
-    /// Contolla se ogni catattere in strTarget è presente in strCtrl
+    /// Contolla se ogni catattere in strTarget ï¿½ presente in strCtrl
     /// </summary>
     /// <param name="strTarget">Stringa da controllare</param>
     /// <param name="strCtrl">Stringa di controllo</param>
@@ -767,7 +749,7 @@ public class StringAdvance
         return true;
     }
     /// <summary>
-    /// Controlla se l'istanza è un'email.
+    /// Controlla se l'istanza ï¿½ un'email.
     /// </summary>
     public bool IsEmail()
     {

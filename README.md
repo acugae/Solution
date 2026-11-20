@@ -405,15 +405,17 @@ pdf.ExtractPages(1, 5, "extracted.pdf");
 
 #### FTP / SFTP
 ```csharp
-// FTP
-var ftp = new FTP("ftp://server.com", "user", "password");
-ftp.Upload("local.txt", "/remote/path/file.txt");
-ftp.Download("/remote/file.txt", "local.txt");
+// FTP (enableSsl: true for FTPS)
+var ftp = new FTP();
+var request = ftp.CreateFtpWebRequest("ftp://server.com/file.txt", "user", "password", enableSsl: true);
+ftp.DownloadFile("user", "password", "ftp://server.com/file.txt", "local.txt");
 
-// SFTP (with key or password)
-var sftp = new SFTP("server.com", "user", "password");
-sftp.Upload("local.txt", "/remote/path/");
-sftp.Download("/remote/file.txt", memoryStream);
+// SFTP with SSH host key fingerprint verification (recommended)
+using var sftp = new SFTP("server.com", "user", "password")
+    .WithHostKeyFingerprint("SHA256:expected-host-fingerprint");
+sftp.Connect();
+sftp.Upload("/remote/path/file.txt", fileBytes);
+byte[] downloaded = sftp.Download("/remote/path/file.txt");
 ```
 
 #### ZIP
@@ -444,67 +446,109 @@ await client.ConnectAsync();
 ### 📧 Communication - Email
 
 ```csharp
-var email = new Email("smtp.server.com");
+var email = new Email("smtp.server.com")
+{
+    EnableSsl = true // Enable STARTTLS/TLS (recommended)
+};
 
 // Simple email
 email.SendMail(
-    from: "sender@email.com",
-    to: "recipient@email.com",
-    subject: "Subject",
-    body: "<h1>HTML Content</h1>",
-    isHtml: true
+    sFrom: "sender@email.com",
+    sTo: "recipient@email.com",
+    sCC: null,
+    Subject: "Subject",
+    sBody: "<h1>HTML Content</h1>",
+    sFile: null,
+    IsHtml: true
 );
 
 // With attachments
 email.SendMailAttach(
-    from: "sender@email.com",
-    to: "dest1@email.com;dest2@email.com",
-    cc: "cc@email.com",
-    subject: "Documents",
-    body: "Please find the documents attached",
-    attachments: new[] { "doc1.pdf", "doc2.xlsx" }
+    sFrom: "sender@email.com",
+    sTo: "dest1@email.com;dest2@email.com",
+    sCC: "cc@email.com",
+    Subject: "Documents",
+    sBody: "Please find the documents attached",
+    sFiles: new[] { "doc1.pdf", "doc2.xlsx" }
 );
 ```
 
-### 🔐 Security - Cryptography
+### 🔐 Security - Cryptography, JWT & Input Validation
 
-#### Symmetric Encryption
+#### Symmetric Encryption (AES-256-GCM AEAD — Recommended)
 ```csharp
-var aes = new SymmetricCryptAlgorithm(SymmetricAlgorithmType.AES, "secret-key");
+using var crypt = new SymmetricCryptAlgorithm();
 
-string encrypted = aes.Encrypt("text to encrypt");
-string decrypted = aes.Decrypt(encrypted);
+// Authenticated encryption (AES-256-GCM + PBKDF2-SHA256 600k iterations, "$v2$" format)
+string encrypted = crypt.EncryptAuthenticated("sensitive text", "strong-password");
+string decrypted = crypt.DecryptAuthenticated(encrypted, "strong-password");
+
+// Dual-mode decryption for lazy re-encryption of legacy ciphertexts
+string? plain = crypt.DecryptAuto(storedValue, "strong-password", out bool usedLegacyFormat);
+if (usedLegacyFormat && plain != null)
+{
+    string upgraded = crypt.EncryptAuthenticated(plain, "strong-password");
+    // Persist upgraded ciphertext back to storage
+}
+
+// Or enable random-IV secure mode on Encrypt/Decrypt
+crypt.UseSecureMode();
+string secureCipher = crypt.Encrypt("text", "strong-password");
 ```
 
-#### Asymmetric Encryption
+#### Asymmetric Encryption (RSA)
 ```csharp
-var rsa = new AsymmetricCryptAlgorithm(AsymmetricAlgorithmType.RSA);
+var rsa = new AsymmetricCryptAlgorithm(AsymmetricCryptAlgorithm.ServiceProviderEnum.RSA);
 CryptKeys keys = rsa.CreateKeys();
 
-string encrypted = rsa.Encrypt("message", keys.PublicKey);
-string decrypted = rsa.Decrypt(encrypted, keys.PrivateKey);
+string encrypted = rsa.Encrypt("message", keys);
+string decrypted = rsa.Decrypt(encrypted, keys);
 ```
 
 #### Hash
 ```csharp
-string hash = HashAlgorithm.Generate("password", HashAlgorithmType.SHA256);
-string md5 = HashAlgorithm.Generate("data", HashAlgorithmType.MD5);
+using var sha256 = new Solution.Security.HashAlgorithm(Solution.Security.HashAlgorithm.ServiceProviderEnum.SHA256);
+string hash = sha256.Generate("data");
 ```
 
 #### JWT
 ```csharp
-// Create token
-string token = JWT.Create(
-    claims: new Dictionary<string, object> { 
-        { "userId", 123 }, 
-        { "role", "admin" } 
-    },
-    secretKey: "your-secret-key",
-    expirationMinutes: 60
+// Secret key must be at least 32 characters
+const string secretKey = "your-very-strong-secret-key-at-least-32-chars!";
+
+// Create signed token with issuer and audience (recommended)
+string token = JWT.CreateSecure(
+    key: secretKey,
+    expirationMinutes: 60,
+    claims: new[] { new Claim("userId", "123"), new Claim("role", "admin") },
+    issuer: "my-app",
+    audience: "my-api"
 );
 
-// Validate and read
-var claims = JWT.Read(token, "your-secret-key");
+// Validate signature, lifetime, algorithm, issuer and audience
+Claim[] claims = JWT.ReadSecure(secretKey, token, validIssuer: "my-app", validAudience: "my-api");
+```
+
+#### 🛡️ Input Validation (`InputGuard`)
+Use `Solution.Security.InputGuard` to validate dynamic SQL identifiers, SQL fragments, filesystem paths, and dynamic reflection targets:
+
+```csharp
+using Solution.Security;
+
+// SQL identifiers & operators
+string safeTable = InputGuard.ValidateSqlIdentifier("dbo.Users");
+string safeOp = InputGuard.ValidateSqlOperator("LIKE");
+string safeDir = InputGuard.ValidateSortDirection("DESC");
+
+// Defensive validation for dynamic SQL clauses (blocks ';', '--', '/*', DROP, EXEC, etc.)
+string safeWhere = InputGuard.ValidateSqlFragment("Active = 1 AND Role = 'User'");
+
+// Stateless path traversal protection
+string safeFile = InputGuard.ValidateSafePath(userFilePath, allowedBaseDirectory: @"C:\App\Uploads");
+
+// Safe dynamic assembly & type validation
+string safeDll = InputGuard.ValidateAssemblyPath(pluginPath, @"C:\App\Plugins");
+Type safeType = InputGuard.ValidateAllowedType(loadedType, typeof(IMyPlugin));
 ```
 
 ### 🔄 SolutionMapper - Object Mapping
@@ -549,22 +593,24 @@ mapper.AddProfile<UserProfile>();
 ### 🪞 Reflection - Reflection Utilities
 
 ```csharp
-// Dynamic object creation
-object instance = ReflectionManager.GetObject("MyNamespace.MyClass", assembly);
+var reflection = new ReflectionManager();
+
+// Safe dynamic object creation (restricts assembly directory + required interface/base type)
+IMyPlugin plugin = reflection.GetObjectSafe<IMyPlugin>(
+    strAssemblyName: @"C:\App\Plugins\MyPlugin.dll",
+    allowedDirectory: @"C:\App\Plugins",
+    strClassName: "MyNamespace.MyPlugin");
 
 // Dynamic method invocation
-object result = ReflectionManager.CallMethod(instance, "MethodName", param1, param2);
+object result = reflection.CallMethod(plugin, "MethodName", param1, param2);
 
 // Get/Set properties
-ReflectionManager.CallPropertySet(instance, "PropertyName", value);
-object value = ReflectionManager.CallPropertyGet(instance, "PropertyName");
+reflection.CallPropertySet(plugin, "PropertyName", value);
+object value = reflection.CallPropertyGet(plugin, "PropertyName");
 
-// Copy properties between objects
-ReflectionManager.CopyPropertiesObject(source, destination);
-
-// XML serialization
-string xml = ReflectionManager.XMLSerialize(myObject);
-MyClass obj = ReflectionManager.XMLDeserialize<MyClass>(xml);
+// XML serialization (DTD/XXE prohibited by default)
+byte[] xmlBytes = reflection.XMLSerializeToBytes(myObject);
+var obj = (MyClass)reflection.XMLDeserializeFromBytes(xmlBytes, typeof(MyClass));
 ```
 
 ### 📚 Collections - Ordered Collections
@@ -586,29 +632,6 @@ foreach (var key in collection.Keys) {
 
 // Events
 collection.OnAdd += (key, value) => Console.WriteLine($"Added: {key}");
-```
-
-### 💾 Persistence - Data Persistence
-
-#### Commander - SQL Query Management
-```csharp
-var commander = new Commander("queries.xml");
-
-// Execute predefined query
-DataTable result = commander.Execute("GetUserById", new { Id = 1 });
-```
-
-#### Mapper - Simplified ORM
-```csharp
-var mapper = new Mapper("mapping.xml");
-
-// Retrieve objects
-List<User> users = mapper.Get<User>(new { Active = true });
-User user = mapper.GetFirst<User>(new { Id = 1 });
-
-// Persistence
-mapper.Set(user);
-mapper.Del(user);
 ```
 
 ### 📋 JSON / XML
@@ -672,6 +695,15 @@ List<User> users = dataTable.ToList<User>();
 // Object extensions
 string json = myObject.ToJson();
 ```
+
+## 🛡️ Security Hardening & Best Practices
+
+- **Parameterized Queries & Identifier Validation:** `CRUD`, `QueryBuilder`, and `DbOperations` automatically parameterize values and validate table/column identifiers, operators, and sort directions against SQL injection. For custom raw clauses, use `Solution.Security.InputGuard`.
+- **Authenticated Encryption (AEAD):** Prefer `SymmetricCryptAlgorithm.EncryptAuthenticated` / `DecryptAuthenticated` (AES-256-GCM + PBKDF2-SHA256) and `DecryptAuto` for zero-downtime migration from legacy ciphertexts.
+- **JWT Verification:** Signature verification is always enforced (`JWT.ReadSecure` is recommended to also validate `issuer`, `audience`, key length, and allowed HMAC algorithms).
+- **Safe I/O & Deserialization:** `ZIP.UnZip` enforces actual decompressed byte limits (Zip Bomb protection) and path traversal checks; `FileManager.SetAllowedBasePath(...)` and `InputGuard.ValidateSafePath(...)` prevent directory escapes; `XML` and `ReflectionManager` prohibit DTD/XXE processing; `JSON` enforces a safe `MaxDepth` limit; `XLS` neutralizes CSV formula injection.
+- **Transport Security:** Enable `Email.EnableSsl = true`, `FTP(..., enableSsl: true)`, `SFTP.WithHostKeyFingerprint(...)`, and `ForSqlServer(..., trustServerCertificate: false)` in production environments.
+- **Resource Disposal:** Dispose `DB`, `DataReader`, `SFTP`, `SymmetricCryptAlgorithm`, `HashAlgorithm`, and `Cache<T>` instances using `using` blocks.
 
 ## 📋 Requirements
 

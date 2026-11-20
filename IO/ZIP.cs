@@ -65,8 +65,10 @@ public class ZIP
         Dictionary<string, byte[]> oResult = new Dictionary<string, byte[]>();
         long totalExtracted = 0;
         int fileCount = 0;
+        byte[] buffer = new byte[8192];
         
-        using (ZipInputStream zipStream = new ZipInputStream(new MemoryStream(ZipFile)))
+        using (var inputStream = new MemoryStream(ZipFile))
+        using (ZipInputStream zipStream = new ZipInputStream(inputStream))
         {
             ZipEntry currentEntry;
             while ((currentEntry = zipStream.GetNextEntry()) != null)
@@ -76,22 +78,30 @@ public class ZIP
                 if (fileCount > MaxFileCount)
                     throw new InvalidOperationException($"Zip bomb protection: exceeded maximum file count ({MaxFileCount})");
                 
-                // Protezione Zip Bomb: verifica dimensione totale
-                if (currentEntry.Size > 0)
+                // Protezione Path Traversal: verifica nome file (inclusi path radicati, drive-relative e traversal)
+                string entryName = currentEntry.Name;
+                if (string.IsNullOrWhiteSpace(entryName)
+                    || entryName.Contains("..")
+                    || Path.IsPathRooted(entryName)
+                    || entryName.StartsWith('/')
+                    || entryName.StartsWith('\\')
+                    || entryName.Contains(':'))
                 {
-                    totalExtracted += currentEntry.Size;
+                    throw new InvalidOperationException($"Zip entry contains invalid path: {entryName}");
+                }
+
+                // Protezione Zip Bomb reale: conta i byte effettivamente decompressi (non l'header Size)
+                using var entryMs = new MemoryStream();
+                int bytesRead;
+                while ((bytesRead = zipStream.Read(buffer, 0, buffer.Length)) > 0)
+                {
+                    totalExtracted += bytesRead;
                     if (totalExtracted > MaxExtractSize)
                         throw new InvalidOperationException($"Zip bomb protection: extracted content exceeds size limit ({MaxExtractSize / (1024 * 1024)}MB)");
+                    entryMs.Write(buffer, 0, bytesRead);
                 }
-                
-                // Protezione Path Traversal: verifica nome file
-                string entryName = currentEntry.Name;
-                if (entryName.Contains("..") || Path.IsPathRooted(entryName))
-                    throw new InvalidOperationException($"Zip entry contains invalid path: {entryName}");
-                
-                byte[] data = new byte[currentEntry.Size];
-                zipStream.Read(data, 0, data.Length);
-                oResult.Add(currentEntry.Name, data);
+
+                oResult[currentEntry.Name] = entryMs.ToArray();
             }
         }
         return oResult;

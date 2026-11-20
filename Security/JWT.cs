@@ -8,15 +8,21 @@ public class JWT
     /// Legge e valida un token JWT (validazione base per retrocompatibilità).
     /// Per una validazione completa usare ReadSecure().
     /// </summary>
+    [Obsolete("Use JWT.ReadSecure() to also validate issuer, audience, and key strength.")]
     public static Claim[] Read(string Key, string sToken)
     {
+        if (string.IsNullOrEmpty(Key))
+            throw new ArgumentNullException(nameof(Key));
+        if (string.IsNullOrEmpty(sToken))
+            throw new ArgumentNullException(nameof(sToken));
+
         var tokenHandler = new JwtSecurityTokenHandler();
         var validationParameters = new TokenValidationParameters
         {
             ValidateIssuer = false,
             ValidateAudience = false,
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Key)),
-            ValidateIssuerSigningKey = false,
+            ValidateIssuerSigningKey = true,
             ValidateLifetime = true,
             ClockSkew = TimeSpan.Zero
         };
@@ -28,6 +34,14 @@ public class JWT
 
     public static Claim[] Read(string Key, string sToken, TokenValidationParameters validationParameters)
     {
+        if (validationParameters == null)
+            throw new ArgumentNullException(nameof(validationParameters));
+
+        if (validationParameters.IssuerSigningKey == null && !string.IsNullOrEmpty(Key))
+        {
+            validationParameters.IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(Key));
+        }
+
         var tokenHandler = new JwtSecurityTokenHandler();
         tokenHandler.ValidateToken(sToken, validationParameters, out SecurityToken validatedToken);
         var jwtToken = (JwtSecurityToken)validatedToken;
@@ -64,6 +78,7 @@ public class JWT
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key)),
             ValidateIssuerSigningKey = true,  // SEMPRE validare la firma
             ValidateLifetime = true,
+            ValidAlgorithms = new[] { SecurityAlgorithms.HmacSha256, SecurityAlgorithms.HmacSha384, SecurityAlgorithms.HmacSha512 },
             ClockSkew = TimeSpan.FromMinutes(1) // Tolleranza minima per clock skew
         };
         

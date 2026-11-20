@@ -90,22 +90,35 @@ public class ConnectionBuilder
     /// <param name="server">Nome server</param>
     /// <param name="database">Nome database</param>
     /// <param name="integratedSecurity">Usa Windows Authentication</param>
-    public ConnectionBuilder ForSqlServer(string server, string database, bool integratedSecurity = true)
+    public ConnectionBuilder ForSqlServer(string server, string database, bool integratedSecurity = true, bool trustServerCertificate = true)
     {
         _providerKey = "sqldb";
-        _connectionString = integratedSecurity
-            ? $"Server={server};Database={database};Integrated Security=True;TrustServerCertificate=True;"
-            : $"Server={server};Database={database};TrustServerCertificate=True;";
+        var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder
+        {
+            DataSource = server,
+            InitialCatalog = database,
+            IntegratedSecurity = integratedSecurity,
+            TrustServerCertificate = trustServerCertificate
+        };
+        _connectionString = builder.ConnectionString;
         return this;
     }
 
     /// <summary>
     /// Costruisce la connessione con i parametri SQL Server (user/password).
     /// </summary>
-    public ConnectionBuilder ForSqlServer(string server, string database, string user, string password)
+    public ConnectionBuilder ForSqlServer(string server, string database, string user, string password, bool trustServerCertificate = true)
     {
         _providerKey = "sqldb";
-        _connectionString = $"Server={server};Database={database};User Id={user};Password={password};TrustServerCertificate=True;";
+        var builder = new Microsoft.Data.SqlClient.SqlConnectionStringBuilder
+        {
+            DataSource = server,
+            InitialCatalog = database,
+            UserID = user,
+            Password = password,
+            TrustServerCertificate = trustServerCertificate
+        };
+        _connectionString = builder.ConnectionString;
         return this;
     }
 
@@ -115,7 +128,15 @@ public class ConnectionBuilder
     public ConnectionBuilder ForMySQL(string server, string database, string user, string password, int port = 3306)
     {
         _providerKey = "mysdb";
-        _connectionString = $"Server={server};Port={port};Database={database};User={user};Password={password};";
+        var builder = new MySqlConnector.MySqlConnectionStringBuilder
+        {
+            Server = server,
+            Port = (uint)port,
+            Database = database,
+            UserID = user,
+            Password = password
+        };
+        _connectionString = builder.ConnectionString;
         return this;
     }
 
@@ -125,7 +146,15 @@ public class ConnectionBuilder
     public ConnectionBuilder ForPostgreSQL(string host, string database, string user, string password, int port = 5432)
     {
         _providerKey = "pstdb";
-        _connectionString = $"Host={host};Port={port};Database={database};Username={user};Password={password};";
+        var builder = new Npgsql.NpgsqlConnectionStringBuilder
+        {
+            Host = host,
+            Port = port,
+            Database = database,
+            Username = user,
+            Password = password
+        };
+        _connectionString = builder.ConnectionString;
         return this;
     }
 
@@ -135,7 +164,11 @@ public class ConnectionBuilder
     public ConnectionBuilder ForSQLite(string filePath)
     {
         _providerKey = "litedb";
-        _connectionString = $"Data Source={filePath};";
+        var builder = new Microsoft.Data.Sqlite.SqliteConnectionStringBuilder
+        {
+            DataSource = filePath
+        };
+        _connectionString = builder.ConnectionString;
         return this;
     }
 

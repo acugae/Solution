@@ -286,33 +286,37 @@ public class XLS
         return fileExcel;
     }
 
+    private static string SanitizeCsvCell(object? value, string separator = ";")
+    {
+        string text = value?.ToString() ?? string.Empty;
+        // Neutralizza CSV Formula Injection (=, +, -, @, TAB, CR)
+        if (text.Length > 0 && (text[0] == '=' || text[0] == '+' || text[0] == '-' || text[0] == '@' || text[0] == '\t' || text[0] == '\r'))
+            text = "'" + text;
+
+        if (text.Contains(separator) || text.Contains('"') || text.Contains('\n') || text.Contains('\r'))
+            return "\"" + text.Replace("\"", "\"\"") + "\"";
+
+        return text;
+    }
+
     public byte[] returnCSVfromDatatable(DataTable dt)
     {
-
-        int iRows = 0;
         int nRows = dt.Rows.Count;
-
-        int iCols = 0;
         int nCols = dt.Columns.Count;
+        var sb = new StringBuilder();
 
-        string sFile = "";
-        while (iRows < nRows)
+        for (int iRows = 0; iRows < nRows; iRows++)
         {
-            iCols = 0;
-            while (iCols < nCols)
+            for (int iCols = 0; iCols < nCols; iCols++)
             {
-                sFile += dt.Rows[iRows][iCols].ToString() + ";";
-
-                iCols++;
+                if (iCols > 0)
+                    sb.Append(';');
+                sb.Append(SanitizeCsvCell(dt.Rows[iRows][iCols], ";"));
             }
-            sFile = sFile.Substring(0, sFile.Length - 1);
-            sFile += "\n";
-
-            iRows++;
+            sb.Append('\n');
         }
 
-        return Encoding.GetEncoding("iso-8859-1").GetBytes(sFile);
-
+        return Encoding.GetEncoding("iso-8859-1").GetBytes(sb.ToString());
     }
 
     public byte[] GetXLSXFromDatatable(DataTable dt, int numCol, bool showColumnName = false)
@@ -445,8 +449,7 @@ public class XLS
         }
         foreach (DataRow row in oDT.Rows)
         {
-            //List<string> sList = row.ItemArray.Select(y => string.Concat("", "\"", y.ToString().Replace("\"", "\"\""), "\"")).ToList();
-            List<string> sList = row.ItemArray.Select(y => y.ToString()).ToList();
+            List<string> sList = row.ItemArray.Select(y => SanitizeCsvCell(y, sSeparator)).ToList();
             string newLine = string.Join(sSeparator, sList);
             sb.AppendLine(newLine);
         }

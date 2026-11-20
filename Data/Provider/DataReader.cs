@@ -3,15 +3,28 @@ namespace Solution.Data.Provider;
 /// <summary>
 /// Recupera un flusso di dati di sola lettura da un database.
 /// </summary>
-public class DataReader
+public class DataReader : IDisposable
 {
-    private DbDataReader dataReader;
+    private DbDataReader? dataReader;
     /// <summary>
     /// 
     /// </summary>
     public void Dispose()
     {
-        dataReader = null;
+        if (dataReader != null)
+        {
+            try
+            {
+                if (!dataReader.IsClosed)
+                    dataReader.Close();
+            }
+            finally
+            {
+                dataReader.Dispose();
+                dataReader = null;
+            }
+        }
+        GC.SuppressFinalize(this);
     }
     /// <summary>
     /// 

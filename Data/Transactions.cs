@@ -88,17 +88,10 @@ public class Transactions : System.Collections.Specialized.NameObjectCollectionB
     {
         lock (this)
         {
-            try
+            if (_oConnections is not null && _oConnections.Contains(sKeyConnection))
             {
-                if (_oConnections is not null && _oConnections.Contains(sKeyConnection))
-                {
-                    var result = _oConnections[sKeyConnection].BeginTransaction();
-                    this[sKeyConnection] = (Transaction)result;
-                }
-            }
-            catch (Exception e)
-            {
-                throw (e);
+                var result = _oConnections[sKeyConnection].BeginTransaction();
+                this[sKeyConnection] = result is Transaction tx ? tx : new Transaction(result);
             }
         }
     }
@@ -110,14 +103,17 @@ public class Transactions : System.Collections.Specialized.NameObjectCollectionB
     {
         lock (this)
         {
+            var tx = this[sKeyConnection];
             try
             {
-                this[sKeyConnection].Commit();
-                Remove(sKeyConnection);
+                tx?.Commit();
             }
-            catch (Exception e)
+            finally
             {
-                throw (e);
+                tx?.Dispose();
+                Remove(sKeyConnection);
+                if (_oConnections is not null && _oConnections.Contains(sKeyConnection))
+                    _oConnections[sKeyConnection].ClearTransaction();
             }
         }
     }
@@ -129,14 +125,17 @@ public class Transactions : System.Collections.Specialized.NameObjectCollectionB
     {
         lock (this)
         {
+            var tx = this[sKeyConnection];
             try
             {
-                this[sKeyConnection].Rollback();
-                Remove(sKeyConnection);
+                tx?.Rollback();
             }
-            catch (Exception e)
+            finally
             {
-                throw (e);
+                tx?.Dispose();
+                Remove(sKeyConnection);
+                if (_oConnections is not null && _oConnections.Contains(sKeyConnection))
+                    _oConnections[sKeyConnection].ClearTransaction();
             }
         }
     }

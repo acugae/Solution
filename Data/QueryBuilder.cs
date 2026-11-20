@@ -225,8 +225,8 @@ public class QueryBuilder
     /// <returns>DataTable con i risultati</returns>
     public DataTable Select()
     {
-        string sql = BuildSql();
-        return _db.Get(_connectionKey, sql);
+        var (sql, parameters) = BuildParameterizedSql();
+        return parameters.Count > 0 ? _db.Get(_connectionKey, sql, parameters) : _db.Get(_connectionKey, sql);
     }
 
     /// <summary>
@@ -270,8 +270,8 @@ public class QueryBuilder
     /// <returns>Numero di record</returns>
     public int Count()
     {
-        string sql = BuildCountSql();
-        var dt = _db.Get(_connectionKey, sql);
+        var (sql, parameters) = BuildParameterizedCountSql();
+        var dt = parameters.Count > 0 ? _db.Get(_connectionKey, sql, parameters) : _db.Get(_connectionKey, sql);
         if (dt == null || dt.Rows.Count == 0)
             return 0;
         return Convert.ToInt32(dt.Rows[0][0]);
@@ -294,32 +294,35 @@ public class QueryBuilder
     /// Restituisce la query SQL generata (utile per debug).
     /// </summary>
     /// <returns>Query SQL</returns>
-    public string ToSql() => BuildSql();
+    public string ToSql() => BuildParameterizedSql().Sql;
 
     #region SQL Building
 
-    private string BuildSql()
+    private (string Sql, Dictionary<string, object> Parameters) BuildParameterizedSql()
     {
         if (string.IsNullOrEmpty(_tableName))
             throw new InvalidOperationException("Table name not specified. Use From() method.");
 
+        string safeTable = SqlSecurityHelper.QuoteIdentifier(_tableName, nameof(_tableName));
         var sb = new StringBuilder();
+        var parameters = new Dictionary<string, object>();
+        int paramIndex = 0;
 
         // SELECT
         sb.Append("SELECT ");
         if (_columns.Count > 0)
-            sb.Append(string.Join(", ", _columns.Select(c => $"[{c}]")));
+            sb.Append(string.Join(", ", _columns.Select(c => SqlSecurityHelper.ValidateSelectField(c, nameof(_columns)))));
         else
             sb.Append("*");
 
         // FROM
-        sb.Append($" FROM [{_tableName}]");
+        sb.Append($" FROM {safeTable}");
 
         // WHERE
         if (_filters.Count > 0)
         {
             sb.Append(" WHERE ");
-            sb.Append(string.Join(" AND ", _filters.Select(f => f.ToSql())));
+            sb.Append(string.Join(" AND ", _filters.Select(f => f.ToParameterizedSql(parameters, ref paramIndex))));
         }
 
         // ORDER BY
@@ -337,29 +340,33 @@ public class QueryBuilder
         // OFFSET/FETCH (SQL Server syntax)
         if (_skip.HasValue || _take.HasValue)
         {
-            sb.Append($" OFFSET {_skip ?? 0} ROWS");
+            sb.Append($" OFFSET {Math.Max(0, _skip ?? 0)} ROWS");
             if (_take.HasValue)
-                sb.Append($" FETCH NEXT {_take} ROWS ONLY");
+                sb.Append($" FETCH NEXT {Math.Max(0, _take.Value)} ROWS ONLY");
         }
 
-        return sb.ToString();
+        return (sb.ToString(), parameters);
     }
 
-    private string BuildCountSql()
+    private (string Sql, Dictionary<string, object> Parameters) BuildParameterizedCountSql()
     {
         if (string.IsNullOrEmpty(_tableName))
             throw new InvalidOperationException("Table name not specified. Use From() method.");
 
+        string safeTable = SqlSecurityHelper.QuoteIdentifier(_tableName, nameof(_tableName));
         var sb = new StringBuilder();
-        sb.Append($"SELECT COUNT(*) FROM [{_tableName}]");
+        var parameters = new Dictionary<string, object>();
+        int paramIndex = 0;
+
+        sb.Append($"SELECT COUNT(*) FROM {safeTable}");
 
         if (_filters.Count > 0)
         {
             sb.Append(" WHERE ");
-            sb.Append(string.Join(" AND ", _filters.Select(f => f.ToSql())));
+            sb.Append(string.Join(" AND ", _filters.Select(f => f.ToParameterizedSql(parameters, ref paramIndex))));
         }
 
-        return sb.ToString();
+        return (sb.ToString(), parameters);
     }
 
     #endregion
@@ -375,58 +382,56 @@ internal class QueryFilter
 
     public QueryFilter(string column, string op, object? value)
     {
-        Column = column;
-        Operator = op.ToUpper();
+        Column = SqlSecurityHelper.QuoteIdentifier(column, nameof(column));
+        Operator = SqlSecurityHelper.ValidateOperator(op, nameof(op));
         Value = value;
     }
 
-    public string ToSql()
+    public string ToParameterizedSql(Dictionary<string, object> parameters, ref int paramIndex)
     {
         switch (Operator)
         {
             case "IS":
-                return $"[{Column}] IS NULL";
+                return $"{Column} IS NULL";
             case "IS NOT":
-                return $"[{Column}] IS NOT NULL";
+                return $"{Column} IS NOT NULL";
             case "IN":
+            case "NOT IN":
                 if (Value is object[] values)
                 {
-                    var formatted = values.Select(v => FormatValue(v));
-                    return $"[{Column}] IN ({string.Join(", ", formatted)})";
+                    if (values.Length == 0)
+                        return Operator == "IN" ? "1 = 0" : "1 = 1";
+                    var pNames = new List<string>(values.Length);
+                    foreach (var v in values)
+                    {
+                        string pName = $"@qb_{paramIndex++}";
+                        pNames.Add(pName);
+                        parameters[pName] = v ?? DBNull.Value;
+                    }
+                    return $"{Column} {Operator} ({string.Join(", ", pNames)})";
                 }
-                return $"[{Column}] IN ({FormatValue(Value)})";
+                {
+                    string pName = $"@qb_{paramIndex++}";
+                    parameters[pName] = Value ?? DBNull.Value;
+                    return $"{Column} {Operator} ({pName})";
+                }
             case "BETWEEN":
                 if (Value is object[] range && range.Length == 2)
                 {
-                    return $"[{Column}] BETWEEN {FormatValue(range[0])} AND {FormatValue(range[1])}";
+                    string p1 = $"@qb_{paramIndex++}";
+                    string p2 = $"@qb_{paramIndex++}";
+                    parameters[p1] = range[0] ?? DBNull.Value;
+                    parameters[p2] = range[1] ?? DBNull.Value;
+                    return $"{Column} BETWEEN {p1} AND {p2}";
                 }
                 throw new InvalidOperationException("BETWEEN requires two values");
             default:
-                return $"[{Column}] {Operator} {FormatValue(Value)}";
+                {
+                    string pName = $"@qb_{paramIndex++}";
+                    parameters[pName] = Value ?? DBNull.Value;
+                    return $"{Column} {Operator} {pName}";
+                }
         }
-    }
-
-    private static string FormatValue(object? value)
-    {
-        if (value == null)
-            return "NULL";
-        if (value is string s)
-            return $"'{EscapeSql(s)}'";
-        if (value is DateTime dt)
-            return $"'{dt:yyyy-MM-dd HH:mm:ss}'";
-        if (value is bool b)
-            return b ? "1" : "0";
-        return value.ToString() ?? "NULL";
-    }
-
-    private static string EscapeSql(string value)
-    {
-        return value
-            .Replace("'", "''")
-            .Replace("\\", "\\\\")
-            .Replace("\0", "")
-            .Replace("\n", "\\n")
-            .Replace("\r", "\\r");
     }
 }
 
@@ -437,11 +442,11 @@ internal class QueryOrder
 
     public QueryOrder(string column, string direction)
     {
-        Column = column;
-        Direction = direction;
+        Column = SqlSecurityHelper.QuoteIdentifier(column, nameof(column));
+        Direction = SqlSecurityHelper.ValidateSortDirection(direction, nameof(direction));
     }
 
-    public string ToSql() => $"[{Column}] {Direction}";
+    public string ToSql() => $"{Column} {Direction}";
 }
 
 #endregion

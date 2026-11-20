@@ -43,6 +43,13 @@ public class XML
         set { _registry.InnerXml = value; }
         get { return _registry.InnerXml; }
     }
+    private static XmlReaderSettings CreateSecureReaderSettings() => new XmlReaderSettings
+    {
+        DtdProcessing = DtdProcessing.Prohibit,
+        XmlResolver = null,
+        MaxCharactersFromEntities = 1024
+    };
+
     /// <summary>
     /// 
     /// </summary>
@@ -50,8 +57,10 @@ public class XML
     public void LoadXml(string sStringXML)
     {
         _strFileName = "";
-        _registry = new XmlDocument();
-        _registry.LoadXml(sStringXML);
+        _registry = new XmlDocument { XmlResolver = null };
+        using var stringReader = new StringReader(sStringXML);
+        using var xmlReader = XmlReader.Create(stringReader, CreateSecureReaderSettings());
+        _registry.Load(xmlReader);
     }
     /// <summary>
     /// 
@@ -82,18 +91,17 @@ public class XML
     /// <param name="sFileName"></param>
     public void Load(string sFileName)
     {
-        try
+        _strFileName = sFileName;
+        _registry = new XmlDocument { XmlResolver = null };
+        if (!File.Exists(sFileName))
         {
+            LoadXml(CreateXML());
             _strFileName = sFileName;
-            _registry = new XmlDocument();
-            if (!File.Exists(sFileName))
-                _registry.LoadXml(CreateXML());
-            else
-                _registry.Load(sFileName);
         }
-        catch (Exception ex)
+        else
         {
-            throw ex;
+            using var xmlReader = XmlReader.Create(sFileName, CreateSecureReaderSettings());
+            _registry.Load(xmlReader);
         }
     }
 

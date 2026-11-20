@@ -104,13 +104,23 @@ public class PDF
     /// <param name="neededPages">List of the pages to be copied from input pdf file to the output pdf file.</param>
     public void CreatePdfFromDifferentPages(string sFileInput, string sFileOutput, IList<int> neededPages)
     {
-        Document document = new Document();
-        PdfSmartCopy copy = new PdfSmartCopy(document, new FileStream(sFileOutput, FileMode.Create));
+        using var fs = new FileStream(sFileOutput, FileMode.Create);
+        using var document = new Document();
+        using var copy = new PdfSmartCopy(document, fs);
         document.Open();
-        foreach (int page in neededPages)
+        PdfReader? reader = null;
+        try
         {
-            PdfReader reader = new PdfReader(sFileInput);
-            copy.AddPage(copy.GetImportedPage(reader, page));
+            reader = new PdfReader(sFileInput);
+            foreach (int page in neededPages)
+            {
+                copy.AddPage(copy.GetImportedPage(reader, page));
+            }
+        }
+        finally
+        {
+            reader?.Close();
+            document.Close();
         }
     }
 

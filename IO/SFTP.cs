@@ -1,19 +1,42 @@
 ﻿namespace Solution.IO;
-public class SFTP
+public class SFTP : IDisposable
 {
-    SftpClient oFTP = null;
+    private SftpClient oFTP;
+    private PrivateKeyFile? _keyFile;
+    private bool _disposed;
+
     public SFTP(string sUrl, string sUser, string sPassword, int iPort = 22)
     {
         oFTP = new SftpClient(sUrl, iPort, sUser, sPassword);
     }
+
     public SFTP(string sUrl, string sUser, string sPassword, int iPort, string sPathFileKey)
     {
-        PrivateKeyFile oFileKey = new PrivateKeyFile(sPathFileKey);
-        var connectionInfo = new Renci.SshNet.ConnectionInfo(sUrl, sUser,
+        _keyFile = new PrivateKeyFile(sPathFileKey);
+        var connectionInfo = new Renci.SshNet.ConnectionInfo(sUrl, iPort, sUser,
                                     new PasswordAuthenticationMethod(sUser, sPassword),
-                                    new PrivateKeyAuthenticationMethod(sUser, oFileKey));
+                                    new PrivateKeyAuthenticationMethod(sUser, _keyFile));
         oFTP = new SftpClient(connectionInfo);
     }
+
+    /// <summary>
+    /// Imposta la verifica della fingerprint SHA-256 (Base64 o esadecimale) dell'host SSH
+    /// per prevenire attacchi Man-in-the-Middle (chiamare prima di Connect()).
+    /// </summary>
+    public SFTP WithHostKeyFingerprint(string expectedSha256Fingerprint)
+    {
+        if (string.IsNullOrWhiteSpace(expectedSha256Fingerprint))
+            throw new ArgumentNullException(nameof(expectedSha256Fingerprint));
+
+        string expected = expectedSha256Fingerprint.Trim();
+        oFTP.HostKeyReceived += (_, e) =>
+        {
+            string actual = e.FingerPrintSHA256 ?? string.Empty;
+            e.CanTrust = string.Equals(actual, expected, StringComparison.OrdinalIgnoreCase);
+        };
+        return this;
+    }
+
     public void Connect()
     {
         oFTP.Connect();
@@ -33,13 +56,26 @@ public class SFTP
     }
     public void Upload(string sPath, byte[] oFile)
     {
-        MemoryStream ms = new MemoryStream(oFile);
+        using MemoryStream ms = new MemoryStream(oFile);
         oFTP.UploadFile(ms, sPath);
     }
     public byte[] Download(string sPath)
     {
-        MemoryStream msResult = new MemoryStream();
+        using MemoryStream msResult = new MemoryStream();
         oFTP.DownloadFile(sPath, msResult);
         return msResult.ToArray();
+    }
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            if (oFTP?.IsConnected == true)
+                oFTP.Disconnect();
+            oFTP?.Dispose();
+            _keyFile?.Dispose();
+            _disposed = true;
+        }
+        GC.SuppressFinalize(this);
     }
 }

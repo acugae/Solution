@@ -77,7 +77,7 @@ public class Trace
     }
 
     /// <summary>
-    /// Scrive un testo specficato se la condizione è True.
+    /// Scrive un testo specficato se la condizione ï¿½ True.
     /// </summary>
     public static void WriteLine(bool condition, string sMessage)
     {
@@ -108,7 +108,7 @@ public class Trace
         System.Diagnostics.Trace.Flush();
     }
     /// <summary>
-    /// Scrive il testo specficato se il Livello è inferiore a quello scelto.
+    /// Scrive il testo specficato se il Livello ï¿½ inferiore a quello scelto.
     /// </summary>
     public static void WriteLine(string sMessage, TraceLevel oTraceLevel)
     {
@@ -126,7 +126,7 @@ public class Trace
         WriteLine(sMessage, intLevel);
     }
     /// <summary>
-    /// Scrive il testo specficato se il Livello è inferiore a quello scelto.
+    /// Scrive il testo specficato se il Livello ï¿½ inferiore a quello scelto.
     /// </summary>
     public static void WriteLine(string sMessage, int intLevel)
     {
@@ -134,12 +134,12 @@ public class Trace
             return;
         if (intLevel <= iLevel)
         {
-            System.Diagnostics.Trace.WriteLine(print(sMessage), intLevel < osLevel.Length ? osLevel[intLevel] : "Unknown");
+            System.Diagnostics.Trace.WriteLine(print(sMessage), intLevel >= 0 && intLevel < osLevel.Length ? osLevel[intLevel] : "Unknown");
             System.Diagnostics.Trace.Flush();
         }
     }
     /// <summary>
-    /// Scrive il testo specficato se la condizione è True e il Livello è inferiore a quello scelto.
+    /// Scrive il testo specficato se la condizione ï¿½ True e il Livello ï¿½ inferiore a quello scelto.
     /// </summary>
     public static void WriteLine(bool condition, string sMessage, int intLevel)
     {
@@ -147,7 +147,7 @@ public class Trace
             return;
         if (intLevel <= iLevel)
         {
-            System.Diagnostics.Trace.WriteLineIf(condition, print(sMessage), intLevel < osLevel.Length ? osLevel[intLevel] : "Unknown");
+            System.Diagnostics.Trace.WriteLineIf(condition, print(sMessage), intLevel >= 0 && intLevel < osLevel.Length ? osLevel[intLevel] : "Unknown");
             System.Diagnostics.Trace.Flush();
         }
     }

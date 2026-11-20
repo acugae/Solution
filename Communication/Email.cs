@@ -3,11 +3,21 @@
 public class Email
 {
     string _SMTPServer = ""; // _oDB.GetConfig(@"\system\mail\normal\smtpserver"
+    public bool EnableSsl { get; set; } = false;
+
     public Email(string SMTPServer) => _SMTPServer = SMTPServer;
+
+    private static string SanitizeHeaderValue(string? value)
+    {
+        if (string.IsNullOrEmpty(value))
+            return string.Empty;
+        return value.Replace("\r", string.Empty).Replace("\n", string.Empty);
+    }
+
     public void SendMail(string sFrom, string sTo, string sCC, string Subject, string sBody, string sFile, bool IsHtml = true, string sBcc = null)
     {
         MailAddress SendFrom = new MailAddress(sFrom);
-        MailMessage MyMessage = new MailMessage();
+        using MailMessage MyMessage = new MailMessage();
         MyMessage.From = SendFrom;
         string[] sVTo = sTo.Replace(";", ",").Split(',');
         for (int i = 0; i < sVTo.Length; i++)
@@ -33,7 +43,7 @@ public class Email
                     MyMessage.Bcc.Add(sVBcc[i].Trim());
             }
         }
-        MyMessage.Subject = Subject;
+        MyMessage.Subject = SanitizeHeaderValue(Subject);
         MyMessage.IsBodyHtml = IsHtml;
         MyMessage.Body = sBody;
         //
@@ -49,13 +59,13 @@ public class Email
             Attachment attachFile = new Attachment(sFile);
             MyMessage.Attachments.Add(attachFile);
         }
-        SmtpClient emailClient = new SmtpClient(_SMTPServer);
+        using SmtpClient emailClient = new SmtpClient(_SMTPServer) { EnableSsl = EnableSsl };
         emailClient.Send(MyMessage);
     }
     public void SendMailAttach(string sFrom, string sTo, string sCC, string Subject, string sBody, string[] sFiles, bool IsHtml = true, string? sBcc = null)
     {
         MailAddress SendFrom = new MailAddress(sFrom);
-        MailMessage MyMessage = new MailMessage();
+        using MailMessage MyMessage = new MailMessage();
         MyMessage.From = SendFrom;
         string[] sVTo = sTo.Replace(";", ",").Split(',');
         for (int i = 0; i < sVTo.Length; i++)
@@ -81,7 +91,7 @@ public class Email
                     MyMessage.Bcc.Add(sVBcc[i].Trim());
             }
         }
-        MyMessage.Subject = Subject;
+        MyMessage.Subject = SanitizeHeaderValue(Subject);
         MyMessage.IsBodyHtml = IsHtml;
         MyMessage.Body = sBody;
         //
@@ -100,13 +110,13 @@ public class Email
                 MyMessage.Attachments.Add(attachFile);
             }
         }
-        SmtpClient emailClient = new SmtpClient(_SMTPServer);
+        using SmtpClient emailClient = new SmtpClient(_SMTPServer) { EnableSsl = EnableSsl };
         emailClient.Send(MyMessage);
     }
     public void SendMail(string sFrom, string sTo, string sCC, string Subject, string sBody, byte[] file, string filename, bool IsHtml = true, string? sBcc = null)
     {
         MailAddress SendFrom = new MailAddress(sFrom);
-        MailMessage MyMessage = new MailMessage();
+        using MailMessage MyMessage = new MailMessage();
         MyMessage.From = SendFrom;
         string[] sVTo = sTo.Replace(";", ",").Split(',');
         for (int i = 0; i < sVTo.Length; i++)
@@ -132,7 +142,7 @@ public class Email
                     MyMessage.Bcc.Add(sVBcc[i].Trim());
             }
         }
-        MyMessage.Subject = Subject;
+        MyMessage.Subject = SanitizeHeaderValue(Subject);
         MyMessage.IsBodyHtml = IsHtml;
         MyMessage.Body = sBody;
         if (IsHtml)
@@ -141,13 +151,22 @@ public class Email
             AlternateView av = AlternateView.CreateAlternateViewFromString(sBody, null, MediaTypeNames.Text.Html);
             MyMessage.AlternateViews.Add(av);
         }
-        if (filename != null)
+        MemoryStream? stream = null;
+        try
         {
-            MemoryStream stream = new MemoryStream(file);
-            Attachment att = new Attachment(stream, filename);
-            MyMessage.Attachments.Add(att);
+            if (filename != null)
+            {
+                string safeFilename = Path.GetFileName(SanitizeHeaderValue(filename));
+                stream = new MemoryStream(file);
+                Attachment att = new Attachment(stream, safeFilename);
+                MyMessage.Attachments.Add(att);
+            }
+            using SmtpClient emailClient = new SmtpClient(_SMTPServer) { EnableSsl = EnableSsl };
+            emailClient.Send(MyMessage);
         }
-        SmtpClient emailClient = new SmtpClient(_SMTPServer);
-        emailClient.Send(MyMessage);
+        finally
+        {
+            stream?.Dispose();
+        }
     }
 }

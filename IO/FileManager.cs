@@ -15,9 +15,12 @@ public class FileManager
     {
         if (!string.IsNullOrEmpty(basePath))
         {
-            _allowedBasePath = Path.GetFullPath(basePath);
-            if (!Directory.Exists(_allowedBasePath))
-                throw new DirectoryNotFoundException($"Base path does not exist: {_allowedBasePath}");
+            string normalized = Path.GetFullPath(basePath);
+            if (!Directory.Exists(normalized))
+                throw new DirectoryNotFoundException($"Base path does not exist: {normalized}");
+            if (!Path.EndsInDirectorySeparator(normalized))
+                normalized += Path.DirectorySeparatorChar;
+            _allowedBasePath = normalized;
         }
         else
         {
@@ -36,12 +39,15 @@ public class FileManager
         // Normalizza il path
         string fullPath = Path.GetFullPath(path);
         
-        // Se è impostata una base path, verifica che il path sia al suo interno
-        if (!string.IsNullOrEmpty(_allowedBasePath))
+        // Se è impostata una base path, verifica che il path sia strettamente al suo interno
+        string? allowed = _allowedBasePath;
+        if (!string.IsNullOrEmpty(allowed))
         {
-            if (!fullPath.StartsWith(_allowedBasePath, StringComparison.OrdinalIgnoreCase))
+            var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+            string allowedNoSep = allowed.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            if (!fullPath.Equals(allowedNoSep, comparison) && !fullPath.StartsWith(allowed, comparison))
             {
-                throw new UnauthorizedAccessException($"Access denied: path is outside allowed directory");
+                throw new UnauthorizedAccessException("Access denied: path is outside allowed directory");
             }
         }
         
@@ -123,7 +129,17 @@ public class FileManager
     /// <returns>Path assoluto.</returns>
     static public string GetPathRoot(string sPath)
     {
-        sPath = Path.IsPathRooted(sPath) ? sPath : sPath.IndexOf("~") >= 0 ? Path.Combine(System.AppDomain.CurrentDomain.BaseDirectory, sPath.Replace("~", "")) : Path.Combine(AppDomain.CurrentDomain.BaseDirectory, sPath);
-        return sPath;
+        if (string.IsNullOrEmpty(sPath))
+            return AppDomain.CurrentDomain.BaseDirectory;
+
+        if (sPath.Contains('~'))
+        {
+            string relative = sPath.TrimStart('~', '/', '\\');
+            return Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, relative));
+        }
+
+        return Path.IsPathRooted(sPath)
+            ? Path.GetFullPath(sPath)
+            : Path.GetFullPath(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, sPath));
     }
 }

@@ -378,8 +378,10 @@ public static class DBExtensions
             }
         }
         
-        return db.InvokeSQL(connectionKey, sql, paramList.ToArray()).Rows.Count > 0 ? 
-            Convert.ToInt32(db.InvokeSQL(connectionKey, sql + ";SELECT @@ROWCOUNT;", paramList.ToArray()).Rows[0][0]) : 0;
+        DataTable? dt = db.InvokeSQL(connectionKey, sql + ";SELECT @@ROWCOUNT;", paramList.ToArray());
+        if (dt == null || dt.Rows.Count == 0 || dt.Columns.Count == 0)
+            return 0;
+        return Convert.ToInt32(dt.Rows[0][0]);
     }
 
     /// <summary>

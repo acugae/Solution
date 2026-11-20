@@ -1,12 +1,13 @@
 # Copilot Instructions for Solution
 
-## Build
+## Build & Test
 
 ```bash
-dotnet build Solution.sln
+dotnet build Solution.slnx
+dotnet test Solution.Tests/Solution.Tests.csproj
 ```
 
-This is a single-project solution (no test project exists). The project targets **.NET 10.0** and generates a NuGet package on build (`GeneratePackageOnBuild`). Output goes to `bin\` (flat, no TFM subdirectory).
+The project targets **.NET 10.0** and generates a NuGet package on build (`GeneratePackageOnBuild`). Output goes to `bin\` (flat, no TFM subdirectory). Unit and security regression tests live in `Solution.Tests/` (`xUnit`).
 
 ## Architecture
 
@@ -14,17 +15,16 @@ This is a single-project solution (no test project exists). The project targets 
 
 | Module | Namespace | Purpose |
 |---|---|---|
-| `Data/` | `Solution.Data` | Multi-database access layer (SQL Server, MySQL, PostgreSQL) with CRUD, fluent query builder, transactions, and DI registration |
+| `Data/` | `Solution.Data` | Multi-database access layer (SQL Server, MySQL, PostgreSQL, SQLite) with parameterized CRUD, fluent `QueryBuilder`, `SqlSecurityHelper`, transactions, and DI registration |
 | `Data/Provider/` | `Solution.Data.Provider` | ADO.NET provider abstractions (`Connection`, `Command`, `Parameter`, `Transaction`, `DataAdapter`, `DataReader`) |
-| `DbOperations/` | `Solution.Data` | Bulk insert/update operations via `GenericListDataReader` |
+| `DbOperations/` | `Solution.Data` | Bulk insert/update operations via `GenericListDataReader` with identifier and SQL fragment validation |
 | `Collections/` | `Solution.Collections` | `GCollection<K,V>` — insertion-order-preserving generic dictionary with events |
-| `IO/` | `Solution.IO` | File I/O utilities: `FileManager`, `XLS` (NPOI), `PDF` (iTextSharp), `FTP`, `SFTP` (SSH.NET), `ZIP`, `PipeServer`/`PipeClient` |
-| `Communication/` | `Solution.Communication` | `Email` — SMTP email sending |
-| `Security/` | `Solution.Security` | `JWT` (create/validate tokens), `SymmetricCryptAlgorithm`, `AsymmetricCryptAlgorithm`, `HashAlgorithm` |
-| `SolutionMapper/` | `Solution.SolutionMapper` | Object-to-object mapper with profiles, similar to AutoMapper |
-| `Persistence/` | `Solution.Persistence` | `Commander` (XML-defined SQL queries), `Mapper` (simplified ORM) |
-| `Reflection/` | `Solution.Reflection` | `ReflectionManager` — dynamic object creation, method invocation, property access, serialization |
-| `Solution/` | `Solution` | Cross-cutting: extension methods (`Extentions.cs`), `Cache`, `Log` (log4net), `Trace`, string utilities |
+| `IO/` | `Solution.IO` | File I/O utilities: `FileManager`, `XLS` (NPOI, with CSV formula neutralization), `PDF` (iTextSharp), `FTP`, `SFTP` (SSH.NET with host-key fingerprint support), `ZIP` (bounded decompression), `PipeServer`/`PipeClient` |
+| `Communication/` | `Solution.Communication` | `Email` — SMTP email sending with `EnableSsl` and header sanitization |
+| `Security/` | `Solution.Security` | `JWT` (create/validate tokens), `SymmetricCryptAlgorithm` (including AES-256-GCM AEAD + `DecryptAuto`), `AsymmetricCryptAlgorithm` (RSA), `HashAlgorithm`, `InputGuard` |
+| `SolutionMapper/` | `Solution.SolutionMapper` | Thread-safe object-to-object mapper with profiles, cycle/depth protection (`MaxDepth` & `InstanceCache`), and `IgnoreProps` enforcement |
+| `Reflection/` | `Solution.Reflection` | `ReflectionManager` — dynamic object creation (`GetObjectSafe<TInterface>`), method invocation, property access, DTD-safe XML serialization |
+| `Solution/` | `Solution` | Cross-cutting: extension methods (`Extentions.cs`), `Cache` (UTF-8 + SHA-256 keys, `IDisposable`), `Log` (thread-safe, CRLF-sanitized), `Trace`, `StringAdvance` (CSPRNG password generation) |
 
 ### Core data flow
 
@@ -50,5 +50,6 @@ Database provider keys: `"sqldb"` = SQL Server, `"mysdb"` = MySQL, `"pstdb"` = P
 - **Thread safety via `lock(this)`**: Collections and core classes use `lock(this)` for thread safety.
 - **Connection mode**: `DB.ModeConnection` controls whether connections are persistent (`Always`) or cloned per-operation (`Whenever`).
 - **Nullable enabled**: The project has `<Nullable>enable</Nullable>`.
-- **No test project**: There is no test project in the solution. The `scripts/` and `test-files/` directories exist but are empty.
+- **Tests & scripts**: `Solution.Tests/` contains xUnit unit and security regression tests (`SecurityHardeningTests.cs`). `scripts/audit-consumers.ps1` scans consumer repositories for `Solution` usage and sensitive API calls.
+- **Security conventions**: Always parameterize SQL (`CRUD`/`QueryBuilder`), validate dynamic identifiers/fragments/paths/types via `Solution.Security.InputGuard`, disable DTD processing on XML readers, and dispose `DB`/`DataReader`/`SFTP`/`SymmetricCryptAlgorithm`/`HashAlgorithm`/`Cache<T>`.
 - **File-scoped namespaces**: Newer files use file-scoped namespace declarations (`namespace Solution.Data;`), while older files may use block-scoped or omit the namespace entirely (relying on `<RootNamespace>Solution</RootNamespace>`).

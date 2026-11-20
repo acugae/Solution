@@ -15,6 +15,8 @@ public class SolutionMapper
 {
 	// Lista di regole di mapping (profili e mapping espliciti)
 	private readonly List<object> _rules = new();
+	private readonly object _rulesLock = new();
+	private readonly System.Collections.Concurrent.ConcurrentDictionary<object, Delegate> _compiledExpressions = new();
 
 	// Dizionario di converter tra tipi specifici
 	private readonly Dictionary<(Type, Type), object> _typeConverters = new();
@@ -24,7 +26,10 @@ public class SolutionMapper
 	/// </summary>
 	public void AddProfile(SolutionMapperProfile profile)
 	{
-		_rules.AddRange(profile.Rules);
+		lock (_rulesLock)
+		{
+			_rules.AddRange(profile.Rules);
+		}
 	}
 
 	/// <summary>
@@ -32,7 +37,10 @@ public class SolutionMapper
 	/// </summary>
 	public void AddMapping<TSource, TDest>(SolutionMappingExpression<TSource, TDest> mapping)
 	{
-		_rules.Add(mapping);
+		lock (_rulesLock)
+		{
+			_rules.Add(mapping);
+		}
 	}
 
 	/// <summary>
@@ -57,14 +65,27 @@ public class SolutionMapper
 	public TDest Map<TSource, TDest>(TSource source, ResolutionContext context)
 		where TDest : new()
 	{
+		if (source == null)
+			return default!;
+
+		context ??= new ResolutionContext();
+
+		// Protezione cicli e profondità massima (previene StackOverflowException)
+		if (context.InstanceCache.TryGetValue(source, out var cached) && cached is TDest cachedDest)
+			return cachedDest;
+
 		// Check if we're mapping collections - integrato all'inizio per gestire liste direttamente
 		if (IsListType(typeof(TSource)) && IsListType(typeof(TDest)))
 		{
 			return MapCollection<TSource, TDest>(source, context);
 		}
 
-		// Cerca la regola di mapping appropriata
-		var rule = _rules.OfType<SolutionMappingExpression<TSource, TDest>>().FirstOrDefault();
+		// Cerca la regola di mapping appropriata (thread-safe)
+		SolutionMappingExpression<TSource, TDest>? rule;
+		lock (_rulesLock)
+		{
+			rule = _rules.OfType<SolutionMappingExpression<TSource, TDest>>().FirstOrDefault();
+		}
 		if (rule == null)
 		{
 			throw new InvalidOperationException(
@@ -72,163 +93,189 @@ public class SolutionMapper
 				$"Configura CreateMap<{typeof(TSource).Name}, {typeof(TDest).Name}> o usa ReverseMap nel profilo."
 			);
 		}
+
+		int effectiveMaxDepth = rule.MaxDepthValue ?? context.MaxDepth;
+		if (effectiveMaxDepth > 0 && context.CurrentDepth >= effectiveMaxDepth)
+			return default!;
+
 		TDest dest;
 
 		// Costruzione dell'oggetto di destinazione tramite costruttori personalizzati se presenti
-		if (rule?.CustomCtor != null)
+		if (rule.CustomCtor != null)
 			dest = rule.CustomCtor(source);
-		else if (rule?.CustomCtorWithContext != null)
+		else if (rule.CustomCtorWithContext != null)
 			dest = rule.CustomCtorWithContext(source, context);
 		else
 			dest = new TDest();
 
-		// Azioni da eseguire prima del mapping
-		rule?.BeforeMapAction?.Invoke(source, dest);
-		rule?.BeforeMapActionWithContext?.Invoke(source, dest, context);
+		// Registra subito l'istanza nella cache per gestire riferimenti ciclici
+		if (!typeof(TSource).IsValueType)
+			context.InstanceCache[source] = dest!;
 
-		// Se è definito un converter o una funzione di mapping personalizzata, la si usa
-		if (rule?.TypeConverter != null)
-			return rule.TypeConverter.Convert(source, dest, context);
-		if (rule?.CustomMappingFunction != null)
-			return rule.CustomMappingFunction(source, dest, context);
-		if (rule?.CustomMappingExpression != null)
-			return rule.CustomMappingExpression.Compile().Invoke(source);
-
-		// Se sono definiti membri tramite ForMember, si mappano esplicitamente
-		if (rule != null && rule.Members.Count > 0)
+		context.CurrentDepth++;
+		try
 		{
-			// Mappa le proprietà definite con ForMember
-			foreach (var (destProp, getter, valueConverter) in rule.Members)
-			{
-				if (rule.IgnoredMembers.Contains(destProp.Name)) continue;
-				var value = getter(source);
+			// Azioni da eseguire prima del mapping
+			rule.BeforeMapAction?.Invoke(source, dest);
+			rule.BeforeMapActionWithContext?.Invoke(source, dest, context);
 
-				if (valueConverter != null)
+			// Se è definito un converter o una funzione di mapping personalizzata, la si usa
+			if (rule.TypeConverter != null)
+				return rule.TypeConverter.Convert(source, dest, context);
+			if (rule.CustomMappingFunction != null)
+				return rule.CustomMappingFunction(source, dest, context);
+			if (rule.CustomMappingExpression != null)
+			{
+				var compiled = (Func<TSource, TDest>)_compiledExpressions.GetOrAdd(rule, _ => rule.CustomMappingExpression.Compile());
+				return compiled(source);
+			}
+
+			bool IsIgnored(string propName) =>
+				rule.IgnoredMembers.Contains(propName) ||
+				(context.Items.TryGetValue("IgnoreProps", out var ignoreObj) &&
+				 ignoreObj is HashSet<string> ignoreSet &&
+				 ignoreSet.Contains(propName));
+
+			bool IsSetterAllowed(PropertyInfo prop) =>
+				prop.CanWrite && (!rule.IgnoreInaccessibleSetter || (prop.SetMethod != null && prop.SetMethod.IsPublic));
+
+			// Se sono definiti membri tramite ForMember, si mappano esplicitamente
+			if (rule.Members.Count > 0)
+			{
+				// Mappa le proprietà definite con ForMember
+				foreach (var (destProp, getter, valueConverter) in rule.Members)
 				{
-					// Usa il converter specifico per il membro
-					var method = valueConverter.GetType().GetMethod("Convert");
-					value = method.Invoke(valueConverter, new[] { value, destProp.GetValue(dest), context });
-				}
-				else
-				{
-					// Gestione di tipi complessi e conversioni generiche, inclusi liste
-					var srcType = value?.GetType();
-					var destType = destProp.PropertyType;
-					if (srcType != null && (IsComplexType(srcType) || IsListType(srcType)) &&
-						(IsComplexType(destType) || IsListType(destType)) &&
-						HasMappingRule(srcType, destType))
+					if (IsIgnored(destProp.Name) || !IsSetterAllowed(destProp)) continue;
+					var value = getter(source);
+
+					if (valueConverter != null)
 					{
-						value = MapDynamic(value, destType);
+						// Usa il converter specifico per il membro
+						var method = valueConverter.GetType().GetMethod("Convert");
+						value = method.Invoke(valueConverter, new[] { value, destProp.GetValue(dest), context });
 					}
 					else
 					{
-						value = ConvertWithTypeConverter(value, destProp.GetValue(dest), destType, context);
-					}
-				}
-
-				destProp.SetValue(dest, value);
-			}
-
-			// Mappa automaticamente le proprietà non gestite da ForMember e non ignorate
-			var srcProps = typeof(TSource).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-			var destProps = typeof(TDest).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-
-			// Prendi i nomi delle proprietà già mappate
-			var mappedNames = rule.Members.Select(m => m.destProp.Name).ToHashSet();
-
-			foreach (var destProp in destProps)
-			{
-				if (mappedNames.Contains(destProp.Name)) continue;
-				if (rule.IgnoredMembers.Contains(destProp.Name) ||
-					(context?.Items.TryGetValue("IgnoreProps", out var ignoreObj) == true &&
-					 ignoreObj is HashSet<string> ignoreSet &&
-					 ignoreSet.Contains(destProp.Name))) continue;
-
-				var srcProp = srcProps.FirstOrDefault(p => p.Name == destProp.Name);
-				if (srcProp != null && destProp.CanWrite)
-				{
-					object value = null;
-					try
-					{
-						if (srcProp.GetMethod == null || !srcProp.GetMethod.IsPublic)
-							throw new InvalidOperationException($"La proprietà '{srcProp.Name}' di '{srcProp.DeclaringType?.Name}' non ha un getter pubblico.");
-
-						value = srcProp.GetValue(source);
-					}
-					catch (Exception ex)
-					{
-						throw new InvalidOperationException(
-							$"Errore nel mapping: impossibile ottenere il valore per la proprietà '{srcProp.Name}' " +
-							$"({srcProp.DeclaringType?.Name}). " +
-							$"Verifica che la proprietà abbia un getter pubblico e che la configurazione del mapping sia corretta. " +
-							$"Dettaglio: {ex.Message}", ex);
-					}
-
-					// Mapping ricorsivo per tipi complessi o liste
-					var srcType = value?.GetType();
-					var destType = destProp.PropertyType;
-					if (value != null && (IsComplexType(srcType) || IsListType(srcType)) &&
-						(IsComplexType(destType) || IsListType(destType)) &&
-						HasMappingRule(srcType, destType))
-					{
-						value = MapDynamic(value, destType);
-					}
-					else
-					{
-						value = ConvertWithTypeConverter(value, destProp.GetValue(dest), destType, context);
-					}
-
-					destProp.SetValue(dest, value);
-				}
-			}
-		}
-		else
-		{
-			// Mappatura automatica classica: proprietà con lo stesso nome e tipo
-			var srcProps = typeof(TSource).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-			var destProps = typeof(TDest).GetProperties(BindingFlags.Public | BindingFlags.Instance);
-			foreach (var destProp in destProps)
-			{
-				if (rule != null && rule.IgnoredMembers.Contains(destProp.Name)) continue;
-				var srcProp = srcProps.FirstOrDefault(p => p.Name == destProp.Name);
-				if (srcProp != null && destProp.CanWrite && srcProp.CanRead)
-				{
-					var value = srcProp.GetValue(source);
-
-					// Se il tipo è complesso o lista e c'è una regola di mapping, usa Map ricorsivo
-					var srcType = value?.GetType();
-					var destType = destProp.PropertyType;
-					if (value != null && (IsComplexType(srcType) || IsListType(srcType)) &&
-						(IsComplexType(destType) || IsListType(destType)) &&
-						HasMappingRule(srcType, destType))
-					{
-						// Se la destinazione è una collezione interfaccia, crea una List<T> e assegna quella
-						if (IsListType(destType) && destType.IsInterface)
+						// Gestione di tipi complessi e conversioni generiche, inclusi liste
+						var srcType = value?.GetType();
+						var destType = destProp.PropertyType;
+						if (srcType != null && (IsComplexType(srcType) || IsListType(srcType)) &&
+							(IsComplexType(destType) || IsListType(destType)) &&
+							HasMappingRule(srcType, destType))
 						{
-							var destElementType = GetElementType(destType);
-							var listType = typeof(List<>).MakeGenericType(destElementType);
-							value = MapDynamic(value, listType);
+							value = MapDynamic(value, destType, context);
 						}
 						else
 						{
-							value = MapDynamic(value, destType);
+							value = ConvertWithTypeConverter(value, destProp.GetValue(dest), destType, context);
 						}
-					}
-					else
-					{
-						value = ConvertWithTypeConverter(value, destProp.GetValue(dest), destType, context);
 					}
 
 					destProp.SetValue(dest, value);
 				}
+
+				// Mappa automaticamente le proprietà non gestite da ForMember e non ignorate
+				var srcProps = typeof(TSource).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+				var destProps = typeof(TDest).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+
+				// Prendi i nomi delle proprietà già mappate
+				var mappedNames = rule.Members.Select(m => m.destProp.Name).ToHashSet();
+
+				foreach (var destProp in destProps)
+				{
+					if (mappedNames.Contains(destProp.Name)) continue;
+					if (IsIgnored(destProp.Name)) continue;
+
+					var srcProp = srcProps.FirstOrDefault(p => p.Name == destProp.Name);
+					if (srcProp != null && IsSetterAllowed(destProp))
+					{
+						object value = null;
+						try
+						{
+							if (srcProp.GetMethod == null || !srcProp.GetMethod.IsPublic)
+								throw new InvalidOperationException($"La proprietà '{srcProp.Name}' di '{srcProp.DeclaringType?.Name}' non ha un getter pubblico.");
+
+							value = srcProp.GetValue(source);
+						}
+						catch (Exception ex)
+						{
+							throw new InvalidOperationException(
+								$"Errore nel mapping: impossibile ottenere il valore per la proprietà '{srcProp.Name}' " +
+								$"({srcProp.DeclaringType?.Name}). " +
+								$"Verifica che la proprietà abbia un getter pubblico e che la configurazione del mapping sia corretta. " +
+								$"Dettaglio: {ex.Message}", ex);
+						}
+
+						// Mapping ricorsivo per tipi complessi o liste
+						var srcType = value?.GetType();
+						var destType = destProp.PropertyType;
+						if (value != null && (IsComplexType(srcType) || IsListType(srcType)) &&
+							(IsComplexType(destType) || IsListType(destType)) &&
+							HasMappingRule(srcType, destType))
+						{
+							value = MapDynamic(value, destType, context);
+						}
+						else
+						{
+							value = ConvertWithTypeConverter(value, destProp.GetValue(dest), destType, context);
+						}
+
+						destProp.SetValue(dest, value);
+					}
+				}
 			}
+			else
+			{
+				// Mappatura automatica classica: proprietà con lo stesso nome e tipo
+				var srcProps = typeof(TSource).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+				var destProps = typeof(TDest).GetProperties(BindingFlags.Public | BindingFlags.Instance);
+				foreach (var destProp in destProps)
+				{
+					if (IsIgnored(destProp.Name)) continue;
+					var srcProp = srcProps.FirstOrDefault(p => p.Name == destProp.Name);
+					if (srcProp != null && IsSetterAllowed(destProp) && srcProp.CanRead)
+					{
+						var value = srcProp.GetValue(source);
+
+						// Se il tipo è complesso o lista e c'è una regola di mapping, usa Map ricorsivo
+						var srcType = value?.GetType();
+						var destType = destProp.PropertyType;
+						if (value != null && (IsComplexType(srcType) || IsListType(srcType)) &&
+							(IsComplexType(destType) || IsListType(destType)) &&
+							HasMappingRule(srcType, destType))
+						{
+							// Se la destinazione è una collezione interfaccia, crea una List<T> e assegna quella
+							if (IsListType(destType) && destType.IsInterface)
+							{
+								var destElementType = GetElementType(destType);
+								var listType = typeof(List<>).MakeGenericType(destElementType);
+								value = MapDynamic(value, listType, context);
+							}
+							else
+							{
+								value = MapDynamic(value, destType, context);
+							}
+						}
+						else
+						{
+							value = ConvertWithTypeConverter(value, destProp.GetValue(dest), destType, context);
+						}
+
+						destProp.SetValue(dest, value);
+					}
+				}
+			}
+
+			// Azioni da eseguire dopo il mapping
+			rule.AfterMapAction?.Invoke(source, dest);
+			rule.AfterMapActionWithContext?.Invoke(source, dest, context);
+
+			return dest;
 		}
-
-		// Azioni da eseguire dopo il mapping
-		rule?.AfterMapAction?.Invoke(source, dest);
-		rule?.AfterMapActionWithContext?.Invoke(source, dest, context);
-
-		return dest;
+		finally
+		{
+			context.CurrentDepth--;
+		}
 	}
 
 	/// <summary>
@@ -272,7 +319,7 @@ public class SolutionMapper
 				continue;
 			}
 
-			var destItem = MapDynamic(sourceItem, destElementType);
+			var destItem = MapDynamic(sourceItem, destElementType, context);
 			destList.Add(destItem);
 		}
 
@@ -377,11 +424,15 @@ public class SolutionMapper
 	/// </summary>
 	private bool HasMappingRule(Type srcType, Type destType)
 	{
-		// Check direct mapping rule
-		var directRule = _rules.Any(r =>
-			r.GetType().IsGenericType &&
-			r.GetType().GetGenericArguments()[0] == srcType &&
-			r.GetType().GetGenericArguments()[1] == destType);
+		// Check direct mapping rule (thread-safe)
+		bool directRule;
+		lock (_rulesLock)
+		{
+			directRule = _rules.Any(r =>
+				r.GetType().IsGenericType &&
+				r.GetType().GetGenericArguments()[0] == srcType &&
+				r.GetType().GetGenericArguments()[1] == destType);
+		}
 
 		if (directRule) return true;
 
@@ -405,25 +456,37 @@ public class SolutionMapper
 	/// </summary>
 	public object MapDynamic(object source, Type destType)
 	{
+		return MapDynamic(source, destType, new ResolutionContext());
+	}
+
+	private object MapDynamic(object source, Type destType, ResolutionContext context)
+	{
 		var srcType = source.GetType();
-		// Se non esiste una regola di mapping per srcType -> destType, la crea dinamicamente
+		// Se non esiste una regola di mapping per srcType -> destType, la crea dinamicamente (thread-safe)
 		if (!HasMappingRule(srcType, destType))
 		{
 			// Crea una regola di mapping T -> T se i tipi coincidono
 			if (srcType == destType)
 			{
-				var mappingType = typeof(SolutionMappingExpression<,>).MakeGenericType(srcType, destType);
-				var mapping = Activator.CreateInstance(mappingType);
-				_rules.Add(mapping);
+				lock (_rulesLock)
+				{
+					if (!_rules.Any(r => r.GetType().IsGenericType && r.GetType().GetGenericArguments()[0] == srcType && r.GetType().GetGenericArguments()[1] == destType))
+					{
+						var mappingType = typeof(SolutionMappingExpression<,>).MakeGenericType(srcType, destType);
+						var mapping = Activator.CreateInstance(mappingType);
+						if (mapping != null)
+							_rules.Add(mapping);
+					}
+				}
 			}
 		}
 		var method = typeof(SolutionMapper)
 			.GetMethods()
 			.First(m => m.Name == "Map"
 						&& m.IsGenericMethodDefinition
-						&& m.GetParameters().Length == 1);
+						&& m.GetParameters().Length == 2);
 
 		var genericMethod = method.MakeGenericMethod(srcType, destType);
-		return genericMethod.Invoke(this, new[] { source });
+		return genericMethod.Invoke(this, new[] { source, context });
 	}
 }

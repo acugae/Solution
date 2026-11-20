@@ -1,11 +1,33 @@
 ﻿//namespace Solution.Data;
 using Solution;
 
-public class DB
+public class DB : IDisposable
 {
     DataManager oData = new();
+    private bool _disposed = false;
     public string connectionDefault { get; set; }
     public DB(){}
+
+    public void Dispose()
+    {
+        if (!_disposed)
+        {
+            Close();
+            for (int i = 0; i < oData.Connections.Count; i++)
+            {
+                try
+                {
+                    oData.Connections[i]?.Dispose();
+                }
+                catch
+                {
+                    // Ignore dispose errors on individual connections
+                }
+            }
+            _disposed = true;
+        }
+        GC.SuppressFinalize(this);
+    }
     public CRUD this[string sKeyDb]
     {
         get

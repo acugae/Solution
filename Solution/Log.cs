@@ -65,17 +65,30 @@ public class Log
     public static bool IsFile { get; set; } = false;
     public static string Format { get; set; } = "HH:mm:ss.fff";
 
+    private static readonly object _fileLock = new();
+
+    private static string SanitizeLogMessage(string? message)
+    {
+        if (string.IsNullOrEmpty(message))
+            return string.Empty;
+        return message.Replace("\r", "\\r").Replace("\n", "\\n");
+    }
+
     static public void WriteLine(params string[] sMessages)
     {
         for (int i = 0; i < sMessages.Length; i++)
         {
+            string sanitized = SanitizeLogMessage(sMessages[i]);
             if (IsConsole)
-                Console.WriteLine(sMessages[i]);
+                Console.WriteLine(sanitized);
             if (IsFile)
             {
-                StreamWriter stream = new StreamWriter("log/log_" + DateTime.Now.ToString("yyyyMMdd") + ".log", true);
-                stream.WriteLine(sMessages[i]);
-                stream.Close();
+                lock (_fileLock)
+                {
+                    Directory.CreateDirectory("log");
+                    using var stream = new StreamWriter("log/log_" + DateTime.Now.ToString("yyyyMMdd") + ".log", true);
+                    stream.WriteLine(sanitized);
+                }
             }
         }
     }
@@ -92,13 +105,17 @@ public class Log
     {
         for (int i = 0; i < sMessages.Length; i++)
         {
+            string sanitized = SanitizeLogMessage(sMessages[i]);
             if (IsConsole)
-                Console.Write(sMessages[i]);
+                Console.Write(sanitized);
             if (IsFile)
             {
-                StreamWriter stream = new StreamWriter("log/log_" + DateTime.Now.ToString("yyyyMMdd") + ".log", true);
-                stream.Write(sMessages[i]);
-                stream.Close();
+                lock (_fileLock)
+                {
+                    Directory.CreateDirectory("log");
+                    using var stream = new StreamWriter("log/log_" + DateTime.Now.ToString("yyyyMMdd") + ".log", true);
+                    stream.Write(sanitized);
+                }
             }
         }
     }

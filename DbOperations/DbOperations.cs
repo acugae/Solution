@@ -108,11 +108,15 @@ namespace Solution.DbOperations
                     return $"[{name}] {typeSql} {autoIncrement} {isNullable}";
                 }));
 
+                string safeTable = SqlSecurityHelper.QuoteIdentifier(options.tableName, nameof(options.tableName));
+                string cleanTable = options.tableName.Replace("'", "''");
+
                 //UNIQUEIDENTIFIER And primaryKeyAutoIncrement And is Primary   
                 string[] constraint = fieldsCreate.Where(p => options.primaryKeyAutoIncrement && p.IsPrimaryKey && p.TypeSql == "UNIQUEIDENTIFIER").Select(s =>
                    {
+                       string safeCol = SqlSecurityHelper.QuoteIdentifier(s.Name, nameof(s.Name));
                        return
-                           $"ALTER TABLE [{options.tableName}] ADD  CONSTRAINT [DF_{options.tableName}_{s.Name}]  DEFAULT (newsequentialid()) FOR [{s.Name}];";
+                           $"ALTER TABLE {safeTable} ADD CONSTRAINT [DF_{options.tableName}_{s.Name}] DEFAULT (newsequentialid()) FOR {safeCol};";
                    }).ToArray();
 
                 if (!string.IsNullOrEmpty(pks))
@@ -120,8 +124,8 @@ namespace Solution.DbOperations
                     contentCreate.Add($" PRIMARY KEY({pks})");
                 }
 
-                string commandCreate = $"IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = N'{options.tableName}')" +
-                                       $" CREATE TABLE [{options.tableName}] ({string.Join(", ", contentCreate)}); {string.Join(",", constraint)}";
+                string commandCreate = $"IF NOT EXISTS (SELECT * FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_NAME = N'{cleanTable}')" +
+                                       $" CREATE TABLE {safeTable} ({string.Join(", ", contentCreate)}); {string.Join(",", constraint)}";
 
                 ExecuteCommand(options, commandCreate);
 
@@ -173,8 +177,10 @@ namespace Solution.DbOperations
                 throw new ArgumentNullException(nameof(options.tableName));
             }
 
-            string command = (options.useIfExist ? $"IF OBJECT_ID(N'{options.tableName}', N'U') IS NOT NULL" : "") +
-                             $" DROP TABLE [{options.tableName}];";
+            string safeTable = SqlSecurityHelper.QuoteIdentifier(options.tableName, nameof(options.tableName));
+            string cleanTable = options.tableName.Replace("'", "''");
+            string command = (options.useIfExist ? $"IF OBJECT_ID(N'{cleanTable}', N'U') IS NOT NULL" : "") +
+                             $" DROP TABLE {safeTable};";
 
             ExecuteCommand(options, command);
         }
@@ -397,7 +403,7 @@ namespace Solution.DbOperations
                 });
             }
 
-            using (SqlBulkCopy bulkCopy = new SqlBulkCopy(options.Connection as SqlConnection, SqlBulkCopyOptions.KeepNulls & SqlBulkCopyOptions.KeepIdentity, options.Transaction as SqlTransaction))
+            using (SqlBulkCopy bulkCopy = new SqlBulkCopy(options.Connection as SqlConnection, SqlBulkCopyOptions.KeepNulls | SqlBulkCopyOptions.KeepIdentity, options.Transaction as SqlTransaction))
             {
                 bulkCopy.DestinationTableName = $"{options.tableName}";
                 bulkCopy.BulkCopyTimeout = options.ConnectionTimeout;
@@ -450,8 +456,9 @@ namespace Solution.DbOperations
                 throw new ArgumentNullException(nameof(options.tableName));
             }
 
-            //Bulk in Temp Table
-            string tempTable = $"{options.tableName}_{DateTime.Now:yyyyMMddHHmmss}";
+            //Bulk in Temp Table (GUID suffix evita collisioni concorrenti)
+            SqlSecurityHelper.QuoteIdentifier(options.tableName, nameof(options.tableName));
+            string tempTable = $"{options.tableName}_{Guid.NewGuid():N}";
 
             BulkInsert(data, new BulkInsertOptions<TSource>()
             {
@@ -574,7 +581,8 @@ namespace Solution.DbOperations
         }
         public static void BulkUpdate<TSource>(IEnumerable<TSource> data, IBulkUpdateOptions<TSource> options)
         {
-            string tempTable = $"{options.tableName}_{DateTime.Now:yyyyMMddHHmmss}";
+            SqlSecurityHelper.QuoteIdentifier(options.tableName, nameof(options.tableName));
+            string tempTable = $"{options.tableName}_{Guid.NewGuid():N}";
             string joinParams = "";
 
             if (string.IsNullOrEmpty(options.tableName))
@@ -626,11 +634,14 @@ namespace Solution.DbOperations
                 fieldsUpdate = string.Join(" , ", fieldsUpdatelist.Select(s => $" {s} = [ExtendedTemp].{s}"));
             }
 
+            string safeJoinSql = Solution.Security.InputGuard.ValidateSqlFragment(options.joinSql, nameof(options.joinSql));
+            string safeWhereSql = Solution.Security.InputGuard.ValidateSqlFragment(options.otherSqlWhereCondition, nameof(options.otherSqlWhereCondition));
+
             string query = $"UPDATE [ExtendedRes] " +
                            $" SET {fieldsUpdate} " +
                            $" FROM [{tempTable}] as [ExtendedTemp] " +
-                           $" INNER JOIN [{options.tableName}] as [ExtendedRes] on {joinParams} {options.joinSql} " +
-                           $"{(!string.IsNullOrEmpty(options.otherSqlWhereCondition) ? " WHERE " + options.otherSqlWhereCondition : "")}; " +
+                           $" INNER JOIN [{options.tableName}] as [ExtendedRes] on {joinParams} {safeJoinSql} " +
+                           $"{(!string.IsNullOrEmpty(safeWhereSql) ? " WHERE " + safeWhereSql : "")}; " +
                            $"DROP TABLE [{tempTable}];";
 
             ExecuteCommand(options, query);
@@ -691,7 +702,8 @@ namespace Solution.DbOperations
         }
         public static IEnumerable<TRes> BulkUpdateWithResult<TSource, TRes>(IEnumerable<TSource> data, IBulkUpdateOptions<TSource> options) where TSource : class, new() where TRes : class, new()
         {
-            string tempTable = $"{options.tableName}_{DateTime.Now:yyyyMMddHHmmss}";
+            SqlSecurityHelper.QuoteIdentifier(options.tableName, nameof(options.tableName));
+            string tempTable = $"{options.tableName}_{Guid.NewGuid():N}";
             string joinParams = "";
 
             if (string.IsNullOrEmpty(options.tableName))
@@ -774,14 +786,17 @@ namespace Solution.DbOperations
             string pkStrFromInserted = string.Join(",", pk.Select(s => $" INSERTED.{s.Name} "));
             string joinField = string.Join(" AND ", pk.Select(s => $" tp.{s.Name} = tr.{s.Name} "));
 
+            string safeJoinSql = Solution.Security.InputGuard.ValidateSqlFragment(options.joinSql, nameof(options.joinSql));
+            string safeWhereSql = Solution.Security.InputGuard.ValidateSqlFragment(options.otherSqlWhereCondition, nameof(options.otherSqlWhereCondition));
+
             string query = $"DECLARE @tmpTbl as TABLE(intID bigint not null identity(1,1), {pkCreateStr} ); " +
                            $"UPDATE [ExtendedRes] " +
                            $" SET {fieldsUpdate} " +
                            $" OUTPUT {pkStrFromInserted} INTO @tmpTbl({pkStr}) " +
                            $" FROM [{tempTable}] as [ExtendedTemp] " +
-                           $" INNER JOIN [{options.tableName}] as [ExtendedRes] on {joinParams} {options.joinSql} " +
-                           $" {(!string.IsNullOrEmpty(options.otherSqlWhereCondition) ? " WHERE " + options.otherSqlWhereCondition : "")}; " +
-                           $" SELECT tr.* FROM {options.tableName} tr " +
+                           $" INNER JOIN [{options.tableName}] as [ExtendedRes] on {joinParams} {safeJoinSql} " +
+                           $" {(!string.IsNullOrEmpty(safeWhereSql) ? " WHERE " + safeWhereSql : "")}; " +
+                           $" SELECT tr.* FROM [{options.tableName}] tr " +
                            $" JOIN @tmpTbl tp on {joinField}; " +
                            $" DROP TABLE [{tempTable}];";
 

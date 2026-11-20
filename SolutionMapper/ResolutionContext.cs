@@ -22,4 +22,6 @@ public class ResolutionContext
     /// Utile per evitare stack overflow in presenza di oggetti annidati o ciclici.
     /// </summary>
     public int MaxDepth { get; set; } = 10;
+
+    internal int CurrentDepth { get; set; } = 0;
 }

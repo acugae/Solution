@@ -9,7 +9,7 @@ class PipeServer
     public void Create(string PipeName)
     {
         _pipeName = PipeName;
-        pipeServer = new NamedPipeServerStream(PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Message, PipeOptions.Asynchronous);
+        pipeServer = new NamedPipeServerStream(PipeName, PipeDirection.InOut, 1, PipeTransmissionMode.Message, PipeOptions.Asynchronous | PipeOptions.CurrentUserOnly);
     }
 
     public void WriteLine(string sMessage)

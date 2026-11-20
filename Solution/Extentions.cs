@@ -17,7 +17,7 @@ public static class HttpContextExtensions
         }
         catch (Exception ex)
         {
-            return "{ \"errormessage\" : \"" + ex.Message.Replace("'", "''") + "\"  }";
+            return JsonConvert.SerializeObject(new { errormessage = ex.Message });
         }
     }
 }

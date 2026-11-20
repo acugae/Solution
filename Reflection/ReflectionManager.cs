@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Components;
 
 namespace Solution.Reflection;
 /// <summary>
-/// Classe utilizzata per il recuperano di informazioni su assembly, moduli, membri, parametri e altre entità nel codice gestito esaminandone i metadati. 
+/// Classe utilizzata per il recuperano di informazioni su assembly, moduli, membri, parametri e altre entitï¿½ nel codice gestito esaminandone i metadati. 
 /// </summary>
 public class ReflectionManager
 {
@@ -159,7 +159,7 @@ public class ReflectionManager
     /// <summary>
     /// Imposta un valore di una proprieta su di un oggetto specificato.
     /// </summary>
-    /// <param name="oObject">Oggeto su cui impostare la proprietà.</param>
+    /// <param name="oObject">Oggeto su cui impostare la proprietï¿½.</param>
     /// <param name="strPropertyName">Nome della da impostare.</param>
     /// <param name="oValue">Valore da impostare.</param>
     public void CallPropertySet(Object oObject, string strPropertyName, object oValue)
@@ -177,11 +177,11 @@ public class ReflectionManager
         }
     }
     /// <summary>
-    /// Restituisce il valore della proprietà spacificata.
+    /// Restituisce il valore della proprietï¿½ spacificata.
     /// </summary>
     /// <param name="oObject">Oggetto di riferimento.</param>
     /// <param name="strPropertyName">Nome della proprieta.</param>
-    /// <returns>Oggetto di ritorno della proprietà.</returns>
+    /// <returns>Oggetto di ritorno della proprietï¿½.</returns>
     public object CallPropertyGet(Object oObject, string strPropertyName)
     {
         try
@@ -200,7 +200,7 @@ public class ReflectionManager
     /// Restituisce le proprieta dell'oggetto specificato.
     /// </summary>
     /// <param name="oObject">Oggetto di riferimento.</param>
-    /// <param name="bindingAttr">Specifica i flag che controllano l'associazione e il modo in cui è condotta la ricerca.</param>
+    /// <param name="bindingAttr">Specifica i flag che controllano l'associazione e il modo in cui ï¿½ condotta la ricerca.</param>
     /// <returns>Collezione di PropertyInfo.</returns>
     public GCollection<string, PropertyInfo> GetProperties(Object oObject, BindingFlags bindingAttr)
     {
@@ -220,10 +220,10 @@ public class ReflectionManager
         }
     }
     /// <summary>
-    /// Ritorna la proprietà di un oggetto.
+    /// Ritorna la proprietï¿½ di un oggetto.
     /// </summary>
     /// <param name="oObject">Oggeto da analizzare.</param>
-    /// <param name="sPropertyName">Nome della proprietà.</param>
+    /// <param name="sPropertyName">Nome della proprietï¿½.</param>
     /// <returns></returns>
     public PropertyInfo GetProperty(Object oObject, string sPropertyName)
     {
@@ -238,11 +238,11 @@ public class ReflectionManager
         }
     }
     /// <summary>
-    /// Verifica se la proprietà è un parametro.
+    /// Verifica se la proprietï¿½ ï¿½ un parametro.
     /// </summary>
     public bool IsParameter(PropertyInfo property)
     {
-        // Verifica se la proprietà ha l'attributo [Parameter] o [CascadingParameter]
+        // Verifica se la proprietï¿½ ha l'attributo [Parameter] o [CascadingParameter]
         return property.GetCustomAttributes(typeof(ParameterAttribute), true).Any() ||
                property.GetCustomAttributes(typeof(CascadingParameterAttribute), true).Any();
     }
@@ -250,7 +250,7 @@ public class ReflectionManager
     /// Ritorna gli eventi di un oggetto.
     /// </summary>
     /// <param name="oObject">Oggeto da analizzare.</param>
-    /// <param name="bindingAttr">Specifica i flag che controllano l'associazione e il modo in cui è condotta la ricerca.</param>
+    /// <param name="bindingAttr">Specifica i flag che controllano l'associazione e il modo in cui ï¿½ condotta la ricerca.</param>
     /// <returns>Collezione di EventInfo.</returns>
     public GCollection<string, EventInfo> GetEvents(Object oObject, BindingFlags bindingAttr)
     {
@@ -382,10 +382,10 @@ public class ReflectionManager
         return assembly;
     }
     /// <summary>
-    /// Imposta le proprietà di un oggetto con i valori specificati.
+    /// Imposta le proprietï¿½ di un oggetto con i valori specificati.
     /// </summary>
     /// <param name="oObject">Oggetto di riferimento.</param>
-    /// <param name="PropertyListValue">Collezione di proprietà con valori associati.</param>
+    /// <param name="PropertyListValue">Collezione di proprietï¿½ con valori associati.</param>
     public void SetControlProperties(object oObject, GCollection<string, object> PropertyListValue)
     {
         PropertyDescriptorCollection properties = TypeDescriptor.GetProperties(oObject);
@@ -405,10 +405,10 @@ public class ReflectionManager
         }
     }
     /// <summary>
-    /// Restituisce i valori di tuttle le proprietà dell'oggetto.
+    /// Restituisce i valori di tuttle le proprietï¿½ dell'oggetto.
     /// </summary>
     /// <param name="oObject">Oggetto di riferimento.</param>
-    /// <returns>Collezione di proprietà valori.</returns>
+    /// <returns>Collezione di proprietï¿½ valori.</returns>
     public GCollection<string, object> GetPropertiesValue(object oObject)
     {
         PropertyDescriptorCollection properties = TypeDescriptor.GetProperties(oObject);
@@ -446,6 +446,21 @@ public class ReflectionManager
     /// <param name="strClassName">Classe da selezionare.</param>
     /// <param name="oParamsConstructor">Paramentri in input al construttore.</param>
     /// <returns>Istanza di classe.</returns>
+    /// <summary>
+    /// Versione sicura di GetObject: verifica che l'assembly risieda in allowedDirectory (.dll)
+    /// e che il tipo implementi/erediti TInterface prima dell'istanziazione.
+    /// </summary>
+    public TInterface GetObjectSafe<TInterface>(string strAssemblyName, string allowedDirectory, string strClassName, params object[] oParamsConstructor)
+    {
+        string safeAssemblyPath = Solution.Security.InputGuard.ValidateAssemblyPath(strAssemblyName, allowedDirectory);
+        Assembly assembly = Assembly.LoadFrom(safeAssemblyPath);
+        Type? oType = assembly.GetType(strClassName);
+        Type validatedType = Solution.Security.InputGuard.ValidateAllowedType(oType, typeof(TInterface));
+        object? instance = (oParamsConstructor != null && oParamsConstructor.Length > 0)
+            ? Activator.CreateInstance(validatedType, oParamsConstructor)
+            : Activator.CreateInstance(validatedType);
+        return (TInterface)instance!;
+    }
     public object GetObject(string strAssemblyName, string strClassName, params object[] oParamsConstructor)
     {
         Assembly assembly = GetAssembly(strAssemblyName);
@@ -615,12 +630,19 @@ public class ReflectionManager
     /// </summary>
     /// <param name="sXmlSerialized">Stringa da deserializzare.</param>
     /// <param name="oType">Tipo dell'oggetto da ritornare.</param>
+    private static XmlReaderSettings CreateSecureXmlReaderSettings() => new XmlReaderSettings
+    {
+        DtdProcessing = DtdProcessing.Prohibit,
+        XmlResolver = null,
+        MaxCharactersFromEntities = 1024
+    };
+
     public Object DeserializeObject(String sXmlSerialized, Type oType)
     {
         XmlSerializer xs = new XmlSerializer(oType);
-        MemoryStream memoryStream = new MemoryStream(StringToUTF8ByteArray(sXmlSerialized));
-        XmlTextWriter xmlTextWriter = new XmlTextWriter(memoryStream, Encoding.UTF8);
-        return xs.Deserialize(memoryStream);
+        using MemoryStream memoryStream = new MemoryStream(StringToUTF8ByteArray(sXmlSerialized));
+        using XmlReader xmlReader = XmlReader.Create(memoryStream, CreateSecureXmlReaderSettings());
+        return xs.Deserialize(xmlReader);
     }
     /// <summary>
     /// Serializza un oggeto il un buffer di bytes.
@@ -650,19 +672,10 @@ public class ReflectionManager
     /// <returns>Oggetto deserializzato.</returns>
     public object XMLDeserializeFromBytes(byte[] bytsStream, Type oType)
     {
-        try
-        {
-            object oObject = null;
-            MemoryStream reader = new MemoryStream(bytsStream);
-            XmlSerializer serializer = new XmlSerializer(oType);
-            oObject = serializer.Deserialize(reader);
-            reader.Close();
-            return oObject;
-        }
-        catch (Exception err)
-        {
-            throw (err);
-        }
+        using MemoryStream reader = new MemoryStream(bytsStream);
+        using XmlReader xmlReader = XmlReader.Create(reader, CreateSecureXmlReaderSettings());
+        XmlSerializer serializer = new XmlSerializer(oType);
+        return serializer.Deserialize(xmlReader);
     }
     /// <summary>
     /// Serializza un oggetto su di un file.
@@ -691,18 +704,10 @@ public class ReflectionManager
     /// <returns>Oggeto deserializzato.</returns>
     public object XMLDeserialize(string strFileName, Type oType)
     {
-        try
-        {
-            StreamReader reader = new StreamReader(strFileName);
-            XmlSerializer serializer = new XmlSerializer(oType);
-            object oObject = serializer.Deserialize(reader);
-            reader.Close();
-            return oObject;
-        }
-        catch (Exception err)
-        {
-            throw (err);
-        }
+        using StreamReader reader = new StreamReader(strFileName);
+        using XmlReader xmlReader = XmlReader.Create(reader, CreateSecureXmlReaderSettings());
+        XmlSerializer serializer = new XmlSerializer(oType);
+        return serializer.Deserialize(xmlReader);
     }
 #if (!MOBILE)
     /// <summary>

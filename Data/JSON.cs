@@ -9,15 +9,21 @@ public class JSON
         return JsonConvert.SerializeObject(oObject, Newtonsoft.Json.Formatting.Indented, oSetting);
     }
 
+    private static readonly JsonSerializerSettings SafeDefaultSettings = new JsonSerializerSettings
+    {
+        MaxDepth = 64,
+        TypeNameHandling = TypeNameHandling.None
+    };
+
     static public T Deserialize<T>(string sJson)
     {
-        return JsonConvert.DeserializeObject<T>(sJson);
+        return JsonConvert.DeserializeObject<T>(sJson, SafeDefaultSettings);
     }
 
     static public T Deserialize<T>(string sJson, string sPath, string? sDefault = null)
     {
         string ssJson = Parse(sJson, sPath, sDefault);
-        return JsonConvert.DeserializeObject<T>(ssJson);
+        return JsonConvert.DeserializeObject<T>(ssJson, SafeDefaultSettings);
     }
 
     static public T Deserialize<T>(string sJson, JsonSerializerSettings oSetting)
@@ -594,12 +600,6 @@ public static class MergeExtensions
 
 public class GenericObject
 {
-    private JsonSerializerSettings _jsonSettings = new JsonSerializerSettings
-    {
-        TypeNameHandling = TypeNameHandling.All,
-        TypeNameAssemblyFormatHandling = TypeNameAssemblyFormatHandling.Full 
-    };
-
     Dictionary<string, object> oAttribute = new Dictionary<string, object>();
     //
     public GenericObject() { }

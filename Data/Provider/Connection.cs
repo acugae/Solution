@@ -106,6 +106,11 @@ public class Connection : IDisposable, IAsyncDisposable
         transaction = connection.BeginTransaction();
         return transaction;
     }
+
+    internal void ClearTransaction()
+    {
+        transaction = null;
+    }
     /// <summary>
          /// 
          /// </summary>
@@ -123,7 +128,7 @@ public class Connection : IDisposable, IAsyncDisposable
         return connection.CreateCommand();
     }
     /// <summary>
-    /// Controlla se la connessione è aperta.
+    /// Controlla se la connessione Ã¨ aperta.
     /// </summary>
     /// <returns></returns>
     //[WebMethod(true)]
@@ -137,7 +142,7 @@ public class Connection : IDisposable, IAsyncDisposable
         return false;
     }
     /// <summary>
-    /// Apre la connessione così come specificato nella stringa di connessione.
+    /// Apre la connessione cosÃ¬ come specificato nella stringa di connessione.
     /// </summary>
     //[WebMethod(true)]
     public void Open()

@@ -124,7 +124,7 @@ public class CRUDOrders : Dictionary<string, string>
             return "1";
         List<string> ovOrders = new List<string>();
         foreach (string order in this.Keys)
-            ovOrders.Add(order + " " + this[order]);
+            ovOrders.Add(SqlSecurityHelper.QuoteIdentifier(order, nameof(order)) + " " + SqlSecurityHelper.ValidateSortDirection(this[order], "direction"));
         return string.Join(",", ovOrders);
     }
 }
@@ -164,7 +164,12 @@ public class CRUDFind
         }
         set { oFilters = value; }
     }
-    public string getFields() { return ((Fields == null || Fields.Count == 0) ? "*" : string.Join(",", Fields)); }
+    public string getFields()
+    {
+        if (Fields == null || Fields.Count == 0)
+            return "*";
+        return string.Join(",", Fields.Select(f => SqlSecurityHelper.ValidateSelectField(f, nameof(Fields))));
+    }
 }
 
 public class CRUDPagination
@@ -188,7 +193,7 @@ public class CRUDOrder
 {
     public string Column { get; set; }
     public string Direction { get; set; }
-    public string getOrder() { return Column + " " + Direction; }
+    public string getOrder() => SqlSecurityHelper.QuoteIdentifier(Column, nameof(Column)) + " " + SqlSecurityHelper.ValidateSortDirection(Direction, nameof(Direction));
 }
 
 public class CRUDFilter
@@ -205,26 +210,120 @@ public class CRUDFilter
 
     public string getFilter()
     {
-        return Name + " " + getValue(Operator, Value);
+        return SqlSecurityHelper.QuoteIdentifier(Name, nameof(Name)) + " " + getValue(Operator, Value);
     }
     public string getFilterParams(string sPrefix)
     {
-        return "[" + Name + "] " + Operator + " @" + sPrefix + Name;
+        string safeCol = SqlSecurityHelper.QuoteIdentifier(Name, nameof(Name));
+        string safeOp = SqlSecurityHelper.ValidateOperator(Operator, nameof(Operator));
+        return safeCol + " " + safeOp + " @" + sPrefix + Name;
+    }
+
+    internal string BuildParameterizedClause(Connection conn, string prefix, ref int paramIndex, List<Parameter> parameters)
+    {
+        string safeCol = SqlSecurityHelper.QuoteIdentifier(Name, nameof(Name));
+        string safeOp = SqlSecurityHelper.ValidateOperator(Operator, nameof(Operator));
+
+        if (safeOp is "IS" or "IS NOT")
+        {
+            if (Value == null || Value == DBNull.Value || Value.ToString()!.Equals("NULL", StringComparison.OrdinalIgnoreCase))
+                return $"{safeCol} {safeOp} NULL";
+            throw new ArgumentException($"Operator '{safeOp}' only supports NULL value.", nameof(Value));
+        }
+
+        if (safeOp is "IN" or "NOT IN")
+        {
+            var items = new List<object>();
+            if (Value is System.Collections.IEnumerable enumerable && Value is not string)
+            {
+                foreach (var item in enumerable)
+                    items.Add(item ?? DBNull.Value);
+            }
+            else if (Value is string rawList)
+            {
+                foreach (var token in rawList.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+                {
+                    string cleaned = token.Length >= 2 && token.StartsWith('\'') && token.EndsWith('\'')
+                        ? token[1..^1].Replace("''", "'")
+                        : token;
+                    items.Add(cleaned);
+                }
+            }
+            else if (Value != null)
+            {
+                items.Add(Value);
+            }
+
+            if (items.Count == 0)
+                return safeOp == "IN" ? "1 = 0" : "1 = 1";
+
+            var placeholders = new List<string>(items.Count);
+            foreach (var item in items)
+            {
+                string paramName = SqlSecurityHelper.MakeParamName(prefix, paramIndex++);
+                placeholders.Add(paramName);
+                var p = new Parameter(conn)
+                {
+                    ParameterName = paramName,
+                    Value = item ?? DBNull.Value
+                };
+                parameters.Add(p);
+            }
+
+            return $"{safeCol} {safeOp} ({string.Join(", ", placeholders)})";
+        }
+
+        if (safeOp == "BETWEEN")
+        {
+            if (Value is object[] range && range.Length == 2)
+            {
+                string pFrom = SqlSecurityHelper.MakeParamName(prefix, paramIndex++);
+                string pTo = SqlSecurityHelper.MakeParamName(prefix, paramIndex++);
+                parameters.Add(new Parameter(conn) { ParameterName = pFrom, Value = range[0] ?? DBNull.Value });
+                parameters.Add(new Parameter(conn) { ParameterName = pTo, Value = range[1] ?? DBNull.Value });
+                return $"{safeCol} BETWEEN {pFrom} AND {pTo}";
+            }
+            throw new ArgumentException("BETWEEN operator requires an object[2] range.", nameof(Value));
+        }
+
+        string pName = SqlSecurityHelper.MakeParamName(prefix, paramIndex++);
+        parameters.Add(new Parameter(conn)
+        {
+            ParameterName = pName,
+            Value = Value ?? DBNull.Value
+        });
+        return $"{safeCol} {safeOp} {pName}";
     }
 
     public string getValue(string sOperator, object oValue)
     {
-        bool bIsString = oValue.GetType().ToString().Equals("System.String");
-        switch (sOperator.ToLower())
+        string safeOp = SqlSecurityHelper.ValidateOperator(sOperator, nameof(sOperator));
+        if (oValue == null || oValue == DBNull.Value)
+            return safeOp + " NULL";
+
+        bool bIsString = oValue is string;
+        switch (safeOp)
         {
-            case "in":
+            case "IN":
+            case "NOT IN":
                 {
-                    return "in (" + oValue.ToString() + ")";
+                    var parts = oValue.ToString()!
+                        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                        .Select(v =>
+                        {
+                            string cleaned = v.Length >= 2 && v.StartsWith('\'') && v.EndsWith('\'')
+                                ? v[1..^1].Replace("''", "'")
+                                : v;
+                            return decimal.TryParse(cleaned, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out _)
+                                ? cleaned
+                                : "'" + EscapeSqlString(cleaned) + "'";
+                        });
+                    return safeOp + " (" + string.Join(", ", parts) + ")";
                 }
             default:
                 // Escape single quotes to prevent SQL injection
-                string escapedValue = bIsString ? EscapeSqlString(oValue.ToString()) : oValue.ToString();
-                return sOperator + " " + (bIsString ? "'" + escapedValue + "'" : escapedValue);
+                string escapedValue = bIsString ? EscapeSqlString(oValue.ToString()!) : Convert.ToString(oValue, System.Globalization.CultureInfo.InvariantCulture)!;
+                return safeOp + " " + (bIsString ? "'" + escapedValue + "'" : escapedValue);
         }
     }
     
@@ -254,13 +353,30 @@ public class CRUD
 
     public DataTable Find(CRUDFind oFind)
     {
-        string sSQL = "SELECT " + oFind.getFields() + " FROM [" + oFind.Name + "] ";
-        string sSQLWhere = oFind.Filters.getFilters();
-        if (!string.IsNullOrEmpty(sSQLWhere))
-            sSQL += " WHERE " + sSQLWhere;
-        sSQL += " ORDER BY " + oFind.Orders.getOrders();
-        sSQL += " " + oFind.Pagination.getPagination();
-        return oDB.InvokeSQL(_sKey, sSQL);
+        string safeTable = SqlSecurityHelper.QuoteIdentifier(oFind.Name, nameof(oFind.Name));
+        string sSQL = "SELECT " + oFind.getFields() + " FROM " + safeTable + " ";
+        List<Parameter> oParams = new List<Parameter>();
+
+        if (oFind.Filters != null && oFind.Filters.Count > 0)
+        {
+            Connection conn = oDB.DataManager.Connections[_sKey];
+            int paramIndex = 0;
+            var clauses = new List<string>(oFind.Filters.Count);
+            foreach (CRUDFilter filter in oFind.Filters)
+                clauses.Add(filter.BuildParameterizedClause(conn, "f", ref paramIndex, oParams));
+            sSQL += " WHERE " + string.Join(" AND ", clauses);
+        }
+
+        if (oFind.Orders != null && oFind.Orders.Count > 0)
+            sSQL += " ORDER BY " + oFind.Orders.getOrders();
+        else if (!string.IsNullOrEmpty(oFind.Pagination.getPagination()))
+            sSQL += " ORDER BY 1";
+
+        string pagination = oFind.Pagination.getPagination();
+        if (!string.IsNullOrEmpty(pagination))
+            sSQL += " " + pagination;
+
+        return oParams.Count > 0 ? oDB.InvokeSQL(_sKey, sSQL, oParams.ToArray()) : oDB.InvokeSQL(_sKey, sSQL);
     }
 
     public DataRow Find0(string sEntityName, params object[] ovKeyValue)
@@ -289,23 +405,28 @@ public class CRUD
         StringBuilder oSqlName = new StringBuilder();
         StringBuilder oSqlValue = new StringBuilder();
         List<Parameter> oParams = new List<Parameter>();
+        Connection conn = oDB.DataManager.Connections[_sKey];
+        string safeTable = SqlSecurityHelper.QuoteIdentifier(oItem.Name, nameof(oItem.Name));
+        int idx = 0;
         //
         foreach (KeyValuePair<string, object> oField in oItem.Attributes)
         {
+            string safeCol = SqlSecurityHelper.QuoteIdentifier(oField.Key, nameof(oItem.Attributes));
+            string pName = SqlSecurityHelper.MakeParamName("p", idx++);
             if (oSqlName.Length > 0)
                 oSqlName.Append(", ");
-            oSqlName.Append(oField.Key);
+            oSqlName.Append(safeCol);
             if (oSqlValue.Length > 0)
                 oSqlValue.Append(", ");
-            oSqlValue.Append("@" + oField.Key);
+            oSqlValue.Append(pName);
             //
-            Parameter oParam = new Parameter(oDB.DataManager.Connections[_sKey]);
-            oParam.ParameterName = "@" + oField.Key;
+            Parameter oParam = new Parameter(conn);
+            oParam.ParameterName = pName;
             oParam.Value = (oField.Value == null ? DBNull.Value : oField.Value);
             oParams.Add(oParam);
         }
         //
-        oSql.Append("INSERT INTO [" + oItem.Name + "] ( " + oSqlName + " ) VALUES ( " + oSqlValue + ");SELECT @@ROWCOUNT;");
+        oSql.Append("INSERT INTO " + safeTable + " ( " + oSqlName + " ) VALUES ( " + oSqlValue + ");SELECT @@ROWCOUNT;");
         //
         DataTable oDT = oDB.InvokeSQL(_sKey, oSql.ToString(), oParams.ToArray());
         if (oDT == null || oDT.Rows.Count == 0)
@@ -319,23 +440,28 @@ public class CRUD
         StringBuilder oSqlName = new StringBuilder();
         StringBuilder oSqlValue = new StringBuilder();
         List<Parameter> oParams = new List<Parameter>();
+        Connection conn = oDB.DataManager.Connections[_sKey];
+        string safeTable = SqlSecurityHelper.QuoteIdentifier(oItem.Name, nameof(oItem.Name));
+        int idx = 0;
         //
         foreach (KeyValuePair<string, object> oField in oItem.Attributes)
         {
+            string safeCol = SqlSecurityHelper.QuoteIdentifier(oField.Key, nameof(oItem.Attributes));
+            string pName = SqlSecurityHelper.MakeParamName("p", idx++);
             if (oSqlName.Length > 0)
                 oSqlName.Append(", ");
-            oSqlName.Append(oField.Key);
+            oSqlName.Append(safeCol);
             if (oSqlValue.Length > 0)
                 oSqlValue.Append(", ");
-            oSqlValue.Append("@" + oField.Key);
+            oSqlValue.Append(pName);
             //
-            Parameter oParam = new Parameter(oDB.DataManager.Connections[_sKey]);
-            oParam.ParameterName = "@" + oField.Key;
+            Parameter oParam = new Parameter(conn);
+            oParam.ParameterName = pName;
             oParam.Value = (oField.Value == null ? DBNull.Value : oField.Value);
             oParams.Add(oParam);
         }
         //
-        oSql.Append("INSERT INTO [" + oItem.Name + "] ( " + oSqlName + " ) VALUES ( " + oSqlValue + "); SELECT SCOPE_IDENTITY();");
+        oSql.Append("INSERT INTO " + safeTable + " ( " + oSqlName + " ) VALUES ( " + oSqlValue + "); SELECT SCOPE_IDENTITY();");
         //
         DataTable oDT = oDB.InvokeSQL(_sKey, oSql.ToString(), oParams.ToArray());
         if (oDT == null || oDT.Rows.Count == 0)
@@ -353,31 +479,32 @@ public class CRUD
         if (oItem.Filters == null || oItem.Filters.Count == 0)
             throw new Exception("UPDATE: condizione di Where non presente.");
         //
+        Connection conn = oDB.DataManager.Connections[_sKey];
+        string safeTable = SqlSecurityHelper.QuoteIdentifier(oItem.Name, nameof(oItem.Name));
+        int idx = 0;
         foreach (KeyValuePair<string, object> oField in oItem.Attributes)
         {
+            string safeCol = SqlSecurityHelper.QuoteIdentifier(oField.Key, nameof(oItem.Attributes));
+            string pName = SqlSecurityHelper.MakeParamName("p", idx++);
             if (oSqlValue.Length > 0)
                 oSqlValue.Append(", ");
-            oSqlValue.Append(" [" + oField.Key + "] = @" + oField.Key);
+            oSqlValue.Append(" " + safeCol + " = " + pName);
 
-            Parameter oParam = new Parameter(oDB.DataManager.Connections[_sKey]);
-            oParam.ParameterName = "@" + oField.Key;
+            Parameter oParam = new Parameter(conn);
+            oParam.ParameterName = pName;
             oParam.Value = (oField.Value == null ? DBNull.Value : oField.Value);
             oParams.Add(oParam);
         }
 
+        int filterIdx = 0;
         foreach (CRUDFilter oFilter in oItem.Filters)
         {
             if (oSqlFilter.Length > 0)
                 oSqlFilter.Append(" AND ");
-            oSqlFilter.Append(oFilter.getFilterParams("filter"));
-            //
-            Parameter oParam = new Parameter(oDB.DataManager.Connections[_sKey]);
-            oParam.ParameterName = "@filter" + oFilter.Name;
-            oParam.Value = (oFilter.Value == null ? DBNull.Value : oFilter.Value);
-            oParams.Add(oParam);
+            oSqlFilter.Append(oFilter.BuildParameterizedClause(conn, "f", ref filterIdx, oParams));
         }
         //
-        oSql.Append("UPDATE [" + oItem.Name + "] SET " + oSqlValue + " WHERE " + oSqlFilter + ";SELECT @@ROWCOUNT;");
+        oSql.Append("UPDATE " + safeTable + " SET " + oSqlValue + " WHERE " + oSqlFilter + ";SELECT @@ROWCOUNT;");
         //
         DataTable oDT = oDB.InvokeSQL(_sKey, oSql.ToString(), oParams.ToArray());
         if (oDT == null || oDT.Rows.Count == 0)
@@ -394,19 +521,17 @@ public class CRUD
         if (oItem.Filters == null || oItem.Filters.Count == 0)
             throw new Exception("DELETE: condizione di Where non presente.");
 
+        Connection conn = oDB.DataManager.Connections[_sKey];
+        string safeTable = SqlSecurityHelper.QuoteIdentifier(oItem.Name, nameof(oItem.Name));
+        int filterIdx = 0;
         foreach (CRUDFilter oFilter in oItem.Filters)
         {
             if (oSqlFilter.Length > 0)
                 oSqlFilter.Append(" AND ");
-            oSqlFilter.Append(oFilter.getFilterParams("filter"));
-            //
-            Parameter oParam = new Parameter(oDB.DataManager.Connections[_sKey]);
-            oParam.ParameterName = "@filter" + oFilter.Name;
-            oParam.Value = (oFilter.Value == null ? DBNull.Value : oFilter.Value);
-            oParams.Add(oParam);
+            oSqlFilter.Append(oFilter.BuildParameterizedClause(conn, "f", ref filterIdx, oParams));
         }
         //
-        oSql.Append("DELETE FROM [" + oItem.Name + "] WHERE " + oSqlFilter + ";SELECT @@ROWCOUNT;");
+        oSql.Append("DELETE FROM " + safeTable + " WHERE " + oSqlFilter + ";SELECT @@ROWCOUNT;");
         //
         DataTable oDT = oDB.InvokeSQL(_sKey, oSql.ToString(), oParams.ToArray());
         if (oDT == null || oDT.Rows.Count == 0)

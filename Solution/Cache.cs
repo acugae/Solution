@@ -95,29 +95,22 @@ public class CacheValue<T>
 
     private byte[] SerializeAndCompress(object obj)
     {
-        using (MemoryStream ms = new MemoryStream())
+        byte[] raw = Binary.ObjectToByteArray(obj);
+        using var ms = new MemoryStream();
+        using (var zs = new GZipStream(ms, CompressionMode.Compress, leaveOpen: true))
         {
-            using (GZipStream zs = new GZipStream(ms, CompressionMode.Compress, true))
-            {
-                //BinaryFormatter bf = new BinaryFormatter();
-                //bf.Serialize(zs, obj);
-                return Binary.ObjectToByteArray(obj);
-            }
-            //return ms.ToArray();
+            zs.Write(raw, 0, raw.Length);
         }
+        return ms.ToArray();
     }
 
     private T DecompressAndDeserialize(byte[] data)
     {
-        using (MemoryStream ms = new MemoryStream(data))
-        {
-            using (GZipStream zs = new GZipStream(ms, CompressionMode.Decompress, true))
-            {
-                //BinaryFormatter bf = new BinaryFormatter();
-                //return (T)bf.Deserialize(zs);
-                return Binary.ByteArrayToObject<T>(data);
-            }
-        }
+        using var ms = new MemoryStream(data);
+        using var zs = new GZipStream(ms, CompressionMode.Decompress);
+        using var output = new MemoryStream();
+        zs.CopyTo(output);
+        return Binary.ByteArrayToObject<T>(output.ToArray());
     }
 }
 
@@ -143,12 +136,9 @@ public class CacheKey
 
     private static string GetHash(string inputString)
     {
-        // step 1, calculate MD5 hash from input
-        MD5 md5 = MD5.Create();
-        byte[] inputBytes = Encoding.ASCII.GetBytes(inputString);
-        byte[] hash = md5.ComputeHash(inputBytes);
-        string str = BitConverter.ToString(hash);
-        return str;
+        byte[] inputBytes = Encoding.UTF8.GetBytes(inputString ?? string.Empty);
+        byte[] hash = SHA256.HashData(inputBytes);
+        return Convert.ToHexString(hash);
     }
 
     public override int GetHashCode()
@@ -156,13 +146,14 @@ public class CacheKey
         return QueryString.GetHashCode();
     }
 
-    public override bool Equals(object obj)
+    public override bool Equals(object? obj)
     {
         return Equals(obj as CacheKey);
     }
-    public bool Equals(CacheKey obj)
+    public bool Equals(CacheKey? obj)
     {
-        return QueryString.Equals(obj.QueryString);
+        if (obj is null) return false;
+        return QueryString.Equals(obj.QueryString, StringComparison.Ordinal);
     }
 }
 
@@ -330,7 +321,7 @@ public class CacheManager
     }
 }
 
-public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
+public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>, IDisposable
 {
     public long MaximumSize
     { get; private set; }
@@ -339,7 +330,7 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
     public long Length
     { get; private set; }
     private object _lock = null;
-    private static Timer stateTimer;
+    private Timer? stateTimer;
     public bool IsUnit { get; set; }
     public bool IsZip { get; set; }
 
@@ -355,12 +346,23 @@ public class Cache<T> : Dictionary<CacheKey, CacheValue<T>>
         TimerCallback tcb = DeleteExpired;
         object timerState = new object();
         Logger.WriteLine("Creating timer of " + TrashPeriod + " minutes for ThrashPeriod", Logger.TipoLog.Debug);
-        stateTimer = new Timer(tcb, timerState, TrashPeriod * 60 * 1000, TrashPeriod * 60 * 1000);
+        TimeSpan period = TrashPeriod > 0 ? TimeSpan.FromMinutes(TrashPeriod) : Timeout.InfiniteTimeSpan;
+        stateTimer = new Timer(tcb, timerState, period, period);
+    }
+
+    public void Dispose()
+    {
+        stateTimer?.Dispose();
+        stateTimer = null;
+        GC.SuppressFinalize(this);
     }
 
     public new List<CacheKey> Keys()
     {
-        return base.Keys.ToList();
+        lock (_lock)
+        {
+            return base.Keys.ToList();
+        }
     }
 
     public void Set(string sKey, T Value, int cacheThreeshold = 0)
