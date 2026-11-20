@@ -5,6 +5,7 @@ public class Connection : IDisposable, IAsyncDisposable
     private Provider provider;
     private DbConnection connection;
     private DbTransaction transaction;
+    private string _connectionString = string.Empty;
     private string _strKey = string.Empty;
     /// <summary>
     /// Ritona la transazione sulla connessione, altrimenti null.
@@ -39,6 +40,7 @@ public class Connection : IDisposable, IAsyncDisposable
         connection?.Dispose();
         transaction = null;
         connection = null;
+        _connectionString = string.Empty;
         _strKey = string.Empty;
     }
 
@@ -59,6 +61,7 @@ public class Connection : IDisposable, IAsyncDisposable
 
         transaction = null;
         connection = null;
+        _connectionString = string.Empty;
         _strKey = string.Empty;
     }
     /// <summary>
@@ -90,6 +93,7 @@ public class Connection : IDisposable, IAsyncDisposable
         _strKey = sKey;
         connection = oProvider.CreateConnection();
         connection.ConnectionString = connectionString;
+        _connectionString = connectionString;
     }
     /// <summary>
     /// Inizia una transazione sull'istanza specificando l'IsolationLevel.
@@ -159,8 +163,12 @@ public class Connection : IDisposable, IAsyncDisposable
     /// </summary>
     public string ConnectionString
     {
-        get { return connection.ConnectionString; }
-        set { connection.ConnectionString = value; }
+        get { return _connectionString; }
+        set
+        {
+            connection.ConnectionString = value;
+            _connectionString = value;
+        }
     }
     /// <summary>
     /// Tempo massimo per l'apertura della connessione.

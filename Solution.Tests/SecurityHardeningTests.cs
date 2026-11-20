@@ -70,6 +70,21 @@ public class SecurityHardeningTests
     }
 
     [Fact]
+    public void Connection_Clone_PreservesCredentialsWhenProviderRedactsThem()
+    {
+        var db = new DB();
+        const string connectionString = "Server=localhost;Initial Catalog=test;User ID=test;Password=secret;Persist Security Info=False;";
+        db.DataManager.Connections.Add("sql", "sqldb", connectionString);
+
+        var connection = db.DataManager.Connections["sql"];
+        connection.DbConnection.ConnectionString = "Server=localhost;Initial Catalog=test;Integrated Security=True;Persist Security Info=False;";
+
+        Assert.Equal(connectionString, connection.ConnectionString);
+        using var clone = db.DataManager.Connections.Clone("sql");
+        Assert.Equal(connectionString, clone.ConnectionString);
+    }
+
+    [Fact]
     public void QueryBuilder_AndCrud_RejectUnsafeIdentifiersAndOperators()
     {
         var db = new DB();
